@@ -35,5 +35,7 @@ class Settings(BaseSettings):
     overpass_url: str = "https://overpass-api.de/api/interpreter"
     geofence_cache_ttl: int = 3600
 
+    app_timezone: str = "Europe/Istanbul"
+
 
 settings = Settings()

@@ -34,7 +34,7 @@ export function ReceiptScanner({ onResult, onClose }: Props) {
   const pickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      setError(t.scanner.cameraPermission);
+      setError(t.scanner.galleryPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

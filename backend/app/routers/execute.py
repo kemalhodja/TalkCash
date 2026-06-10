@@ -99,7 +99,10 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession, locale
             db, user_id, parsed.description or parsed.category or "Fatura",
             parsed.amount, due, is_recurring=parsed.is_recurring, force=parsed.force,
         )
-        return {"id": str(item.id), "title": item.title, "due_date": item.due_date.isoformat()}
+        return {
+            "id": str(item.id), "title": item.title,
+            "due_date": item.due_date.isoformat(), "amount": float(item.amount),
+        }
 
     if intent == "add_installment":
         if not parsed.amount:

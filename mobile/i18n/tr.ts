@@ -34,6 +34,9 @@ export default {
     incomeWallet: "Yatırılacak kasa",
     incomeSubmit: "Gelir Kaydet",
     incomeAdded: "Gelir kaydedildi",
+    priceTracker: "Fiyat Takibi",
+    pricePlaceholder: "Ürün adı (ör: süt)",
+    trackPrice: "Takip Et",
   },
   login: {
     title: "TalkCash",
@@ -134,6 +137,8 @@ export default {
     newLimit: "Yeni limit (TL)",
     empty: "Henüz bütçe limiti yok",
     perMonth: "₺/ay",
+    spent: "Harcanan",
+    used: "kullanıldı",
   },
   scanner: {
     cameraPermission: "Kamera izni gerekli",
@@ -142,6 +147,7 @@ export default {
     pickGallery: "Galeriden Seç",
     verified: "Fiş doğrulandı",
     mismatch: "Fiş tutarı uyuşmuyor",
+    galleryPermission: "Galeri erişim izni gerekli",
   },
   transactions: {
     title: "İşlem Geçmişi",

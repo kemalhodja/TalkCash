@@ -8,9 +8,10 @@ import { VoiceInput } from "@/components/VoiceInput";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { scheduleAgendaReminder } from "@/services/notifications";
 
 export default function InputScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [text, setText] = useState("");
   const [showKeypad, setShowKeypad] = useState(false);
   const [keypadValue, setKeypadValue] = useState("");
@@ -54,7 +55,15 @@ export default function InputScreen() {
     }
     if (parsedData) {
       try {
-        await api.executeAction(parsedData, true);
+        const res: any = await api.executeAction(parsedData, true);
+        if (parsedData.intent === "add_bill" && res?.result?.due_date) {
+          await scheduleAgendaReminder(
+            res.result.title || parsedData.description || "Fatura",
+            res.result.amount || parsedData.amount || 0,
+            new Date(res.result.due_date),
+            locale,
+          );
+        }
         if (parsedData.receipt_id && parsedData.amount) {
           const { verified } = await api.verifyReceipt(
             parsedData.amount, parsedData.amount, parsedData.receipt_id,

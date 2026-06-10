@@ -15,10 +15,21 @@ router = APIRouter(prefix="/budgets", tags=["Budgets"])
 budget_service = BudgetService()
 
 
-@router.get("/", response_model=list[BudgetResponse])
+@router.get("/")
 async def list_budgets(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    budgets = await budget_service.list_budgets(db, user.id)
-    return [BudgetResponse.model_validate(b) for b in budgets]
+    summaries = await budget_service.list_with_usage(db, user.id)
+    return [
+        {
+            "id": str(s["id"]),
+            "category": s["category"],
+            "monthly_limit": float(s["monthly_limit"]),
+            "currency": s["currency"],
+            "created_at": s["created_at"].isoformat(),
+            "spent": float(s["spent"]),
+            "percent": s["percent"],
+        }
+        for s in summaries
+    ]
 
 
 @router.post("/", response_model=BudgetResponse)

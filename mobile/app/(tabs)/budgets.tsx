@@ -43,6 +43,12 @@ export default function BudgetsScreen() {
     load();
   };
 
+  const barColor = (percent: number) => {
+    if (percent >= 100) return Colors.danger;
+    if (percent >= 80) return Colors.warning;
+    return Colors.accent;
+  };
+
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
 
   return (
@@ -59,18 +65,30 @@ export default function BudgetsScreen() {
         </TouchableOpacity>
       </View>
 
-      {budgets.map((b) => (
-        <TouchableOpacity key={b.id} style={styles.card}
-          onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}>
-          <View>
-            <Text style={styles.catName}>{b.category}</Text>
-            <Text style={styles.limit}>{Number(b.monthly_limit).toLocaleString(dateLocale)} {t.budget.perMonth}</Text>
-          </View>
-          <TouchableOpacity onPress={async () => { await api.deleteBudget(b.id); load(); }}>
-            <Text style={styles.delete}>{t.common.delete}</Text>
+      {budgets.map((b) => {
+        const percent = b.percent ?? 0;
+        const spent = b.spent ?? 0;
+        return (
+          <TouchableOpacity key={b.id} style={styles.card}
+            onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}>
+            <View style={styles.cardTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.catName}>{b.category}</Text>
+                <Text style={styles.limit}>
+                  {Number(spent).toLocaleString(dateLocale)} / {Number(b.monthly_limit).toLocaleString(dateLocale)} {t.budget.perMonth}
+                </Text>
+                <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
+              </View>
+              <TouchableOpacity onPress={async () => { await api.deleteBudget(b.id); load(); }}>
+                <Text style={styles.delete}>{t.common.delete}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.progressBg}>
+              <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor(percent) }]} />
+            </View>
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
+        );
+      })}
 
       {budgets.length === 0 && <Text style={styles.empty}>{t.budget.empty}</Text>}
 
@@ -108,12 +126,15 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
   btnText: { color: Colors.bg, fontWeight: "700" },
   card: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.sm,
     borderWidth: 1, borderColor: Colors.border,
   },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   catName: { color: Colors.text, fontWeight: "600" },
-  limit: { color: Colors.accent, marginTop: 4 },
+  limit: { color: Colors.textSecondary, marginTop: 4, fontSize: 13 },
+  percentText: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
+  progressBg: { height: 6, backgroundColor: Colors.border, borderRadius: 3, marginTop: Spacing.sm, overflow: "hidden" },
+  progressFill: { height: 6, borderRadius: 3 },
   delete: { color: Colors.danger },
   empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: Spacing.lg },

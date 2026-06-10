@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_locale
 from app.models.receipt import Receipt
 from app.models.user import User
 from app.services.ocr.service import OCRService
@@ -24,7 +24,7 @@ async def scan_receipt(
     db: AsyncSession = Depends(get_db),
 ):
     image_bytes = await image.read()
-    data = await ocr_service.extract_receipt_data(image_bytes)
+    data = await ocr_service.extract_receipt_data(image_bytes, locale=user_locale(user))
     image_url = await storage_service.upload(str(user.id), image_bytes)
 
     receipt = Receipt(
@@ -47,6 +47,7 @@ async def scan_receipt(
         "merchant": data["merchant"],
         "verified": receipt.is_verified,
         "image_url": image_url,
+        "line_items": data.get("line_items", []),
     }
 
 

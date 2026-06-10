@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { IncomeModal } from "@/components/IncomeModal";
 import { TransferModal } from "@/components/TransferModal";
 import { WalletCreateModal } from "@/components/WalletCreateModal";
@@ -25,6 +25,7 @@ export default function DashboardScreen() {
   const [transferVisible, setTransferVisible] = useState(false);
   const [incomeVisible, setIncomeVisible] = useState(false);
   const [walletCreateVisible, setWalletCreateVisible] = useState(false);
+  const [trackProduct, setTrackProduct] = useState("süt");
 
   const loadData = async () => {
     const user = await auth.getUser();
@@ -37,7 +38,7 @@ export default function DashboardScreen() {
       setWallets(nw.wallets);
       setForecast(await api.getForecast(nw.total_try));
       setAlerts(await api.getBudgetAlerts());
-      setPriceReport(await api.getPriceTracker("süt"));
+      setPriceReport(await api.getPriceTracker(trackProduct));
     } catch (e: any) {
       setError(e.message || t.home.loadError);
     } finally {
@@ -92,9 +93,22 @@ export default function DashboardScreen() {
         </View>
       ))}
 
-      {priceReport?.message && !priceReport.message.includes("bulunamadı") && (
-        <View style={styles.alertCard}><Text style={styles.alertText}>📊 {priceReport.message}</Text></View>
-      )}
+      <View style={styles.priceTracker}>
+        <Text style={styles.sectionTitle}>{t.home.priceTracker}</Text>
+        <View style={styles.priceRow}>
+          <TextInput style={styles.priceInput} placeholder={t.home.pricePlaceholder}
+            placeholderTextColor={Colors.textMuted} value={trackProduct} onChangeText={setTrackProduct} />
+          <TouchableOpacity style={styles.priceBtn} onPress={() => { setRefreshing(true); loadData(); }}>
+            <Text style={styles.priceBtnText}>{t.home.trackPrice}</Text>
+          </TouchableOpacity>
+        </View>
+        {priceReport?.message && !priceReport.message.includes("bulunamadı") && !priceReport.message.includes("insufficient") && (
+          <View style={styles.alertCard}>
+            <Text style={styles.alertText}>📊 {priceReport.message}</Text>
+            {priceReport.source === "ocr" && <Text style={styles.sourceTag}>OCR</Text>}
+          </View>
+        )}
+      </View>
 
       <Text style={styles.sectionTitle}>{t.home.wallets}</Text>
       {wallets.map((w) => (
@@ -134,4 +148,13 @@ const styles = StyleSheet.create({
   alertText: { color: Colors.warning, fontSize: 14 },
   errorCard: { backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.md },
   errorText: { color: Colors.danger, textAlign: "center" },
+  priceTracker: { marginBottom: Spacing.lg },
+  priceRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm },
+  priceInput: {
+    flex: 1, backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    color: Colors.text, borderWidth: 1, borderColor: Colors.border,
+  },
+  priceBtn: { backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: Spacing.md, justifyContent: "center" },
+  priceBtnText: { color: Colors.bg, fontWeight: "700" },
+  sourceTag: { color: Colors.textMuted, fontSize: 11, marginTop: 4 },
 });

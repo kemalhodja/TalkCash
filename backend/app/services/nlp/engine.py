@@ -8,12 +8,20 @@ from openai import AsyncOpenAI
 from app.config import settings
 from app.i18n import I18nError, t
 from app.schemas.common import ParsedInput
+from app.services.nlp.english_parser import (
+    extract_date_en,
+    extract_installment_count as extract_installment_count_en,
+    extract_target_wallet_en,
+    parse_english_amount,
+)
 from app.services.nlp.turkish_parser import (
     detect_intent,
     extract_category,
     extract_date,
+    extract_installment_count,
     extract_paid_bill_title,
     extract_shopping_items,
+    extract_target_wallet,
     extract_wallet_name,
     parse_turkish_amount,
 )
@@ -140,15 +148,19 @@ class NLPEngine:
         is_recurring = any(w in text_lower for w in ["her ay", "aylık", "aylik", "tekrarlayan"])
 
         description = extract_paid_bill_title(text) if intent == "mark_paid" else text
+        wallet = extract_wallet_name(text)
+        target = extract_target_wallet(text) if intent == "transfer" else None
         return ParsedInput(
             intent=intent,
             amount=parse_turkish_amount(text),
             category=extract_category(text),
-            wallet_name=extract_wallet_name(text),
+            wallet_name=wallet,
+            target_wallet_name=target,
             items=extract_shopping_items(text),
             description=description,
             person_count=person_count,
             date=extract_date(text),
+            installment_count=extract_installment_count(text),
             is_recurring=is_recurring,
             raw_text=text,
             confidence=0.85 if whisper_mode else 1.0,
@@ -166,10 +178,15 @@ class NLPEngine:
         elif "transfer" in lower:
             intent = "transfer"
 
-        amount = None
-        amount_match = re.search(r"(\d+(?:\.\d+)?)", text)
-        if amount_match:
-            amount = Decimal(amount_match.group(1))
+        amount = parse_english_amount(text)
+        if amount is None:
+            amount_match = re.search(r"(\d+(?:\.\d+)?)", text)
+            if amount_match:
+                amount = Decimal(amount_match.group(1))
+
+        description = text
+        if intent == "mark_paid":
+            description = re.sub(r"(?i)\b(paid|mark paid|i paid)\b", "", text).strip() or text
 
         if text.startswith("/"):
             text = text[1:].strip()
@@ -185,12 +202,19 @@ class NLPEngine:
                 raw_text=text,
             )
 
+        target = extract_target_wallet_en(text) if intent == "transfer" else None
+        wallet = "Cash" if "cash" in lower else "Bank"
+        if intent == "transfer" and "from bank" in lower:
+            wallet = "Bank"
         return ParsedInput(
             intent=intent,
             amount=amount,
             category=None,
-            wallet_name="Cash" if "cash" in lower else "Bank",
-            description=text,
+            wallet_name=wallet,
+            target_wallet_name=target,
+            description=description,
+            date=extract_date_en(text),
+            installment_count=extract_installment_count_en(text),
             raw_text=text,
         )
 

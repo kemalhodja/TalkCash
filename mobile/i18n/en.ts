@@ -34,6 +34,9 @@ export default {
     incomeWallet: "Deposit to wallet",
     incomeSubmit: "Save Income",
     incomeAdded: "Income recorded",
+    priceTracker: "Price Tracker",
+    pricePlaceholder: "Product name (e.g. milk)",
+    trackPrice: "Track",
   },
   login: {
     title: "TalkCash",
@@ -134,6 +137,8 @@ export default {
     newLimit: "New limit",
     empty: "No budget limits yet",
     perMonth: "/month",
+    spent: "Spent",
+    used: "used",
   },
   scanner: {
     cameraPermission: "Camera permission required",
@@ -142,6 +147,7 @@ export default {
     pickGallery: "Pick from Gallery",
     verified: "Receipt verified",
     mismatch: "Receipt amount mismatch",
+    galleryPermission: "Gallery access permission required",
   },
   transactions: {
     title: "Transaction History",

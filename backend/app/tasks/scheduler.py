@@ -1,4 +1,5 @@
 import logging
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -52,10 +53,11 @@ def start_scheduler():
     if not settings.scheduler_enabled:
         logger.info("Scheduler disabled (SCHEDULER_ENABLED=false)")
         return
-    scheduler.add_job(daily_shopping_reset, "cron", hour=0, minute=0, id="daily_reset")
-    scheduler.add_job(agenda_reminders_today, "cron", hour=8, minute=0, id="morning_reminders")
-    scheduler.add_job(agenda_reminders_tomorrow, "cron", hour=20, minute=0, id="evening_reminders")
-    scheduler.add_job(spawn_recurring_bills, "cron", hour=1, minute=0, id="recurring_bills")
+    tz = ZoneInfo(settings.app_timezone)
+    scheduler.add_job(daily_shopping_reset, "cron", hour=0, minute=0, timezone=tz, id="daily_reset")
+    scheduler.add_job(agenda_reminders_today, "cron", hour=8, minute=0, timezone=tz, id="morning_reminders")
+    scheduler.add_job(agenda_reminders_tomorrow, "cron", hour=20, minute=0, timezone=tz, id="evening_reminders")
+    scheduler.add_job(spawn_recurring_bills, "cron", hour=1, minute=0, timezone=tz, id="recurring_bills")
     scheduler.add_job(sync_exchange_rates, "interval", hours=1, id="rate_sync")
     scheduler.start()
     logger.info("Scheduler started")

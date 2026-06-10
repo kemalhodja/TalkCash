@@ -120,6 +120,21 @@ def extract_paid_bill_title(text: str) -> str:
     return text_lower.strip() or text.strip()
 
 
+def extract_target_wallet(text: str) -> str | None:
+    text_lower = text.lower()
+    if any(w in text_lower for w in ["nakite", "nakit kasaya", "nakit çektim", "nakit cektim"]):
+        return "Nakit"
+    if any(w in text_lower for w in ["bankaya", "banka hesabına", "banka hesabina"]):
+        return "Banka"
+    return None
+
+
+def extract_installment_count(text: str) -> int | None:
+    text_lower = text.lower()
+    m = re.search(r"(\d+)\s*taksit", text_lower)
+    return int(m.group(1)) if m else None
+
+
 def extract_wallet_name(text: str) -> str | None:
     wallets = {
         "nakit": "Nakit", "banka": "Banka", "kredi kartı": "Kredi Kartı",
