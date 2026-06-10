@@ -21,6 +21,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://talkcash-api.fly.dev/api/v1"
       }
     },
     "production": {
