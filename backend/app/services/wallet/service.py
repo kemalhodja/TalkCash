@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.transaction import Transaction, TransactionType
 from app.models.wallet import Wallet, WalletType
 from app.schemas.wallet import NetWorthResponse, WalletCreate, WalletResponse
+from app.services.exchange.service import ExchangeService
 
 
 DEFAULT_WALLETS = [
@@ -19,6 +20,9 @@ DEFAULT_WALLETS = [
 
 
 class WalletService:
+    def __init__(self):
+        self.exchange = ExchangeService()
+
     async def create_defaults(self, db: AsyncSession, user_id: UUID) -> list[Wallet]:
         wallets = []
         for name, wtype in DEFAULT_WALLETS:
@@ -40,9 +44,16 @@ class WalletService:
         return WalletResponse.model_validate(wallet)
 
     async def get_net_worth(self, db: AsyncSession, user_id: UUID) -> NetWorthResponse:
-        wallets = await self.list_wallets(db, user_id)
-        total = sum(w.balance for w in wallets)
-        return NetWorthResponse(total_try=total, wallets=wallets)
+        result = await db.execute(select(Wallet).where(Wallet.user_id == user_id, Wallet.is_active == True))
+        raw_wallets = list(result.scalars().all())
+        total = Decimal("0")
+        wallet_responses = []
+        for w in raw_wallets:
+            try_value = await self.exchange.convert_to_try(db, w.balance, w.currency, w.wallet_type.value)
+            total += try_value
+            resp = WalletResponse.model_validate(w)
+            wallet_responses.append(resp)
+        return NetWorthResponse(total_try=total, wallets=wallet_responses)
 
     async def transfer(
         self, db: AsyncSession, user_id: UUID, from_id: UUID, to_id: UUID, amount: Decimal, description: str = ""

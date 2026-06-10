@@ -3,44 +3,48 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
 import { api } from "@/services/api";
-
-const DEMO_USER = "00000000-0000-0000-0000-000000000001";
+import { auth } from "@/services/auth";
+import { registerForPushNotifications } from "@/services/notifications";
 
 export default function DashboardScreen() {
   const [netWorth, setNetWorth] = useState(0);
   const [wallets, setWallets] = useState<any[]>([]);
   const [forecast, setForecast] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     loadData();
+    registerForPushNotifications();
   }, []);
 
   const loadData = async () => {
+    const user = await auth.getUser();
+    if (!user) return;
+    setUserName(user.fullName);
     try {
-      const nw = await api.getNetWorth(DEMO_USER);
+      const nw = await api.getNetWorth(user.userId);
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
-      const fc = await api.getForecast(DEMO_USER, nw.total_try);
-      setForecast(fc);
-      const al = await api.getBudgetAlerts(DEMO_USER);
-      setAlerts(al);
+      setForecast(await api.getForecast(user.userId, nw.total_try));
+      setAlerts(await api.getBudgetAlerts(user.userId));
     } catch {
       setWallets([
         { name: "Nakit", balance: 2500, wallet_type: "cash" },
         { name: "Banka", balance: 45000, wallet_type: "bank" },
-        { name: "Kredi Kartı", balance: -3200, wallet_type: "credit_card" },
       ]);
-      setNetWorth(44300);
+      setNetWorth(47500);
     }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.greeting}>Merhaba, {userName || "Kullanıcı"}</Text>
+
       <View style={styles.netWorthCard}>
         <Text style={styles.label}>Net Varlık</Text>
         <Text style={styles.netWorth}>
-          {netWorth.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
+          {Number(netWorth).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
         </Text>
       </View>
 
@@ -58,12 +62,7 @@ export default function DashboardScreen() {
 
       <Text style={styles.sectionTitle}>Kasalarım</Text>
       {wallets.map((w, i) => (
-        <WalletCard
-          key={i}
-          name={w.name}
-          balance={Number(w.balance)}
-          type={w.wallet_type}
-        />
+        <WalletCard key={i} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
       ))}
     </ScrollView>
   );
@@ -72,6 +71,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   content: { padding: Spacing.md },
+  greeting: { color: Colors.textSecondary, fontSize: 16, marginBottom: Spacing.sm },
   netWorthCard: {
     backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg,
     alignItems: "center", marginBottom: Spacing.lg,
@@ -85,9 +85,6 @@ const styles = StyleSheet.create({
     padding: Spacing.md, marginBottom: Spacing.sm,
     borderWidth: 1, borderColor: "rgba(245,158,11,0.3)",
   },
-  alertDanger: {
-    backgroundColor: "rgba(239,68,68,0.1)",
-    borderColor: "rgba(239,68,68,0.3)",
-  },
+  alertDanger: { backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" },
   alertText: { color: Colors.warning, fontSize: 14 },
 });

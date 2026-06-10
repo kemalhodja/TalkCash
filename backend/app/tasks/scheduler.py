@@ -1,0 +1,41 @@
+import logging
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from app.database import async_session
+from app.services.exchange.service import ExchangeService
+from app.services.notifications.service import NotificationService
+from app.services.shopping.service import ShoppingService
+
+logger = logging.getLogger(__name__)
+scheduler = AsyncIOScheduler()
+shopping_service = ShoppingService()
+notif_service = NotificationService()
+exchange_service = ExchangeService()
+
+
+async def daily_shopping_reset():
+    async with async_session() as db:
+        count = await shopping_service.daily_reset(db)
+        logger.info("Daily shopping reset: %d items cleared", count)
+
+
+async def agenda_reminders():
+    async with async_session() as db:
+        count = await notif_service.check_agenda_reminders(db)
+        logger.info("Agenda reminders sent: %d", count)
+
+
+async def sync_exchange_rates():
+    async with async_session() as db:
+        rates = await exchange_service.sync_rates(db)
+        logger.info("Exchange rates synced: %s", list(rates.keys()))
+
+
+def start_scheduler():
+    scheduler.add_job(daily_shopping_reset, "cron", hour=0, minute=0, id="daily_reset")
+    scheduler.add_job(agenda_reminders, "cron", hour=8, minute=0, id="morning_reminders")
+    scheduler.add_job(agenda_reminders, "cron", hour=20, minute=0, id="evening_reminders")
+    scheduler.add_job(sync_exchange_rates, "interval", hours=1, id="rate_sync")
+    scheduler.start()
+    logger.info("Scheduler started")

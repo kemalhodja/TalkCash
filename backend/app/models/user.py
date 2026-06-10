@@ -17,6 +17,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), default="")
     pin_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     biometric_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    push_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     wallets = relationship("Wallet", back_populates="user", cascade="all, delete-orphan")

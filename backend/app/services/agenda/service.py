@@ -16,11 +16,12 @@ class AgendaService:
 
     async def add_bill(
         self, db: AsyncSession, user_id: UUID, title: str, amount: Decimal,
-        due_date: datetime, is_recurring: bool = False,
+        due_date: datetime, is_recurring: bool = False, force: bool = False,
     ) -> AgendaItem:
-        duplicate = await self._check_duplicate(db, user_id, title)
-        if duplicate:
-            raise ValueError(f"Bu ayki {title} zaten eklendi. Emin misiniz?")
+        if not force:
+            duplicate = await self._check_duplicate(db, user_id, title)
+            if duplicate:
+                raise ValueError(f"Bu ayki {title} zaten eklendi. Emin misiniz?")
 
         item = AgendaItem(
             user_id=user_id, title=title, amount=amount,

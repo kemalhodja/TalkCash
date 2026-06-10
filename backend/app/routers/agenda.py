@@ -28,10 +28,10 @@ async def list_agenda(user_id: UUID, days: int = 30, db: AsyncSession = Depends(
 @router.post("/bill")
 async def add_bill(
     user_id: UUID, title: str, amount: float, due_date: datetime,
-    is_recurring: bool = False, db: AsyncSession = Depends(get_db),
+    is_recurring: bool = False, force: bool = False, db: AsyncSession = Depends(get_db),
 ):
     try:
-        item = await agenda_service.add_bill(db, user_id, title, Decimal(str(amount)), due_date, is_recurring)
+        item = await agenda_service.add_bill(db, user_id, title, Decimal(str(amount)), due_date, is_recurring, force=force)
         return {"id": str(item.id), "title": item.title}
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))

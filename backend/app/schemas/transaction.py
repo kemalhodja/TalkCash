@@ -2,6 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from app.models.transaction import TransactionType
 from app.schemas.common import ORMBase
 

@@ -1,29 +1,56 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Spacing } from "@/constants/theme";
+import { api } from "@/services/api";
 
 interface Props {
-  onResult: (text: string) => void;
+  onResult: (text: string, parsed?: any) => void;
   whisperMode?: boolean;
 }
 
 export function VoiceInput({ onResult, whisperMode = false }: Props) {
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
-  const handlePress = async () => {
-    if (recording) {
-      setRecording(false);
-      setProcessing(true);
-      // Gerçek uygulamada expo-av ile kayıt yapılıp API'ye gönderilir
-      setTimeout(() => {
-        onResult("150 TL kahve Starbucks");
-        setProcessing(false);
-      }, 1500);
-    } else {
+  const startRecording = async () => {
+    try {
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      recordingRef.current = rec;
       setRecording(true);
+    } catch {
+      alert("Mikrofon izni gerekli");
     }
+  };
+
+  const stopRecording = async () => {
+    if (!recordingRef.current) return;
+    setRecording(false);
+    setProcessing(true);
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      if (uri) {
+        const result = await api.parseVoice(uri, whisperMode);
+        onResult(result.parsed?.raw_text || result.message, result);
+      }
+    } catch {
+      onResult("Ses işlenemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handlePress = () => {
+    if (recording) stopRecording();
+    else startRecording();
   };
 
   return (
@@ -40,7 +67,7 @@ export function VoiceInput({ onResult, whisperMode = false }: Props) {
         )}
       </TouchableOpacity>
       <Text style={styles.hint}>
-        {processing ? "İşleniyor..." : recording ? "Dinleniyor..." : whisperMode ? "Fısıltı Modu" : "Sesli Komut"}
+        {processing ? "İşleniyor..." : recording ? "Dinleniyor — durdurmak için dokunun" : whisperMode ? "Fısıltı Modu" : "Sesli Komut"}
       </Text>
     </View>
   );
@@ -53,5 +80,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent, justifyContent: "center", alignItems: "center",
   },
   micActive: { backgroundColor: Colors.danger },
-  hint: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.sm },
+  hint: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
 });

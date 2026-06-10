@@ -1,25 +1,49 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { Colors, Spacing } from "@/constants/theme";
-import { api } from "@/services/api";
-
-const DEMO_USER = "00000000-0000-0000-0000-000000000001";
+import { ApiError, api } from "@/services/api";
+import { auth } from "@/services/auth";
+import { scheduleAgendaReminder } from "@/services/notifications";
 
 export default function AgendaScreen() {
   const [items, setItems] = useState<any[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [duplicateMsg, setDuplicateMsg] = useState("");
+  const [pendingBill, setPendingBill] = useState<any>(null);
 
   useEffect(() => { loadAgenda(); }, []);
 
   const loadAgenda = async () => {
+    const user = await auth.getUser();
+    if (!user) return;
     try {
-      const data = await api.getAgenda(DEMO_USER);
-      setItems(data);
+      setItems(await api.getAgenda(user.userId));
     } catch {
       setItems([
         { id: "1", title: "Kira", amount: 15000, due_date: "2025-07-01", status: "pending" },
         { id: "2", title: "Elektrik Faturası", amount: 450, due_date: "2025-06-15", status: "pending" },
-        { id: "3", title: "Buzdolabı (2/6)", amount: 2000, due_date: "2025-06-20", status: "pending", installment: "2/6" },
       ]);
+    }
+  };
+
+  const handleAddBill = async (force = false) => {
+    const user = await auth.getUser();
+    if (!user || !title || !amount) return;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+    try {
+      await api.addBill(user.userId, title, parseFloat(amount), dueDate.toISOString(), force);
+      await scheduleAgendaReminder(title, parseFloat(amount), dueDate);
+      setTitle(""); setAmount(""); setShowAdd(false);
+      loadAgenda();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setDuplicateMsg(e.message);
+        setPendingBill({ title, amount, dueDate: dueDate.toISOString() });
+      }
     }
   };
 
@@ -31,8 +55,24 @@ export default function AgendaScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Ajanda & Faturalar</Text>
-      <Text style={styles.subtitle}>Yaklaşan ödemeler ve taksitler</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Ajanda & Faturalar</Text>
+        <TouchableOpacity onPress={() => setShowAdd(!showAdd)}>
+          <Text style={styles.addBtn}>{showAdd ? "İptal" : "+ Fatura Ekle"}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {showAdd && (
+        <View style={styles.addForm}>
+          <TextInput style={styles.input} placeholder="Fatura adı" placeholderTextColor={Colors.textMuted}
+            value={title} onChangeText={setTitle} />
+          <TextInput style={styles.input} placeholder="Tutar (TL)" placeholderTextColor={Colors.textMuted}
+            keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+          <TouchableOpacity style={styles.submitBtn} onPress={() => handleAddBill(false)}>
+            <Text style={styles.submitText}>Ekle</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {items.map((item) => (
         <View key={item.id} style={styles.card}>
@@ -52,9 +92,20 @@ export default function AgendaScreen() {
         </View>
       ))}
 
-      {items.length === 0 && (
-        <Text style={styles.empty}>Yaklaşan ödeme yok.</Text>
-      )}
+      <DuplicateBillDialog
+        visible={!!duplicateMsg}
+        message={duplicateMsg}
+        onConfirm={async () => {
+          setDuplicateMsg("");
+          const user = await auth.getUser();
+          if (user && pendingBill) {
+            await api.addBill(user.userId, pendingBill.title, parseFloat(pendingBill.amount), pendingBill.dueDate, true);
+            setPendingBill(null);
+            loadAgenda();
+          }
+        }}
+        onCancel={() => { setDuplicateMsg(""); setPendingBill(null); }}
+      />
     </ScrollView>
   );
 }
@@ -62,12 +113,19 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   content: { padding: Spacing.md },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg },
   title: { color: Colors.text, fontSize: 22, fontWeight: "700" },
-  subtitle: { color: Colors.textMuted, fontSize: 13, marginBottom: Spacing.lg },
+  addBtn: { color: Colors.accent, fontWeight: "600" },
+  addForm: { marginBottom: Spacing.lg },
+  input: {
+    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    color: Colors.text, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
+  },
+  submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
+  submitText: { color: Colors.bg, fontWeight: "700" },
   card: {
-    backgroundColor: Colors.card, borderRadius: 12,
-    padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md,
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
   },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { color: Colors.text, fontSize: 16, fontWeight: "600" },
@@ -75,5 +133,4 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: "600" },
   amount: { color: Colors.accent, fontSize: 20, fontWeight: "700", marginTop: 8 },
   date: { color: Colors.textMuted, fontSize: 13, marginTop: 4 },
-  empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
 });

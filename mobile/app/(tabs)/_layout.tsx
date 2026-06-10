@@ -13,34 +13,30 @@ export default function TabLayout() {
         headerTintColor: Colors.text,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Ana Sayfa",
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="shopping"
-        options={{
-          title: "Alışveriş",
-          tabBarIcon: ({ color, size }) => <Ionicons name="cart" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="agenda"
-        options={{
-          title: "Ajanda",
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="input"
-        options={{
-          title: "Giriş",
-          tabBarIcon: ({ color, size }) => <Ionicons name="mic" size={size} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{
+        title: "Ana Sayfa",
+        tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+      }} />
+      <Tabs.Screen name="shopping" options={{
+        title: "Alışveriş",
+        tabBarIcon: ({ color, size }) => <Ionicons name="cart" size={size} color={color} />,
+      }} />
+      <Tabs.Screen name="agenda" options={{
+        title: "Ajanda",
+        tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
+      }} />
+      <Tabs.Screen name="input" options={{
+        title: "Giriş",
+        tabBarIcon: ({ color, size }) => <Ionicons name="mic" size={size} color={color} />,
+      }} />
+      <Tabs.Screen name="social" options={{
+        title: "Sosyal",
+        tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
+      }} />
+      <Tabs.Screen name="settings" options={{
+        title: "Ayarlar",
+        tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+      }} />
     </Tabs>
   );
 }

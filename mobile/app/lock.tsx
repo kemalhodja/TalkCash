@@ -1,0 +1,92 @@
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { router } from "expo-router";
+import { Colors, Spacing } from "@/constants/theme";
+import { api } from "@/services/api";
+import { auth } from "@/services/auth";
+
+export default function LockScreen() {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    auth.getUser().then(async (u) => {
+      if (!u) { router.replace("/login"); return; }
+      setUser(u);
+      if (u.biometricEnabled) {
+        const ok = await auth.authenticateBiometric();
+        if (ok) router.replace("/(tabs)");
+      }
+    });
+  }, []);
+
+  const verifyPin = async () => {
+    try {
+      await api.verifyPin(pin);
+      router.replace("/(tabs)");
+    } catch {
+      setError("PIN hatalı");
+      setPin("");
+    }
+  };
+
+  const setupPin = async () => {
+    if (pin.length < 4) { setError("PIN en az 4 haneli"); return; }
+    try {
+      await api.setPin(pin);
+      router.replace("/(tabs)");
+    } catch {
+      setError("PIN ayarlanamadı");
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>🔒 TalkCash</Text>
+      <Text style={styles.subtitle}>{user?.hasPin ? "PIN girin" : "Güvenlik PIN'i oluşturun"}</Text>
+
+      <TextInput
+        style={styles.input}
+        value={pin}
+        onChangeText={setPin}
+        keyboardType="number-pad"
+        secureTextEntry
+        maxLength={6}
+        placeholder="••••"
+        placeholderTextColor={Colors.textMuted}
+      />
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <TouchableOpacity style={styles.btn} onPress={user?.hasPin ? verifyPin : setupPin}>
+        <Text style={styles.btnText}>{user?.hasPin ? "Kilidi Aç" : "PIN Oluştur"}</Text>
+      </TouchableOpacity>
+
+      {user?.biometricEnabled && (
+        <TouchableOpacity style={styles.bioBtn} onPress={async () => {
+          const ok = await auth.authenticateBiometric();
+          if (ok) router.replace("/(tabs)");
+        }}>
+          <Text style={styles.bioText}>Face ID / Touch ID</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bg, justifyContent: "center", padding: Spacing.lg },
+  title: { fontSize: 28, textAlign: "center", marginBottom: Spacing.sm },
+  subtitle: { color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
+  input: {
+    backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md,
+    color: Colors.text, fontSize: 24, textAlign: "center", letterSpacing: 8,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  btn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 12, alignItems: "center", marginTop: Spacing.lg },
+  btnText: { color: Colors.bg, fontWeight: "700" },
+  bioBtn: { alignItems: "center", marginTop: Spacing.lg },
+  bioText: { color: Colors.accent },
+  error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
+});
