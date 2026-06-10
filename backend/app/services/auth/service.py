@@ -52,6 +52,13 @@ class AuthService:
         user.biometric_enabled = enabled
         await db.commit()
 
+    async def set_locale(self, db: AsyncSession, user_id: UUID, locale: str) -> None:
+        user = await db.get(User, user_id)
+        if not user:
+            raise ValueError("Kullanıcı bulunamadı")
+        user.locale = locale
+        await db.commit()
+
     async def set_push_token(self, db: AsyncSession, user_id: UUID, token: str) -> None:
         user = await db.get(User, user_id)
         if not user:

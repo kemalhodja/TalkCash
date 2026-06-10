@@ -1,11 +1,11 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import Base, engine
+from app.i18n import SUPPORTED_LOCALES, t
 from app.routers import agenda, ai, auth, budgets, execute, export, input, notifications, ocr, shopping, social, transactions, wallets, ws
 from app.tasks.scheduler import start_scheduler
 
@@ -14,8 +14,6 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     start_scheduler()
     yield
 
@@ -52,5 +50,19 @@ app.include_router(ws.router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health():
-    return {"status": "ok", "app": settings.app_name}
+async def health(request: Request):
+    lang = request.headers.get("Accept-Language", "tr")[:2]
+    if lang not in SUPPORTED_LOCALES:
+        lang = "tr"
+    return {"status": "ok", "app": settings.app_name, "message": t("health.ok", lang), "locales": SUPPORTED_LOCALES}
+
+
+@app.get("/api/v1/i18n/{lang}")
+async def get_translations(lang: str):
+    from app.i18n import t as _t
+    from pathlib import Path
+    import json
+    path = Path(__file__).parent / "i18n" / "locales" / f"{lang}.json"
+    if not path.exists():
+        path = Path(__file__).parent / "i18n" / "locales" / "tr.json"
+    return json.loads(path.read_text(encoding="utf-8"))

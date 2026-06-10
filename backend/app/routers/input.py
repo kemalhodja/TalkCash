@@ -23,7 +23,8 @@ DEFAULT_SUGGESTIONS = {
 @router.post("/parse", response_model=ConfirmationCard)
 async def parse_text(text: str, whisper_mode: bool = False, user: User = Depends(get_current_user)):
     parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode)
-    message = nlp_engine.build_confirmation(parsed)
+    lang = user.locale or "tr"
+    message = nlp_engine.build_confirmation(parsed, lang)
     return ConfirmationCard(message=message, parsed=parsed)
 
 
@@ -35,14 +36,16 @@ async def parse_voice(
     audio_bytes = await audio.read()
     text = await nlp_engine.transcribe_audio(audio_bytes, whisper_mode=whisper_mode)
     parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode)
-    message = nlp_engine.build_confirmation(parsed)
+    lang = user.locale or "tr"
+    message = nlp_engine.build_confirmation(parsed, lang)
     return ConfirmationCard(message=message, parsed=parsed)
 
 
 @router.post("/slash", response_model=ConfirmationCard)
 async def parse_slash_command(command: str, user: User = Depends(get_current_user)):
     parsed = await nlp_engine.parse_text(command)
-    message = nlp_engine.build_confirmation(parsed)
+    lang = user.locale or "tr"
+    message = nlp_engine.build_confirmation(parsed, lang)
     return ConfirmationCard(message=message, parsed=parsed)
 
 

@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { registerForPushNotifications } from "@/services/notifications";
 
 export default function DashboardScreen() {
+  const { t } = useI18n();
   const [netWorth, setNetWorth] = useState(0);
   const [wallets, setWallets] = useState<any[]>([]);
   const [forecast, setForecast] = useState<any>(null);
@@ -44,12 +46,12 @@ export default function DashboardScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={false} onRefresh={loadData} tintColor={Colors.accent} />}>
-      <Text style={styles.greeting}>Merhaba, {userName || "Kullanıcı"}</Text>
+      <Text style={styles.greeting}>{t.home.greeting}, {userName || "User"}</Text>
 
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
 
       <View style={styles.netWorthCard}>
-        <Text style={styles.label}>Net Varlık</Text>
+        <Text style={styles.label}>{t.home.netWorth}</Text>
         <Text style={styles.netWorth}>
           {Number(netWorth).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
         </Text>
@@ -69,7 +71,7 @@ export default function DashboardScreen() {
         <View style={styles.alertCard}><Text style={styles.alertText}>📊 {priceReport.message}</Text></View>
       )}
 
-      <Text style={styles.sectionTitle}>Kasalarım</Text>
+      <Text style={styles.sectionTitle}>{t.home.wallets}</Text>
       {wallets.map((w) => (
         <WalletCard key={w.id} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
       ))}

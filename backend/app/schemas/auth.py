@@ -25,6 +25,7 @@ class TokenResponse(BaseModel):
     full_name: str
     biometric_enabled: bool
     has_pin: bool
+    locale: str = "tr"
 
 
 class UserProfile(BaseModel):
@@ -33,3 +34,8 @@ class UserProfile(BaseModel):
     full_name: str
     biometric_enabled: bool
     has_pin: bool
+    locale: str = "tr"
+
+
+class LocaleRequest(BaseModel):
+    locale: str

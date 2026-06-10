@@ -9,13 +9,38 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: talkcash
+          POSTGRES_PASSWORD: talkcash
+          POSTGRES_DB: talkcash_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U talkcash -d talkcash_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgresql+asyncpg://talkcash:talkcash@localhost:5432/talkcash_test
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: test-secret-key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt pytest pytest-asyncio httpx
-      - name: Run tests
+        run: pip install -r backend/requirements.txt
+      - name: Run unit tests
         working-directory: backend
-        run: pytest tests/ -v
+        run: pytest tests/test_nlp.py tests/test_security.py -v
+      - name: Run E2E tests
+        working-directory: backend
+        run: pytest tests/e2e/ -v

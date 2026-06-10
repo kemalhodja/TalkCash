@@ -108,20 +108,23 @@ class NLPEngine:
             raw_text=text,
         )
 
-    def build_confirmation(self, parsed: ParsedInput) -> str:
+    def build_confirmation(self, parsed: ParsedInput, lang: str = "tr") -> str:
+        from app.i18n import t
         if parsed.intent == "add_expense":
-            return f"{parsed.amount} {parsed.currency} - {parsed.category} - {parsed.description or parsed.place} kaydedilsin mi?"
+            return t("confirm.expense", lang, amount=parsed.amount, currency=parsed.currency,
+                       category=parsed.category, description=parsed.description or parsed.place or "")
         if parsed.intent == "add_shopping":
             items = ", ".join(parsed.items) if parsed.items else parsed.description
-            return f"Alışveriş listesine eklensin mi: {items}?"
+            return t("confirm.shopping", lang, items=items)
         if parsed.intent == "transfer":
-            return f"{parsed.amount} {parsed.currency} - {parsed.wallet_name} → {parsed.target_wallet_name} transfer edilsin mi?"
+            return t("confirm.transfer", lang, amount=parsed.amount, currency=parsed.currency,
+                     from_wallet=parsed.wallet_name, to_wallet=parsed.target_wallet_name)
         if parsed.intent == "add_income":
-            return f"{parsed.amount} {parsed.currency} gelir - {parsed.wallet_name or 'Banka'} kasasına eklensin mi?"
+            return t("confirm.income", lang, amount=parsed.amount, currency=parsed.currency,
+                     wallet=parsed.wallet_name or "Banka")
         if parsed.intent == "mark_paid":
-            return f"{parsed.description} ödendi olarak işaretlensin mi?"
-        if parsed.intent == "split_bill":
-            return f"{parsed.amount} {parsed.currency} tutarı bölünsün mü?"
+            return t("confirm.paid", lang, description=parsed.description)
         if parsed.intent == "add_bill":
-            return f"{parsed.amount} {parsed.currency} - {parsed.description or 'Fatura'} ajandaya eklensin mi?"
-        return f"İşlem onaylansın mı: {parsed.description or parsed.raw_text}?"
+            return t("confirm.bill", lang, amount=parsed.amount, currency=parsed.currency,
+                     description=parsed.description or "Fatura")
+        return f"{parsed.description or parsed.raw_text}?"

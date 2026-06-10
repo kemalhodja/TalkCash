@@ -41,6 +41,7 @@ export const api = {
   setPin: (pin: string) => request("/auth/pin", { method: "POST", body: JSON.stringify({ pin }) }),
   verifyPin: (pin: string) => request("/auth/pin/verify", { method: "POST", body: JSON.stringify({ pin }) }),
   toggleBiometric: (enabled: boolean) => request(`/auth/biometric?enabled=${enabled}`, { method: "POST" }),
+  setLocale: (locale: string) => request("/auth/locale", { method: "PUT", body: JSON.stringify({ locale }) }),
   getMe: () => request<any>("/auth/me"),
 
   // Input

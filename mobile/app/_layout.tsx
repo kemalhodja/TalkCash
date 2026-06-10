@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "@/constants/theme";
+import { I18nProvider } from "@/i18n";
 import { auth } from "@/services/auth";
 
 export default function RootLayout() {
@@ -21,7 +22,7 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <>
+    <I18nProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -34,6 +35,6 @@ export default function RootLayout() {
         <Stack.Screen name="lock" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </I18nProvider>
   );
 }

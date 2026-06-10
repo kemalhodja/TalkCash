@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.auth import LoginRequest, PinRequest, RegisterRequest, TokenResponse, UserProfile
+from app.i18n import SUPPORTED_LOCALES, t
+from app.schemas.auth import LocaleRequest, LoginRequest, PinRequest, RegisterRequest, TokenResponse, UserProfile
 from app.services.auth.service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -18,6 +19,7 @@ def _token_response(user: User, token: str) -> TokenResponse:
         full_name=user.full_name,
         biometric_enabled=user.biometric_enabled,
         has_pin=bool(user.pin_code),
+        locale=user.locale or "tr",
     )
 
 
@@ -44,6 +46,7 @@ async def me(user: User = Depends(get_current_user)):
     return UserProfile(
         id=user.id, email=user.email, full_name=user.full_name,
         biometric_enabled=user.biometric_enabled, has_pin=bool(user.pin_code),
+        locale=user.locale or "tr",
     )
 
 
@@ -67,3 +70,11 @@ async def verify_pin(data: PinRequest, user: User = Depends(get_current_user), d
 async def toggle_biometric(enabled: bool, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await auth_service.toggle_biometric(db, user.id, enabled)
     return {"biometric_enabled": enabled}
+
+
+@router.put("/locale")
+async def set_locale(data: LocaleRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if data.locale not in SUPPORTED_LOCALES:
+        raise HTTPException(status_code=400, detail=f"Supported: {SUPPORTED_LOCALES}")
+    await auth_service.set_locale(db, user.id, data.locale)
+    return {"locale": data.locale}

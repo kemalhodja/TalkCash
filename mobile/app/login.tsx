@@ -2,10 +2,12 @@ import { useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
 
 export default function LoginScreen() {
+  const { t } = useI18n();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +33,7 @@ export default function LoginScreen() {
       await auth.save(user);
       router.replace(result.has_pin ? "/(tabs)" : "/lock");
     } catch (e: any) {
-      setError(e.message || "Giriş başarısız");
+      setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
@@ -39,28 +41,26 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>💬 TalkCash</Text>
-      <Text style={styles.subtitle}>Kişisel finans ve yaşam yönetimi</Text>
+      <Text style={styles.logo}>💬 {t.login.title}</Text>
+      <Text style={styles.subtitle}>{t.login.subtitle}</Text>
 
       {isRegister && (
-        <TextInput style={styles.input} placeholder="Ad Soyad" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.login.fullName} placeholderTextColor={Colors.textMuted}
           value={fullName} onChangeText={setFullName} />
       )}
-      <TextInput style={styles.input} placeholder="E-posta" placeholderTextColor={Colors.textMuted}
+      <TextInput style={styles.input} placeholder={t.login.email} placeholderTextColor={Colors.textMuted}
         value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Şifre" placeholderTextColor={Colors.textMuted}
+      <TextInput style={styles.input} placeholder={t.login.password} placeholderTextColor={Colors.textMuted}
         value={password} onChangeText={setPassword} secureTextEntry />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? "..." : isRegister ? "Kayıt Ol" : "Giriş Yap"}</Text>
+        <Text style={styles.btnText}>{loading ? "..." : isRegister ? t.login.register : t.login.login}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => setIsRegister(!isRegister)}>
-        <Text style={styles.switch}>
-          {isRegister ? "Zaten hesabın var mı? Giriş yap" : "Hesabın yok mu? Kayıt ol"}
-        </Text>
+        <Text style={styles.switch}>{isRegister ? t.login.switchLogin : t.login.switchRegister}</Text>
       </TouchableOpacity>
     </View>
   );

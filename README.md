@@ -6,28 +6,23 @@ Sesli komut (NLP), akıllı klavye ve yapay zeka destekli kişisel finans ve ya�
 
 ```
 talkcash/
-├── backend/          # FastAPI + PostgreSQL + Redis + APScheduler
-├── mobile/           # React Native (Expo) — iOS & Android
-├── .github/workflows # CI (pytest)
+├── backend/          # FastAPI + PostgreSQL + Redis + MinIO (S3)
+├── mobile/           # React Native (Expo) — TR/EN i18n
+├── alembic/          # DB migrations
 └── docker-compose.yml
 ```
 
 ## Özellikler
 
-| Modül | Durum |
-|-------|-------|
-| JWT Auth + PIN + Biyometrik | ✅ |
-| Sesli komut (Whisper) + Türkçe NLP | ✅ |
-| OCR fiş tarama + dosya arşivi | ✅ |
-| Çoklu cüzdan + döviz kuru sync | ✅ |
-| Ajanda, taksit, mükerrer kontrol | ✅ |
-| Alışveriş listesi + buy-to-spend | ✅ |
-| Bütçe limitleri CRUD | ✅ |
-| AI mentor (uyarı, tahmin, fiyat) | ✅ |
-| Sosyal (borç, split, ortak kasa WS) | ✅ |
-| Push bildirim + geofencing | ✅ |
-| PDF/Excel export | ✅ |
-| İşlem geçmişi | ✅ |
+- JWT Auth + PIN + Biyometrik
+- Sesli komut (Whisper) + Türkçe NLP
+- OCR fiş tarama + S3/MinIO arşivi
+- Çoklu cüzdan + döviz kuru sync
+- Bütçe, ajanda, alışveriş, AI mentor
+- Sosyal (borç, split, ortak kasa WS)
+- Push bildirim + geofencing
+- PDF/Excel export
+- **Çoklu dil**: Türkçe + English
 
 ## Hızlı Başlangıç
 
@@ -36,12 +31,24 @@ docker compose up -d
 cd mobile && npm install && npx expo start
 ```
 
-API docs: http://localhost:8000/docs
+- API: http://localhost:8000/docs
+- MinIO Console: http://localhost:9001 (talkcash / talkcash123)
+
+## Veritabanı Migration
+
+```bash
+cd backend
+alembic upgrade head        # migrate
+alembic revision --autogenerate -m "description"  # yeni migration
+```
+
+Docker başlangıcında migration otomatik çalışır (`entrypoint.sh`).
 
 ## Testler
 
 ```bash
-cd backend && pip install -r requirements.txt && pytest tests/ -v
+cd backend
+pytest tests/ -v            # unit + E2E (PostgreSQL gerekli)
 ```
 
 ## Ortam Değişkenleri
@@ -50,7 +57,15 @@ cd backend && pip install -r requirements.txt && pytest tests/ -v
 DATABASE_URL=postgresql+asyncpg://talkcash:talkcash@db:5432/talkcash
 REDIS_URL=redis://redis:6379/0
 SECRET_KEY=your-secret-key
-OPENAI_API_KEY=sk-...  # Ses için gerekli; metin için yerel parser fallback var
+OPENAI_API_KEY=sk-...
+
+# S3 / MinIO
+S3_ENABLED=true
+S3_ENDPOINT=http://minio:9000
+S3_ACCESS_KEY=talkcash
+S3_SECRET_KEY=talkcash123
+S3_BUCKET=talkcash
+S3_PUBLIC_URL=http://localhost:9000/talkcash
 ```
 
 TalkCash © 2025

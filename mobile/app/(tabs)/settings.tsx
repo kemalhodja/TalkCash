@@ -4,12 +4,14 @@ import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n, Locale } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
 
 export default function SettingsScreen() {
+  const { t, locale, setLocale } = useI18n();
   const [biometric, setBiometric] = useState(false);
   const [geofence, setGeofence] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -35,13 +37,11 @@ export default function SettingsScreen() {
       reader.onload = async () => {
         const base64 = (reader.result as string).split(",")[1];
         await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(path);
-        }
+        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path);
       };
       reader.readAsDataURL(blob);
     } catch {
-      Alert.alert("Export", "Rapor oluşturulamadı. Backend bağlantısını kontrol edin.");
+      Alert.alert(t.settings.export, t.common.error);
     } finally {
       setExporting(false);
     }
@@ -54,32 +54,44 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Ayarlar</Text>
+      <Text style={styles.title}>{t.settings.title}</Text>
+
+      <Text style={styles.sectionTitle}>{t.settings.language}</Text>
+      <View style={styles.langRow}>
+        {(["tr", "en"] as Locale[]).map((l) => (
+          <TouchableOpacity key={l} style={[styles.langBtn, locale === l && styles.langActive]}
+            onPress={() => setLocale(l)}>
+            <Text style={[styles.langText, locale === l && styles.langTextActive]}>
+              {l === "tr" ? "🇹🇷 Türkçe" : "🇬🇧 English"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Biyometrik Giriş</Text>
+        <Text style={styles.label}>{t.settings.biometric}</Text>
         <Switch value={biometric} onValueChange={toggleBiometric} trackColor={{ true: Colors.accent }} />
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>Market Geofencing</Text>
+        <Text style={styles.label}>{t.settings.geofence}</Text>
         <Switch value={geofence} onValueChange={toggleGeofence} trackColor={{ true: Colors.accent }} />
       </View>
 
       <TouchableOpacity style={styles.btn} onPress={() => registerForPushNotifications()}>
-        <Text style={styles.btnText}>Push Bildirimlerini Etkinleştir</Text>
+        <Text style={styles.btnText}>{t.settings.push}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.sectionTitle}>Dışa Aktar</Text>
+      <Text style={styles.sectionTitle}>{t.settings.export}</Text>
       <TouchableOpacity style={styles.btn} onPress={() => handleExport("pdf")} disabled={exporting}>
-        <Text style={styles.btnText}>PDF Rapor İndir</Text>
+        <Text style={styles.btnText}>{t.settings.exportPdf}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={[styles.btn, { marginTop: Spacing.sm }]} onPress={() => handleExport("excel")} disabled={exporting}>
-        <Text style={styles.btnText}>Excel Rapor İndir</Text>
+        <Text style={styles.btnText}>{t.settings.exportExcel}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Çıkış Yap</Text>
+        <Text style={styles.logoutText}>{t.settings.logout}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -90,6 +102,11 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.md },
   title: { color: Colors.text, fontSize: 22, fontWeight: "700", marginBottom: Spacing.lg },
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "600", marginTop: Spacing.lg, marginBottom: Spacing.sm },
+  langRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
+  langBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
+  langActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
+  langText: { color: Colors.textSecondary },
+  langTextActive: { color: Colors.accent, fontWeight: "600" },
   row: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,

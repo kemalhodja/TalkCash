@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
     app_name: str = "TalkCash API"
     debug: bool = True
 
@@ -18,8 +20,14 @@ class Settings(BaseSettings):
 
     exchange_rate_api: str = "https://api.exchangerate-api.com/v4/latest/TRY"
 
-    class Config:
-        env_file = ".env"
+    # S3 / MinIO
+    s3_enabled: bool = False
+    s3_endpoint: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_bucket: str = "talkcash"
+    s3_region: str = "us-east-1"
+    s3_public_url: str = ""
 
 
 settings = Settings()
