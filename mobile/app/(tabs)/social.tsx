@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Linking, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { auth } from "@/services/auth";
 import { SharedWalletWS } from "@/services/websocket";
 
 export default function SocialScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [total, setTotal] = useState("");
   const [personCount, setPersonCount] = useState("3");
   const [splitResult, setSplitResult] = useState<any>(null);
@@ -16,15 +17,32 @@ export default function SocialScreen() {
   const [debtPerson, setDebtPerson] = useState("");
   const [debtAmount, setDebtAmount] = useState("");
   const [walletName, setWalletName] = useState("");
+  const [expenseWalletId, setExpenseWalletId] = useState<string | null>(null);
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseDesc, setExpenseDesc] = useState("");
   const [loading, setLoading] = useState(true);
+  const wsMap = useRef<Map<string, SharedWalletWS>>(new Map());
+
+  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const load = async () => {
     try {
       const [wallets, debtList] = await Promise.all([api.getSharedWallets(), api.getDebts()]);
       setSharedWallets(wallets);
       setDebts(debtList);
-      if (wallets.length) {
-        const ws = new SharedWalletWS(wallets[0].id, () => load());
+
+      wsMap.current.forEach((ws) => ws.disconnect());
+      wsMap.current.clear();
+
+      for (const w of wallets) {
+        const ws = new SharedWalletWS(w.id, (data) => {
+          if (data.type === "expense" || data.type === "expense_confirmed") {
+            setSharedWallets((prev) =>
+              prev.map((sw) => sw.id === w.id ? { ...sw, balance: data.balance } : sw),
+            );
+          }
+        });
+        wsMap.current.set(w.id, ws);
         ws.connect();
       }
     } catch {
@@ -35,13 +53,34 @@ export default function SocialScreen() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    return () => { wsMap.current.forEach((ws) => ws.disconnect()); };
+  }, []);
   useRefreshOnFocus(load);
 
   const handleSplit = async () => {
     if (!total) return;
     const result = await api.splitBill(parseFloat(total), parseInt(personCount) || 2);
     setSplitResult(result);
+  };
+
+  const handleSharedExpense = async (walletId: string) => {
+    if (!expenseAmount) return;
+    const user = await auth.getUser();
+    const amount = parseFloat(expenseAmount);
+    const desc = expenseDesc;
+    const ws = wsMap.current.get(walletId);
+    if (ws) {
+      ws.sendExpense(amount, desc, user?.fullName || "User");
+    } else {
+      await api.addSharedWalletExpense(walletId, amount, desc);
+    }
+    Alert.alert(t.social.expenseAdded);
+    setExpenseAmount("");
+    setExpenseDesc("");
+    setExpenseWalletId(null);
+    load();
   };
 
   const shareWhatsApp = () => {
@@ -100,8 +139,24 @@ export default function SocialScreen() {
         )}
         {sharedWallets.map((w) => (
           <View key={w.id} style={styles.walletCard}>
-            <Text style={styles.walletName}>{w.name}</Text>
-            <Text style={styles.walletBalance}>{w.balance?.toLocaleString("tr-TR")} ₺</Text>
+            <View style={styles.walletRow}>
+              <Text style={styles.walletName}>{w.name}</Text>
+              <Text style={styles.walletBalance}>{w.balance?.toLocaleString(dateLocale)} ₺</Text>
+            </View>
+            <TouchableOpacity onPress={() => setExpenseWalletId(expenseWalletId === w.id ? null : w.id)}>
+              <Text style={styles.expenseLink}>{t.social.addExpense}</Text>
+            </TouchableOpacity>
+            {expenseWalletId === w.id && (
+              <View style={styles.expenseForm}>
+                <TextInput style={styles.input} placeholder={t.social.expenseAmount} placeholderTextColor={Colors.textMuted}
+                  keyboardType="decimal-pad" value={expenseAmount} onChangeText={setExpenseAmount} />
+                <TextInput style={styles.input} placeholder={t.social.expenseDesc} placeholderTextColor={Colors.textMuted}
+                  value={expenseDesc} onChangeText={setExpenseDesc} />
+                <TouchableOpacity style={styles.btn} onPress={() => handleSharedExpense(w.id)}>
+                  <Text style={styles.btnText}>{t.social.expenseSubmit}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ))}
         <TextInput style={styles.input} placeholder={t.social.walletName} placeholderTextColor={Colors.textMuted}
@@ -132,8 +187,11 @@ const styles = StyleSheet.create({
   debtCard: { flexDirection: "row", justifyContent: "space-between", padding: Spacing.sm, marginBottom: 4 },
   debtText: { color: Colors.text },
   settle: { color: Colors.success },
-  walletCard: { flexDirection: "row", justifyContent: "space-between", backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
+  walletCard: { backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
+  walletRow: { flexDirection: "row", justifyContent: "space-between" },
   walletName: { color: Colors.text },
   walletBalance: { color: Colors.accent, fontWeight: "700" },
+  expenseLink: { color: Colors.accent, marginTop: Spacing.sm, fontWeight: "600" },
+  expenseForm: { marginTop: Spacing.sm },
   emptyHint: { color: Colors.textMuted, marginBottom: Spacing.sm },
 });

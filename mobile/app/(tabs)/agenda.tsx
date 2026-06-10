@@ -40,7 +40,7 @@ export default function AgendaScreen() {
     dueDate.setDate(dueDate.getDate() + 7);
     try {
       await api.addBill(title, parseFloat(amount), dueDate.toISOString(), force);
-      await scheduleAgendaReminder(title, parseFloat(amount), dueDate);
+      await scheduleAgendaReminder(title, parseFloat(amount), dueDate, locale);
       resetForm();
       loadAgenda();
     } catch (e) {

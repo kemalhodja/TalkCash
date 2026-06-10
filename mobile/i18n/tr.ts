@@ -127,6 +127,16 @@ export default {
     income: "Gelir",
     expense: "Gider",
   },
+  notifications: {
+    tomorrowTitle: "Yarın: {title}",
+    tomorrowBody: "{amount} TL ödeme yarın son gün!",
+    todayTitle: "Bugün: {title}",
+    todayBody: "{amount} TL ödeme bugün son gün!",
+  },
+  geofence: {
+    title: "Market yakınındasınız!",
+    body: "Alışveriş listenizdeki eksikleri almayı unutmayın.",
+  },
   social: {
     title: "Sosyal",
     split: "Hesap Bölüştür",
@@ -146,6 +156,11 @@ export default {
     createWallet: "Ortak Kasa Oluştur",
     walletName: "Yeni ortak kasa adı",
     noSharedWallets: "Henüz ortak kasa yok",
+    addExpense: "Harcama Ekle",
+    expenseAmount: "Tutar (TL)",
+    expenseDesc: "Açıklama",
+    expenseSubmit: "Kasadan Düş",
+    expenseAdded: "Harcama kaydedildi",
   },
   input: {
     normal: "Normal",

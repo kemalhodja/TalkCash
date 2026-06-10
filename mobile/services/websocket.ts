@@ -1,6 +1,10 @@
 import { auth } from "./auth";
 
-const WS_BASE = (process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace("http", "ws");
+function wsBase(): string {
+  const api = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  if (api.startsWith("https://")) return api.replace("https://", "wss://");
+  return api.replace("http://", "ws://");
+}
 
 export class SharedWalletWS {
   private ws: WebSocket | null = null;
@@ -15,7 +19,7 @@ export class SharedWalletWS {
   async connect() {
     const token = await auth.getToken();
     if (!token) return;
-    this.ws = new WebSocket(`${WS_BASE}/ws/shared-wallet/${this.walletId}?token=${token}`);
+    this.ws = new WebSocket(`${wsBase()}/ws/shared-wallet/${this.walletId}?token=${token}`);
     this.ws.onmessage = (event) => this.onMessage(JSON.parse(event.data));
     this.ws.onclose = () => setTimeout(() => this.connect(), 3000);
   }

@@ -127,6 +127,16 @@ export default {
     income: "Income",
     expense: "Expense",
   },
+  notifications: {
+    tomorrowTitle: "Tomorrow: {title}",
+    tomorrowBody: "{amount} payment due tomorrow!",
+    todayTitle: "Today: {title}",
+    todayBody: "{amount} payment due today!",
+  },
+  geofence: {
+    title: "You're near a market!",
+    body: "Don't forget items on your shopping list.",
+  },
   social: {
     title: "Social",
     split: "Split Bill",
@@ -146,6 +156,11 @@ export default {
     createWallet: "Create Shared Wallet",
     walletName: "New shared wallet name",
     noSharedWallets: "No shared wallets yet",
+    addExpense: "Add Expense",
+    expenseAmount: "Amount",
+    expenseDesc: "Description",
+    expenseSubmit: "Deduct",
+    expenseAdded: "Expense recorded",
   },
   input: {
     normal: "Normal",

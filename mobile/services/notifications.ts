@@ -1,6 +1,11 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import tr from "@/i18n/tr";
+import en from "@/i18n/en";
 import { api } from "./api";
+
+type Locale = "tr" | "en";
+const MESSAGES = { tr, en };
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -9,6 +14,10 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
+
+function msg(locale: Locale) {
+  return MESSAGES[locale]?.notifications || MESSAGES.tr.notifications;
+}
 
 export async function registerForPushNotifications(): Promise<string | null> {
   const { status: existing } = await Notifications.getPermissionsAsync();
@@ -34,7 +43,10 @@ export async function registerForPushNotifications(): Promise<string | null> {
   return token;
 }
 
-export async function scheduleAgendaReminder(title: string, amount: number, dueDate: Date) {
+export async function scheduleAgendaReminder(
+  title: string, amount: number, dueDate: Date, locale: Locale = "tr",
+) {
+  const t = msg(locale);
   const dayBefore = new Date(dueDate);
   dayBefore.setDate(dayBefore.getDate() - 1);
   dayBefore.setHours(9, 0, 0, 0);
@@ -42,8 +54,8 @@ export async function scheduleAgendaReminder(title: string, amount: number, dueD
   if (dayBefore > new Date()) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `Yarın: ${title}`,
-        body: `${amount} TL ödeme yarın son gün!`,
+        title: t.tomorrowTitle.replace("{title}", title),
+        body: t.tomorrowBody.replace("{amount}", String(amount)),
       },
       trigger: { date: dayBefore },
     });
@@ -54,8 +66,8 @@ export async function scheduleAgendaReminder(title: string, amount: number, dueD
   if (dueMorning > new Date()) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `Bugün: ${title}`,
-        body: `${amount} TL ödeme bugün son gün!`,
+        title: t.todayTitle.replace("{title}", title),
+        body: t.todayBody.replace("{amount}", String(amount)),
       },
       trigger: { date: dueMorning },
     });

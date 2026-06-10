@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_locale
+from app.i18n import t
 from app.models.agenda import AgendaItem
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -21,25 +22,29 @@ wallet_service = WalletService()
 
 @router.get("/pdf")
 async def export_pdf(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    locale = user_locale(user)
     data = await _gather_data(db, user)
     content = pdf_service.generate_report(
         user.full_name or user.email, data["net_worth"],
-        data["wallets"], data["transactions"], data["agenda"],
+        data["wallets"], data["transactions"], data["agenda"], locale,
     )
+    filename = t("export.filename", locale)
     return Response(content, media_type="application/pdf", headers={
-        "Content-Disposition": "attachment; filename=talkcash-rapor.pdf"
+        "Content-Disposition": f"attachment; filename={filename}.pdf"
     })
 
 
 @router.get("/excel")
 async def export_excel(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    locale = user_locale(user)
     data = await _gather_data(db, user)
     content = excel_service.generate_report(
         user.full_name or user.email,
-        data["wallets"], data["transactions"], data["agenda"],
+        data["wallets"], data["transactions"], data["agenda"], locale,
     )
+    filename = t("export.filename", locale)
     return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={
-        "Content-Disposition": "attachment; filename=talkcash-rapor.xlsx"
+        "Content-Disposition": f"attachment; filename={filename}.xlsx"
     })
 
 

@@ -30,11 +30,14 @@ async def shared_wallet_ws(websocket: WebSocket, wallet_id: str, token: str = Qu
                         db, UUID(wallet_id),
                         amount=data["amount"],
                         description=data.get("description", ""),
-                        user_name=data.get("user_name", "Kullanıcı"),
+                        user_name=data.get("user_name", "User"),
                     )
-                    await websocket.send_json({
+                    await wallet_manager.broadcast(wallet_id, {
                         "type": "expense_confirmed",
                         "balance": float(wallet.balance),
+                        "amount": float(data["amount"]),
+                        "description": data.get("description", ""),
+                        "by": data.get("user_name", "User"),
                     })
             elif action == "ping":
                 await websocket.send_json({"type": "pong"})

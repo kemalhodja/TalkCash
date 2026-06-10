@@ -126,6 +126,8 @@ export const api = {
   getSharedWallets: () => request<any[]>("/social/shared-wallet"),
   createSharedWallet: (name: string) =>
     request(`/social/shared-wallet?name=${encodeURIComponent(name)}`, { method: "POST" }),
+  addSharedWalletExpense: (walletId: string, amount: number, description = "") =>
+    request(`/social/shared-wallet/${walletId}/expense?amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
 
   // Notifications
   registerPushToken: (token: string) =>
