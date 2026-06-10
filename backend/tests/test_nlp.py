@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from app.services.nlp.turkish_parser import detect_intent, extract_category, extract_date, parse_turkish_amount
+from app.services.nlp.turkish_parser import detect_intent, extract_category, extract_date, extract_paid_bill_title, parse_turkish_amount
 from app.services.nlp.engine import NLPEngine
 
 

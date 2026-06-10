@@ -60,5 +60,13 @@ class SocialService:
         if not record or record.user_id != user_id:
             raise I18nError("debt.not_found")
         record.is_settled = True
+
+        from app.services.agenda.service import AgendaService
+        agenda = AgendaService()
+        try:
+            await agenda.mark_paid(db, user_id, record.person_name, deduct_wallet=False)
+        except I18nError:
+            pass
+
         await db.commit()
         return record

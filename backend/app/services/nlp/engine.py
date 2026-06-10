@@ -12,6 +12,7 @@ from app.services.nlp.turkish_parser import (
     detect_intent,
     extract_category,
     extract_date,
+    extract_paid_bill_title,
     extract_shopping_items,
     extract_wallet_name,
     parse_turkish_amount,
@@ -138,13 +139,14 @@ class NLPEngine:
         text_lower = text.lower()
         is_recurring = any(w in text_lower for w in ["her ay", "aylık", "aylik", "tekrarlayan"])
 
+        description = extract_paid_bill_title(text) if intent == "mark_paid" else text
         return ParsedInput(
             intent=intent,
             amount=parse_turkish_amount(text),
             category=extract_category(text),
             wallet_name=extract_wallet_name(text),
             items=extract_shopping_items(text),
-            description=text,
+            description=description,
             person_count=person_count,
             date=extract_date(text),
             is_recurring=is_recurring,

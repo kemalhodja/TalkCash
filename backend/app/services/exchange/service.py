@@ -15,6 +15,7 @@ DEFAULT_RATES = {
     "GBP": Decimal("43.80"),
     "XAU": GOLD_TRY_PER_GRAM,
 }
+TRUNCGIL_URL = "https://finans.truncgil.com/v4/today.json"
 
 
 class ExchangeService:
@@ -45,17 +46,31 @@ class ExchangeService:
         rate = await self.get_rate(db, currency)
         return amount * rate
 
+    async def _fetch_gold_try_per_gram(self) -> Decimal:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(TRUNCGIL_URL)
+                data = resp.json()
+                for key in ("GRA", "GRAMALTIN"):
+                    entry = data.get(key)
+                    if isinstance(entry, dict) and entry.get("Selling"):
+                        return Decimal(str(entry["Selling"]))
+        except Exception:
+            pass
+        return GOLD_TRY_PER_GRAM
+
     async def _fetch_rates(self) -> dict[str, Decimal]:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.get(settings.exchange_rate_api)
                 data = resp.json()
                 base_rates = data.get("rates", {})
+                gold = await self._fetch_gold_try_per_gram()
                 return {
                     "USD": Decimal(str(1 / base_rates.get("USD", 0.029))),
                     "EUR": Decimal(str(1 / base_rates.get("EUR", 0.027))),
                     "GBP": Decimal(str(1 / base_rates.get("GBP", 0.023))),
-                    "XAU": GOLD_TRY_PER_GRAM,
+                    "XAU": gold,
                 }
         except Exception:
             return DEFAULT_RATES.copy()

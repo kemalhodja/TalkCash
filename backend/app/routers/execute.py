@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.common import ParsedInput
 from app.schemas.execute import ExecuteRequest
 from app.services.agenda.service import AgendaService
+from app.services.budget_notify import push_budget_alerts_after_expense
 from app.services.shopping.service import ShoppingService
 from app.services.social.service import SocialService
 from app.services.wallet.service import WalletService
@@ -48,10 +49,12 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession, locale
         if not wallet:
             raise ValueError(t("wallet.not_found", locale))
         receipt_uuid = UUID(parsed.receipt_id) if parsed.receipt_id else None
+        category = parsed.category or "Genel"
         tx = await wallet_service.add_expense(
-            db, user_id, wallet.id, parsed.amount, parsed.category or "Genel",
+            db, user_id, wallet.id, parsed.amount, category,
             parsed.description or "", parsed.place or "", receipt_id=receipt_uuid,
         )
+        await push_budget_alerts_after_expense(db, user_id, category, locale)
         return {"transaction_id": str(tx.id), "amount": float(tx.amount)}
 
     if intent == "add_income":
@@ -60,8 +63,8 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession, locale
         wallet = await wallet_service.find_by_name(db, user_id, parsed.wallet_name or "Banka")
         if not wallet:
             raise ValueError(t("wallet.not_found", locale))
-        w = await wallet_service.add_income(db, user_id, wallet.id, parsed.amount, parsed.description or "")
-        return {"wallet": wallet.name, "balance": float(w.balance)}
+        tx = await wallet_service.add_income(db, user_id, wallet.id, parsed.amount, parsed.description or "")
+        return {"wallet": wallet.name, "transaction_id": str(tx.id)}
 
     if intent == "transfer":
         if not parsed.amount:

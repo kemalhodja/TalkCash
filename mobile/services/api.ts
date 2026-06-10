@@ -67,6 +67,8 @@ export const api = {
     request("/wallets/", { method: "POST", body: JSON.stringify({ name, wallet_type: walletType, currency }) }),
   transfer: (fromId: string, toId: string, amount: number, description = "") =>
     request("/wallets/transfer", { method: "POST", body: JSON.stringify({ from_wallet_id: fromId, to_wallet_id: toId, amount, description }) }),
+  addIncome: (walletId: string, amount: number, description = "") =>
+    request(`/wallets/income?wallet_id=${walletId}&amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
 
   // Transactions
   getTransactions: (limit = 50) => request<any[]>(`/transactions/?limit=${limit}`),

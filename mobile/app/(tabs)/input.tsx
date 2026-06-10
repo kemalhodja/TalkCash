@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
+import { PayBillModal } from "@/components/PayBillModal";
 import { NumericKeypad } from "@/components/NumericKeypad";
 import { ReceiptScanner } from "@/components/ReceiptScanner";
 import { VoiceInput } from "@/components/VoiceInput";
@@ -20,6 +21,7 @@ export default function InputScreen() {
   const [whisperMode, setWhisperMode] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [error, setError] = useState("");
+  const [payModal, setPayModal] = useState<{ title: string } | null>(null);
 
   const showConfirmation = (message: string, parsed: any) => {
     setConfirmMessage(message);
@@ -45,6 +47,11 @@ export default function InputScreen() {
 
   const handleConfirm = async () => {
     setConfirmVisible(false);
+    if (parsedData?.intent === "mark_paid") {
+      const title = parsedData.description || parsedData.raw_text || "";
+      setPayModal({ title });
+      return;
+    }
     if (parsedData) {
       try {
         await api.executeAction(parsedData, true);
@@ -121,6 +128,23 @@ export default function InputScreen() {
 
       <ConfirmationCard visible={confirmVisible} message={confirmMessage}
         onConfirm={handleConfirm} onCancel={() => setConfirmVisible(false)} />
+
+      <PayBillModal
+        visible={!!payModal}
+        billTitle={payModal?.title || ""}
+        amount={0}
+        onConfirm={async (walletId) => {
+          if (payModal) {
+            try {
+              await api.markPaid(payModal.title, walletId);
+              setText("");
+            } catch (e: any) { setError(e.message); }
+          }
+          setPayModal(null);
+          setParsedData(null);
+        }}
+        onCancel={() => { setPayModal(null); setParsedData(null); }}
+      />
 
       <Modal visible={showScanner} animationType="slide">
         <ReceiptScanner

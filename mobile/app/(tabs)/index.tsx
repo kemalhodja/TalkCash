@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { IncomeModal } from "@/components/IncomeModal";
 import { TransferModal } from "@/components/TransferModal";
 import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletCard } from "@/components/WalletCard";
@@ -22,6 +23,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [transferVisible, setTransferVisible] = useState(false);
+  const [incomeVisible, setIncomeVisible] = useState(false);
   const [walletCreateVisible, setWalletCreateVisible] = useState(false);
 
   const loadData = async () => {
@@ -69,6 +71,9 @@ export default function DashboardScreen() {
       </View>
 
       <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => setIncomeVisible(true)}>
+          <Text style={styles.actionText}>{t.home.addIncome}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.actionBtn} onPress={() => setTransferVisible(true)}>
           <Text style={styles.actionText}>{t.home.transfer}</Text>
         </TouchableOpacity>
@@ -96,6 +101,7 @@ export default function DashboardScreen() {
         <WalletCard key={w.id} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
       ))}
 
+      <IncomeModal visible={incomeVisible} onClose={() => setIncomeVisible(false)} onSuccess={loadData} />
       <TransferModal visible={transferVisible} onClose={() => setTransferVisible(false)} onSuccess={loadData} />
       <WalletCreateModal visible={walletCreateVisible} onClose={() => setWalletCreateVisible(false)} onSuccess={loadData} />
     </ScrollView>

@@ -71,7 +71,10 @@ class AgendaService:
                 return wallets[0].id
         return wallet.id if wallet else None
 
-    async def mark_paid(self, db: AsyncSession, user_id: UUID, title: str, wallet_id: UUID | None = None) -> AgendaItem:
+    async def mark_paid(
+        self, db: AsyncSession, user_id: UUID, title: str,
+        wallet_id: UUID | None = None, deduct_wallet: bool = True,
+    ) -> AgendaItem:
         result = await db.execute(
             select(AgendaItem).where(
                 AgendaItem.user_id == user_id,
@@ -83,9 +86,9 @@ class AgendaService:
         if not item:
             raise I18nError("agenda.not_found_title", title=title)
 
-        resolved_wallet = await self._resolve_wallet(db, user_id, wallet_id)
+        resolved_wallet = await self._resolve_wallet(db, user_id, wallet_id) if deduct_wallet else None
         item.status = AgendaStatus.PAID
-        if resolved_wallet:
+        if deduct_wallet and resolved_wallet:
             await self.wallet_service.add_expense(
                 db, user_id, resolved_wallet, item.amount,
                 category="Fatura", description=item.title, input_method="voice",

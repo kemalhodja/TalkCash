@@ -10,6 +10,7 @@ from app.i18n import resolve_error
 from app.models.user import User
 from app.schemas.transaction import TransactionResponse
 from app.schemas.wallet import NetWorthResponse, TransferRequest, WalletCreate, WalletResponse
+from app.services.budget_notify import push_budget_alerts_after_expense
 from app.services.wallet.service import WalletService
 
 router = APIRouter(prefix="/wallets", tags=["Wallets"])
@@ -51,6 +52,21 @@ async def add_expense(
 ):
     tx = await wallet_service.add_expense(
         db, user.id, wallet_id, Decimal(str(amount)), category, description, place,
-        receipt_id=receipt_id,
+        input_method="manual", receipt_id=receipt_id,
     )
+    await push_budget_alerts_after_expense(db, user.id, category, user_locale(user))
     return TransactionResponse.model_validate(tx)
+
+
+@router.post("/income", response_model=TransactionResponse)
+async def add_income(
+    wallet_id: UUID, amount: float, description: str = "",
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        tx = await wallet_service.add_income(
+            db, user.id, wallet_id, Decimal(str(amount)), description, input_method="manual",
+        )
+        return TransactionResponse.model_validate(tx)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, user_locale(user)))

@@ -28,6 +28,12 @@ export default {
     walletName: "Kasa adı",
     walletCreated: "Kasa oluşturuldu",
     loadError: "Veriler yüklenemedi",
+    addIncome: "Gelir Ekle",
+    incomeAmount: "Tutar (TL)",
+    incomeDesc: "Açıklama (ör: Maaş)",
+    incomeWallet: "Yatırılacak kasa",
+    incomeSubmit: "Gelir Kaydet",
+    incomeAdded: "Gelir kaydedildi",
   },
   login: {
     title: "TalkCash",

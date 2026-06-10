@@ -28,6 +28,12 @@ export default {
     walletName: "Wallet name",
     walletCreated: "Wallet created",
     loadError: "Could not load data",
+    addIncome: "Add Income",
+    incomeAmount: "Amount",
+    incomeDesc: "Description (e.g. Salary)",
+    incomeWallet: "Deposit to wallet",
+    incomeSubmit: "Save Income",
+    incomeAdded: "Income recorded",
   },
   login: {
     title: "TalkCash",

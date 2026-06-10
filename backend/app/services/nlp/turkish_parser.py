@@ -109,6 +109,17 @@ def extract_category(text: str) -> str:
     return "Genel"
 
 
+def extract_paid_bill_title(text: str) -> str:
+    text_lower = text.lower()
+    for phrase in ["ödedim", "odedim", "ödendi", "odendi", "faturasını", "faturasini", "faturayı", "faturayi"]:
+        text_lower = text_lower.replace(phrase, " ")
+    text_lower = re.sub(r"\s+", " ", text_lower).strip()
+    for wallet_kw in ["nakit", "banka", "kredi kartı", "kredi karti", "kartından", "kartindan"]:
+        if wallet_kw in text_lower:
+            text_lower = text_lower.split(wallet_kw)[0].strip()
+    return text_lower.strip() or text.strip()
+
+
 def extract_wallet_name(text: str) -> str | None:
     wallets = {
         "nakit": "Nakit", "banka": "Banka", "kredi kartı": "Kredi Kartı",

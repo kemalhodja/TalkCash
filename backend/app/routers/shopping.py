@@ -9,6 +9,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error, t
 from app.models.user import User
+from app.services.budget_notify import push_budget_alerts_after_expense
 from app.services.shopping.service import ShoppingService
 
 router = APIRouter(prefix="/shopping", tags=["Shopping"])
@@ -54,6 +55,8 @@ async def complete_item(
             db, user.id, item_id,
             Decimal(str(price)) if price else None, wallet_id,
         )
+        if price and wallet_id:
+            await push_budget_alerts_after_expense(db, user.id, "Market", user_locale(user))
         return {"id": str(item.id), "completed": True, "price": float(item.price) if item.price else None}
     except Exception as e:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))

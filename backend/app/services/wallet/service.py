@@ -75,18 +75,23 @@ class WalletService:
         await db.commit()
         return from_wallet, to_wallet
 
-    async def add_income(self, db: AsyncSession, user_id: UUID, wallet_id: UUID, amount: Decimal, description: str = "") -> Wallet:
+    async def add_income(
+        self, db: AsyncSession, user_id: UUID, wallet_id: UUID,
+        amount: Decimal, description: str = "", input_method: str = "voice",
+    ) -> Transaction:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
             raise I18nError("wallet.not_found")
         wallet.balance += amount
-        db.add(Transaction(
+        tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,
             transaction_type=TransactionType.INCOME, amount=amount,
-            description=description, input_method="voice",
-        ))
+            description=description, input_method=input_method,
+        )
+        db.add(tx)
         await db.commit()
-        return wallet
+        await db.refresh(tx)
+        return tx
 
     async def add_expense(
         self, db: AsyncSession, user_id: UUID, wallet_id: UUID,

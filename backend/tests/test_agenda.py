@@ -27,6 +27,6 @@ async def test_mark_paid_deducts_from_default_wallet():
             mock_result = MagicMock()
             mock_result.scalars.return_value.first.return_value = item
             db.execute = AsyncMock(return_value=mock_result)
-            result = await service.mark_paid(db, user_id, "Elektrik", None)
+            result = await service.mark_paid(db, user_id, "Elektrik", None, deduct_wallet=True)
             expense_mock.assert_awaited_once()
             assert result.status == AgendaStatus.PAID
