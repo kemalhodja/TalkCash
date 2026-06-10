@@ -77,6 +77,17 @@ export default {
     viewReceipts: "Fiş Arşivi",
     timezone: "Saat Dilimi",
     ttsBudget: "Sesli Bütçe Uyarıları",
+    sync: "Çevrimdışı Senkron",
+    syncNow: "Şimdi Senkronize Et",
+    pendingOps: "{count} bekleyen işlem kuyrukta",
+    syncResult: "Uygulanan: {applied}, Çakışma: {conflicts}, Başarısız: {failed}",
+  },
+  sync: {
+    conflictTitle: "Senkron Çakışması",
+    conflictHint: "Bu öğe sunucuda farklı durumda. Hangi sürümü korumak istersiniz?",
+    keepLocal: "Yerel Sürüm",
+    keepServer: "Sunucu Sürümü",
+    skip: "Şimdilik Atla",
   },
   duplicate: {
     title: "Mükerrer Kayıt",

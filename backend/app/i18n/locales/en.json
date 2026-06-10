@@ -64,5 +64,7 @@
   "export.sheet.agenda": "Agenda",
   "export.user": "User: {name}",
   "export.filename": "talkcash-report",
-  "nlp.openai_required": "OpenAI API key required. Set OPENAI_API_KEY environment variable."
+  "nlp.openai_required": "OpenAI API key required. Set OPENAI_API_KEY environment variable.",
+  "sync.conflict_shopping": "'{name}' was already completed on the server. Which version should be kept?",
+  "sync.unsupported_type": "Unsupported sync operation: {type}"
 }

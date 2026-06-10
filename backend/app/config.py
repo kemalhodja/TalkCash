@@ -37,5 +37,9 @@ class Settings(BaseSettings):
 
     app_timezone: str = "Europe/Istanbul"
 
+    # OCR: tesseract | google | auto (tesseract first, Vision fallback)
+    ocr_provider: str = "auto"
+    google_vision_api_key: str = ""
+
 
 settings = Settings()

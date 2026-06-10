@@ -77,6 +77,17 @@ export default {
     viewReceipts: "Receipt Archive",
     timezone: "Timezone",
     ttsBudget: "Voice Budget Alerts",
+    sync: "Offline Sync",
+    syncNow: "Sync Now",
+    pendingOps: "{count} pending operations in queue",
+    syncResult: "Applied: {applied}, Conflicts: {conflicts}, Failed: {failed}",
+  },
+  sync: {
+    conflictTitle: "Sync Conflict",
+    conflictHint: "This item differs on the server. Which version should be kept?",
+    keepLocal: "Keep Local",
+    keepServer: "Keep Server",
+    skip: "Skip for Now",
   },
   duplicate: {
     title: "Duplicate Entry",

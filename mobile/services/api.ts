@@ -59,8 +59,18 @@ export const api = {
     form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
     return request<any>(`/input/voice?whisper_mode=${whisperMode}`, { method: "POST", body: form });
   },
-  executeAction: (parsed: object, confirmed: boolean) =>
-    request("/execute/confirm", { method: "POST", body: JSON.stringify({ parsed, action: { confirmed } }) }),
+  executeAction: async (parsed: object, confirmed: boolean) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request("/execute/confirm", { method: "POST", body: JSON.stringify({ parsed, action: { confirmed } }) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "execute", payload: { parsed, action: { confirmed } } });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
   autocomplete: (query: string) => request<any>(`/input/autocomplete?query=${encodeURIComponent(query)}`),
 
   // Wallets
@@ -90,8 +100,18 @@ export const api = {
 
   // Shopping
   getShoppingList: () => request<any>("/shopping/"),
-  addShoppingItems: (items: string[]) =>
-    request("/shopping/add", { method: "POST", body: JSON.stringify({ items }) }),
+  addShoppingItems: async (items: string[]) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request("/shopping/add", { method: "POST", body: JSON.stringify({ items }) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "shopping_add", payload: { items } });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
   completeShoppingItem: (itemId: string, price?: number, walletId?: string) => {
     let url = `/shopping/complete/${itemId}`;
     const params = new URLSearchParams();
@@ -163,4 +183,9 @@ export const api = {
   // Export
   exportPdf: () => request<Blob>("/export/pdf"),
   exportExcel: () => request<Blob>("/export/excel"),
+
+  // Sync
+  syncPush: (operations: object[]) =>
+    request<any>("/sync/push", { method: "POST", body: JSON.stringify({ operations }) }),
+  syncPull: () => request<any>("/sync/pull"),
 };

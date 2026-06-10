@@ -9,6 +9,7 @@ import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
+import { flushQueue, getPendingCount } from "@/services/offlineQueue";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
 export default function SettingsScreen() {
@@ -18,6 +19,8 @@ export default function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [ttsBudget, setTtsBudget] = useState(true);
   const [timezone, setTimezone] = useState("Europe/Istanbul");
+  const [syncing, setSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const TIMEZONES = [
     { id: "Europe/Istanbul", label: "🇹🇷 Istanbul" },
@@ -29,7 +32,33 @@ export default function SettingsScreen() {
   useEffect(() => {
     isBudgetTtsEnabled().then(setTtsBudget);
     api.getMe().then((u) => { if (u.timezone) setTimezone(u.timezone); }).catch(() => {});
+    getPendingCount().then(setPendingCount);
   }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const result = await flushQueue(async (c) => new Promise((resolve) => {
+        Alert.alert(c.message, t.sync.conflictHint, [
+          { text: t.sync.keepLocal, onPress: () => resolve("local") },
+          { text: t.sync.keepServer, onPress: () => resolve("server") },
+          { text: t.sync.skip, style: "cancel", onPress: () => resolve("skip") },
+        ]);
+      }));
+      setPendingCount(await getPendingCount());
+      Alert.alert(
+        t.settings.sync,
+        t.settings.syncResult
+          .replace("{applied}", String(result.applied))
+          .replace("{conflicts}", String(result.conflicts))
+          .replace("{failed}", String(result.failed)),
+      );
+    } catch {
+      Alert.alert(t.settings.sync, t.common.error);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const toggleBiometric = async (val: boolean) => {
     setBiometric(val);
@@ -126,6 +155,17 @@ export default function SettingsScreen() {
         <Switch value={geofence} onValueChange={toggleGeofence} trackColor={{ true: Colors.accent }} />
       </View>
 
+      <Text style={styles.sectionTitle}>{t.settings.sync}</Text>
+      <TouchableOpacity style={styles.btn} onPress={handleSync} disabled={syncing}>
+        <Text style={styles.btnText}>
+          {syncing ? t.common.loading : t.settings.syncNow}
+          {pendingCount > 0 ? ` (${pendingCount})` : ""}
+        </Text>
+      </TouchableOpacity>
+      {pendingCount > 0 && (
+        <Text style={styles.pendingHint}>{t.settings.pendingOps.replace("{count}", String(pendingCount))}</Text>
+      )}
+
       <TouchableOpacity style={styles.btn} onPress={() => registerForPushNotifications()}>
         <Text style={styles.btnText}>{t.settings.push}</Text>
       </TouchableOpacity>
@@ -172,4 +212,5 @@ const styles = StyleSheet.create({
   btnText: { color: Colors.accent, fontWeight: "600" },
   logoutBtn: { marginTop: Spacing.xl, padding: Spacing.md, alignItems: "center" },
   logoutText: { color: Colors.danger, fontWeight: "600" },
+  pendingHint: { color: Colors.warning, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
 });

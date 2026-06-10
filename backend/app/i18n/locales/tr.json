@@ -64,5 +64,7 @@
   "export.sheet.agenda": "Ajanda",
   "export.user": "Kullanıcı: {name}",
   "export.filename": "talkcash-rapor",
-  "nlp.openai_required": "OpenAI API key gerekli. OPENAI_API_KEY ortam değişkenini ayarlayın."
+  "nlp.openai_required": "OpenAI API key gerekli. OPENAI_API_KEY ortam değişkenini ayarlayın.",
+  "sync.conflict_shopping": "'{name}' sunucuda zaten tamamlanmış. Hangi sürümü kullanmak istersiniz?",
+  "sync.unsupported_type": "Desteklenmeyen senkron işlemi: {type}"
 }

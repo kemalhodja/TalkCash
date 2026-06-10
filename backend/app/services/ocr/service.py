@@ -4,17 +4,13 @@ from decimal import Decimal, InvalidOperation
 
 from PIL import Image
 
+from app.config import settings
+from app.services.ocr.vision import google_vision_text
+
 
 class OCRService:
     async def extract_receipt_data(self, image_bytes: bytes, locale: str = "tr") -> dict:
-        lang = "tur+eng" if locale == "en" else "tur+eng"
-        try:
-            import pytesseract
-            image = Image.open(__import__("io").BytesIO(image_bytes))
-            raw_text = pytesseract.image_to_string(image, lang=lang)
-        except Exception:
-            raw_text = ""
-
+        raw_text, engine = await self._extract_text(image_bytes, locale)
         line_items = self._extract_line_items(raw_text)
         return {
             "total_amount": self._extract_amount(raw_text),
@@ -22,7 +18,36 @@ class OCRService:
             "merchant": self._extract_merchant(raw_text),
             "ocr_raw_text": raw_text,
             "line_items": line_items,
+            "ocr_engine": engine,
         }
+
+    async def _extract_text(self, image_bytes: bytes, locale: str) -> tuple[str, str]:
+        provider = settings.ocr_provider.lower()
+        if provider == "google":
+            text = await google_vision_text(image_bytes)
+            return text, "google" if text else "none"
+
+        tesseract_text = self._tesseract_ocr(image_bytes, locale)
+        if provider == "tesseract":
+            return tesseract_text, "tesseract" if tesseract_text else "none"
+
+        # auto: Vision fallback when Tesseract output is too short
+        if len(tesseract_text.strip()) >= 10:
+            return tesseract_text, "tesseract"
+        vision_text = await google_vision_text(image_bytes)
+        if vision_text and len(vision_text) > len(tesseract_text):
+            return vision_text, "google"
+        return tesseract_text or vision_text, "tesseract" if tesseract_text else ("google" if vision_text else "none")
+
+    @staticmethod
+    def _tesseract_ocr(image_bytes: bytes, locale: str) -> str:
+        lang = "tur+eng"
+        try:
+            import pytesseract
+            image = Image.open(__import__("io").BytesIO(image_bytes))
+            return pytesseract.image_to_string(image, lang=lang)
+        except Exception:
+            return ""
 
     def verify_transaction(self, receipt_amount: Decimal | None, transaction_amount: Decimal, tolerance: Decimal = Decimal("1")) -> bool:
         if receipt_amount is None:

@@ -1,12 +1,22 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { ConflictModal } from "@/components/ConflictModal";
 import { Colors } from "@/constants/theme";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useI18n } from "@/i18n";
 
 export default function TabLayout() {
   const { t } = useI18n();
+  const { conflict, resolveConflict } = useOfflineSync();
 
   return (
+    <>
+    <ConflictModal
+      visible={!!conflict}
+      conflict={conflict}
+      onResolve={(choice) => resolveConflict(choice)}
+      onSkip={() => resolveConflict("skip")}
+    />
     <Tabs screenOptions={{
       tabBarStyle: { backgroundColor: Colors.card, borderTopColor: Colors.border },
       tabBarActiveTintColor: Colors.accent,
@@ -23,5 +33,6 @@ export default function TabLayout() {
       <Tabs.Screen name="social" options={{ title: t.tabs.social, tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
       <Tabs.Screen name="settings" options={{ title: t.tabs.settings, tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} /> }} />
     </Tabs>
+    </>
   );
 }

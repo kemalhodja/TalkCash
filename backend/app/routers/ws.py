@@ -26,19 +26,12 @@ async def shared_wallet_ws(websocket: WebSocket, wallet_id: str, token: str = Qu
 
             if action == "expense":
                 async with async_session() as db:
-                    wallet = await shared_service.add_expense(
+                    await shared_service.add_expense(
                         db, UUID(wallet_id),
                         amount=data["amount"],
                         description=data.get("description", ""),
                         user_name=data.get("user_name", "User"),
                     )
-                    await wallet_manager.broadcast(wallet_id, {
-                        "type": "expense_confirmed",
-                        "balance": float(wallet.balance),
-                        "amount": float(data["amount"]),
-                        "description": data.get("description", ""),
-                        "by": data.get("user_name", "User"),
-                    })
             elif action == "ping":
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:

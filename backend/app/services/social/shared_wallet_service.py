@@ -68,7 +68,6 @@ class SharedWalletService:
             "by": user_name,
             "balance": float(wallet.balance),
         }
-        await wallet_manager.broadcast(str(wallet_id), msg)
         from app.utils.redis_client import publish
         await publish(f"shared_wallet:{wallet_id}", msg)
         return wallet
