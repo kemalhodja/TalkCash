@@ -1,0 +1,47 @@
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str = ""
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class PinRequest(BaseModel):
+    pin: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: UUID
+    full_name: str
+    biometric_enabled: bool
+    has_pin: bool
+    locale: str = "tr"
+    timezone: str = "Europe/Istanbul"
+
+
+class UserProfile(BaseModel):
+    id: UUID
+    email: str
+    full_name: str
+    biometric_enabled: bool
+    has_pin: bool
+    locale: str = "tr"
+    timezone: str = "Europe/Istanbul"
+
+
+class LocaleRequest(BaseModel):
+    locale: str
+
+
+class TimezoneRequest(BaseModel):
+    timezone: str

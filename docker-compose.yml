@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: talkcash
+      POSTGRES_PASSWORD: talkcash
+      POSTGRES_DB: talkcash
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talkcash"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: talkcash
+      MINIO_ROOT_PASSWORD: talkcash123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 talkcash talkcash123;
+      mc mb local/talkcash --ignore-existing;
+      mc anonymous set download local/talkcash;
+      exit 0;
+      "
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://talkcash:talkcash@db:5432/talkcash
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      SCHEDULER_ENABLED: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      S3_ENABLED: "true"
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: talkcash
+      S3_SECRET_KEY: talkcash123
+      S3_BUCKET: talkcash
+      S3_PUBLIC_URL: http://localhost:9000/talkcash
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  miniodata:
+  uploads:

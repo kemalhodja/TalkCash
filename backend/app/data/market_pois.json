@@ -1,0 +1,639 @@
+[
+  {
+    "id": "bi̇m-kadikoy-1",
+    "name": "BİM Kadıköy",
+    "chain": "BİM",
+    "lat": 40.9902,
+    "lng": 29.0298
+  },
+  {
+    "id": "a101-kadikoy-1",
+    "name": "A101 Kadıköy",
+    "chain": "A101",
+    "lat": 40.9885,
+    "lng": 29.0271
+  },
+  {
+    "id": "migros-kadikoy-1",
+    "name": "Migros Kadıköy",
+    "chain": "Migros",
+    "lat": 40.9921,
+    "lng": 29.0245
+  },
+  {
+    "id": "sok-kadikoy-1",
+    "name": "Şok Kadıköy",
+    "chain": "Şok",
+    "lat": 40.9867,
+    "lng": 29.0312
+  },
+  {
+    "id": "carrefoursa-kadikoy-1",
+    "name": "CarrefourSA Kadıköy",
+    "chain": "CarrefourSA",
+    "lat": 40.9943,
+    "lng": 29.0338
+  },
+  {
+    "id": "bi̇m-besiktas-1",
+    "name": "BİM Beşiktaş",
+    "chain": "BİM",
+    "lat": 41.0422,
+    "lng": 29.0089
+  },
+  {
+    "id": "migros-besiktas-1",
+    "name": "Migros Beşiktaş",
+    "chain": "Migros",
+    "lat": 41.0456,
+    "lng": 29.0045
+  },
+  {
+    "id": "a101-besiktas-1",
+    "name": "A101 Beşiktaş",
+    "chain": "A101",
+    "lat": 41.0398,
+    "lng": 29.0112
+  },
+  {
+    "id": "bi̇m-uskudar-1",
+    "name": "BİM Üsküdar",
+    "chain": "BİM",
+    "lat": 41.0224,
+    "lng": 29.0156
+  },
+  {
+    "id": "migros-uskudar-1",
+    "name": "Migros Üsküdar",
+    "chain": "Migros",
+    "lat": 41.0256,
+    "lng": 29.0189
+  },
+  {
+    "id": "bi̇m-sisli-1",
+    "name": "BİM Şişli",
+    "chain": "BİM",
+    "lat": 41.0602,
+    "lng": 28.9876
+  },
+  {
+    "id": "migros-sisli-1",
+    "name": "Migros Şişli",
+    "chain": "Migros",
+    "lat": 41.0634,
+    "lng": 28.9845
+  },
+  {
+    "id": "a101-sisli-1",
+    "name": "A101 Şişli",
+    "chain": "A101",
+    "lat": 41.0578,
+    "lng": 28.9912
+  },
+  {
+    "id": "bi̇m-bakirkoy-1",
+    "name": "BİM Bakırköy",
+    "chain": "BİM",
+    "lat": 40.9789,
+    "lng": 28.8723
+  },
+  {
+    "id": "migros-bakirkoy-1",
+    "name": "Migros Bakırköy",
+    "chain": "Migros",
+    "lat": 40.9812,
+    "lng": 28.8756
+  },
+  {
+    "id": "bi̇m-beyoğlu-1",
+    "name": "BİM Beyoğlu",
+    "chain": "BİM",
+    "lat": 41.0362,
+    "lng": 28.9774
+  },
+  {
+    "id": "migros-beyoğlu-1",
+    "name": "Migros Beyoğlu",
+    "chain": "Migros",
+    "lat": 41.0334,
+    "lng": 28.9801
+  },
+  {
+    "id": "a101-fatih-1",
+    "name": "A101 Fatih",
+    "chain": "A101",
+    "lat": 41.0189,
+    "lng": 28.9497
+  },
+  {
+    "id": "bi̇m-fatih-1",
+    "name": "BİM Fatih",
+    "chain": "BİM",
+    "lat": 41.0156,
+    "lng": 28.9523
+  },
+  {
+    "id": "migros-sariyer-1",
+    "name": "Migros Sarıyer",
+    "chain": "Migros",
+    "lat": 41.1678,
+    "lng": 29.0567
+  },
+  {
+    "id": "bi̇m-sariyer-1",
+    "name": "BİM Sarıyer",
+    "chain": "BİM",
+    "lat": 41.1645,
+    "lng": 29.0534
+  },
+  {
+    "id": "bi̇m-kağithane-1",
+    "name": "BİM Kağıthane",
+    "chain": "BİM",
+    "lat": 41.0812,
+    "lng": 28.9723
+  },
+  {
+    "id": "a101-kağithane-1",
+    "name": "A101 Kağıthane",
+    "chain": "A101",
+    "lat": 41.0789,
+    "lng": 28.9756
+  },
+  {
+    "id": "bi̇m-bağcilar-1",
+    "name": "BİM Bağcılar",
+    "chain": "BİM",
+    "lat": 41.0345,
+    "lng": 28.8567
+  },
+  {
+    "id": "migros-bağcilar-1",
+    "name": "Migros Bağcılar",
+    "chain": "Migros",
+    "lat": 41.0378,
+    "lng": 28.8534
+  },
+  {
+    "id": "a101-esenyurt-1",
+    "name": "A101 Esenyurt",
+    "chain": "A101",
+    "lat": 41.0345,
+    "lng": 28.6789
+  },
+  {
+    "id": "bi̇m-esenyurt-1",
+    "name": "BİM Esenyurt",
+    "chain": "BİM",
+    "lat": 41.0312,
+    "lng": 28.6823
+  },
+  {
+    "id": "migros-beylikduzu-1",
+    "name": "Migros Beylikdüzü",
+    "chain": "Migros",
+    "lat": 41.0012,
+    "lng": 28.6423
+  },
+  {
+    "id": "bi̇m-beylikduzu-1",
+    "name": "BİM Beylikdüzü",
+    "chain": "BİM",
+    "lat": 40.9989,
+    "lng": 28.6456
+  },
+  {
+    "id": "migros-atasehir-1",
+    "name": "Migros Ataşehir",
+    "chain": "Migros",
+    "lat": 40.9923,
+    "lng": 29.1234
+  },
+  {
+    "id": "bi̇m-atasehir-1",
+    "name": "BİM Ataşehir",
+    "chain": "BİM",
+    "lat": 40.989,
+    "lng": 29.1267
+  },
+  {
+    "id": "a101-atasehir-1",
+    "name": "A101 Ataşehir",
+    "chain": "A101",
+    "lat": 40.9956,
+    "lng": 29.1201
+  },
+  {
+    "id": "bi̇m-maltepe-1",
+    "name": "BİM Maltepe",
+    "chain": "BİM",
+    "lat": 40.9345,
+    "lng": 29.1456
+  },
+  {
+    "id": "migros-maltepe-1",
+    "name": "Migros Maltepe",
+    "chain": "Migros",
+    "lat": 40.9378,
+    "lng": 29.1423
+  },
+  {
+    "id": "a101-kartal-1",
+    "name": "A101 Kartal",
+    "chain": "A101",
+    "lat": 40.9012,
+    "lng": 29.1878
+  },
+  {
+    "id": "bi̇m-kartal-1",
+    "name": "BİM Kartal",
+    "chain": "BİM",
+    "lat": 40.8978,
+    "lng": 29.1912
+  },
+  {
+    "id": "bi̇m-pendik-1",
+    "name": "BİM Pendik",
+    "chain": "BİM",
+    "lat": 40.8789,
+    "lng": 29.2345
+  },
+  {
+    "id": "migros-pendik-1",
+    "name": "Migros Pendik",
+    "chain": "Migros",
+    "lat": 40.8823,
+    "lng": 29.2312
+  },
+  {
+    "id": "migros-umraniye-1",
+    "name": "Migros Ümraniye",
+    "chain": "Migros",
+    "lat": 41.0234,
+    "lng": 29.1123
+  },
+  {
+    "id": "bi̇m-umraniye-1",
+    "name": "BİM Ümraniye",
+    "chain": "BİM",
+    "lat": 41.0201,
+    "lng": 29.1156
+  },
+  {
+    "id": "a101-tuzla-1",
+    "name": "A101 Tuzla",
+    "chain": "A101",
+    "lat": 40.8234,
+    "lng": 29.3012
+  },
+  {
+    "id": "bi̇m-tuzla-1",
+    "name": "BİM Tuzla",
+    "chain": "BİM",
+    "lat": 40.8201,
+    "lng": 29.3045
+  },
+  {
+    "id": "bi̇m-kizilay-1",
+    "name": "BİM Kızılay",
+    "chain": "BİM",
+    "lat": 39.9208,
+    "lng": 32.8541
+  },
+  {
+    "id": "migros-kizilay-1",
+    "name": "Migros Kızılay",
+    "chain": "Migros",
+    "lat": 39.9234,
+    "lng": 32.8567
+  },
+  {
+    "id": "a101-kizilay-1",
+    "name": "A101 Kızılay",
+    "chain": "A101",
+    "lat": 39.9189,
+    "lng": 32.8512
+  },
+  {
+    "id": "bi̇m-cankaya-1",
+    "name": "BİM Çankaya",
+    "chain": "BİM",
+    "lat": 39.9089,
+    "lng": 32.8612
+  },
+  {
+    "id": "migros-cankaya-1",
+    "name": "Migros Çankaya",
+    "chain": "Migros",
+    "lat": 39.9123,
+    "lng": 32.8645
+  },
+  {
+    "id": "bi̇m-kecioren-1",
+    "name": "BİM Keçiören",
+    "chain": "BİM",
+    "lat": 39.9789,
+    "lng": 32.8567
+  },
+  {
+    "id": "a101-kecioren-1",
+    "name": "A101 Keçiören",
+    "chain": "A101",
+    "lat": 39.9756,
+    "lng": 32.8601
+  },
+  {
+    "id": "migros-yenimahalle-1",
+    "name": "Migros Yenimahalle",
+    "chain": "Migros",
+    "lat": 39.9678,
+    "lng": 32.789
+  },
+  {
+    "id": "bi̇m-yenimahalle-1",
+    "name": "BİM Yenimahalle",
+    "chain": "BİM",
+    "lat": 39.9645,
+    "lng": 32.7923
+  },
+  {
+    "id": "a101-etimesgut-1",
+    "name": "A101 Etimesgut",
+    "chain": "A101",
+    "lat": 39.9456,
+    "lng": 32.6789
+  },
+  {
+    "id": "bi̇m-etimesgut-1",
+    "name": "BİM Etimesgut",
+    "chain": "BİM",
+    "lat": 39.9423,
+    "lng": 32.6823
+  },
+  {
+    "id": "bi̇m-ulus-1",
+    "name": "BİM Ulus",
+    "chain": "BİM",
+    "lat": 39.9412,
+    "lng": 32.8567
+  },
+  {
+    "id": "a101-mamak-1",
+    "name": "A101 Mamak",
+    "chain": "A101",
+    "lat": 39.9123,
+    "lng": 32.9234
+  },
+  {
+    "id": "migros-konak-1",
+    "name": "Migros Konak",
+    "chain": "Migros",
+    "lat": 38.4189,
+    "lng": 27.1287
+  },
+  {
+    "id": "bi̇m-konak-1",
+    "name": "BİM Konak",
+    "chain": "BİM",
+    "lat": 38.4167,
+    "lng": 27.1312
+  },
+  {
+    "id": "a101-konak-1",
+    "name": "A101 Konak",
+    "chain": "A101",
+    "lat": 38.4212,
+    "lng": 27.1256
+  },
+  {
+    "id": "bi̇m-karsiyaka-1",
+    "name": "BİM Karşıyaka",
+    "chain": "BİM",
+    "lat": 38.4612,
+    "lng": 27.1189
+  },
+  {
+    "id": "migros-karsiyaka-1",
+    "name": "Migros Karşıyaka",
+    "chain": "Migros",
+    "lat": 38.4634,
+    "lng": 27.1212
+  },
+  {
+    "id": "migros-bornova-1",
+    "name": "Migros Bornova",
+    "chain": "Migros",
+    "lat": 38.4623,
+    "lng": 27.2234
+  },
+  {
+    "id": "bi̇m-bornova-1",
+    "name": "BİM Bornova",
+    "chain": "BİM",
+    "lat": 38.459,
+    "lng": 27.2267
+  },
+  {
+    "id": "a101-buca-1",
+    "name": "A101 Buca",
+    "chain": "A101",
+    "lat": 38.3912,
+    "lng": 27.1789
+  },
+  {
+    "id": "bi̇m-buca-1",
+    "name": "BİM Buca",
+    "chain": "BİM",
+    "lat": 38.3878,
+    "lng": 27.1823
+  },
+  {
+    "id": "migros-alsancak-1",
+    "name": "Migros Alsancak",
+    "chain": "Migros",
+    "lat": 38.4345,
+    "lng": 27.1423
+  },
+  {
+    "id": "sok-alsancak-1",
+    "name": "Şok Alsancak",
+    "chain": "Şok",
+    "lat": 38.4312,
+    "lng": 27.1456
+  },
+  {
+    "id": "bi̇m-osmangazi-1",
+    "name": "BİM Osmangazi",
+    "chain": "BİM",
+    "lat": 40.1889,
+    "lng": 29.0612
+  },
+  {
+    "id": "migros-osmangazi-1",
+    "name": "Migros Osmangazi",
+    "chain": "Migros",
+    "lat": 40.1923,
+    "lng": 29.0645
+  },
+  {
+    "id": "a101-nilufer-1",
+    "name": "A101 Nilüfer",
+    "chain": "A101",
+    "lat": 40.2123,
+    "lng": 28.9789
+  },
+  {
+    "id": "bi̇m-nilufer-1",
+    "name": "BİM Nilüfer",
+    "chain": "BİM",
+    "lat": 40.2089,
+    "lng": 28.9823
+  },
+  {
+    "id": "migros-muratpasa-1",
+    "name": "Migros Muratpaşa",
+    "chain": "Migros",
+    "lat": 36.8878,
+    "lng": 30.7012
+  },
+  {
+    "id": "bi̇m-muratpasa-1",
+    "name": "BİM Muratpaşa",
+    "chain": "BİM",
+    "lat": 36.8845,
+    "lng": 30.7045
+  },
+  {
+    "id": "a101-konyaalti-1",
+    "name": "A101 Konyaaltı",
+    "chain": "A101",
+    "lat": 36.8678,
+    "lng": 30.6234
+  },
+  {
+    "id": "bi̇m-kepez-1",
+    "name": "BİM Kepez",
+    "chain": "BİM",
+    "lat": 36.9123,
+    "lng": 30.6789
+  },
+  {
+    "id": "bi̇m-seyhan-1",
+    "name": "BİM Seyhan",
+    "chain": "BİM",
+    "lat": 37.0012,
+    "lng": 35.3234
+  },
+  {
+    "id": "migros-seyhan-1",
+    "name": "Migros Seyhan",
+    "chain": "Migros",
+    "lat": 37.0045,
+    "lng": 35.3267
+  },
+  {
+    "id": "a101-cukurova-1",
+    "name": "A101 Çukurova",
+    "chain": "A101",
+    "lat": 37.0456,
+    "lng": 35.2912
+  },
+  {
+    "id": "bi̇m-sahinbey-1",
+    "name": "BİM Şahinbey",
+    "chain": "BİM",
+    "lat": 37.0623,
+    "lng": 37.3789
+  },
+  {
+    "id": "migros-sahinbey-1",
+    "name": "Migros Şahinbey",
+    "chain": "Migros",
+    "lat": 37.0656,
+    "lng": 37.3823
+  },
+  {
+    "id": "bi̇m-selcuklu-1",
+    "name": "BİM Selçuklu",
+    "chain": "BİM",
+    "lat": 37.8923,
+    "lng": 32.5123
+  },
+  {
+    "id": "migros-selcuklu-1",
+    "name": "Migros Selçuklu",
+    "chain": "Migros",
+    "lat": 37.8956,
+    "lng": 32.5156
+  },
+  {
+    "id": "bi̇m-tepebasi-1",
+    "name": "BİM Tepebaşı",
+    "chain": "BİM",
+    "lat": 39.7789,
+    "lng": 30.5234
+  },
+  {
+    "id": "a101-tepebasi-1",
+    "name": "A101 Tepebaşı",
+    "chain": "A101",
+    "lat": 39.7823,
+    "lng": 30.5267
+  },
+  {
+    "id": "bi̇m-ortahisar-1",
+    "name": "BİM Ortahisar",
+    "chain": "BİM",
+    "lat": 41.0012,
+    "lng": 39.7234
+  },
+  {
+    "id": "migros-ortahisar-1",
+    "name": "Migros Ortahisar",
+    "chain": "Migros",
+    "lat": 41.0045,
+    "lng": 39.7267
+  },
+  {
+    "id": "bi̇m-i̇lkadim-1",
+    "name": "BİM İlkadım",
+    "chain": "BİM",
+    "lat": 41.2878,
+    "lng": 36.3312
+  },
+  {
+    "id": "a101-i̇lkadim-1",
+    "name": "A101 İlkadım",
+    "chain": "A101",
+    "lat": 41.2912,
+    "lng": 36.3345
+  },
+  {
+    "id": "bi̇m-yenisehir-1",
+    "name": "BİM Yenişehir",
+    "chain": "BİM",
+    "lat": 36.8012,
+    "lng": 34.6234
+  },
+  {
+    "id": "migros-yenisehir-1",
+    "name": "Migros Yenişehir",
+    "chain": "Migros",
+    "lat": 36.8045,
+    "lng": 34.6267
+  },
+  {
+    "id": "bi̇m-pamukkale-1",
+    "name": "BİM Pamukkale",
+    "chain": "BİM",
+    "lat": 37.7712,
+    "lng": 29.0878
+  },
+  {
+    "id": "a101-pamukkale-1",
+    "name": "A101 Pamukkale",
+    "chain": "A101",
+    "lat": 37.7745,
+    "lng": 29.0912
+  }
+]
