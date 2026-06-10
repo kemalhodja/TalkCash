@@ -13,6 +13,18 @@ from app.utils.redis_client import cache_get, cache_set
 
 router = APIRouter(prefix="/input", tags=["Data Input"])
 
+
+@router.get("/capabilities")
+async def input_capabilities():
+    from app.config import settings
+    ai = bool(settings.openai_api_key)
+    return {
+        "voice_available": ai,
+        "llm_available": ai,
+        "ocr_tesseract": True,
+        "ocr_google_vision": bool(settings.google_vision_api_key),
+    }
+
 DEFAULT_SUGGESTIONS_TR = {
     "m": ["Market", "Mutfak", "Migros"],
     "k": ["Kahve", "Kira", "Kredi Kartı"],

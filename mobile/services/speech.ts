@@ -20,3 +20,15 @@ export async function speakBudgetAlert(message: string, locale: string): Promise
     rate: 0.95,
   });
 }
+
+export async function speakBudgetAlertsAfterSpend(locale: string): Promise<void> {
+  if (!(await isBudgetTtsEnabled())) return;
+  try {
+    const { api } = await import("./api");
+    const alerts = await api.getBudgetAlerts();
+    const urgent = alerts.find((a: any) => a.type === "budget_exceeded" || a.type === "budget_warning");
+    if (urgent?.message) await speakBudgetAlert(urgent.message, locale);
+  } catch {
+    /* network optional */
+  }
+}

@@ -72,19 +72,30 @@ async def list_receipts(user: User = Depends(get_current_user), db: AsyncSession
 
 @router.post("/verify")
 async def verify_receipt(
-    receipt_amount: float,
     transaction_amount: float,
+    receipt_amount: float | None = None,
     receipt_id: UUID | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    verified = ocr_service.verify_transaction(
-        Decimal(str(receipt_amount)), Decimal(str(transaction_amount)),
-    )
+    ocr_total = Decimal(str(receipt_amount)) if receipt_amount is not None else None
     if receipt_id:
         receipt = await db.get(Receipt, receipt_id)
         if not receipt or receipt.user_id != user.id:
             raise HTTPException(status_code=404, detail="Receipt not found")
+        if ocr_total is None and receipt.total_amount is not None:
+            ocr_total = receipt.total_amount
+        verified = ocr_service.verify_transaction(
+            ocr_total, Decimal(str(transaction_amount)),
+        )
         receipt.is_verified = verified
         await db.commit()
-    return {"verified": verified}
+        return {
+            "verified": verified,
+            "receipt_amount": float(ocr_total) if ocr_total is not None else None,
+            "transaction_amount": transaction_amount,
+        }
+    verified = ocr_service.verify_transaction(
+        ocr_total, Decimal(str(transaction_amount)),
+    )
+    return {"verified": verified, "receipt_amount": float(ocr_total) if ocr_total else None, "transaction_amount": transaction_amount}

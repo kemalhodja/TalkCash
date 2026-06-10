@@ -54,6 +54,24 @@ async def test_slash_command_parse(client: AsyncClient, auth_headers: dict):
 
 
 @pytest.mark.asyncio
+async def test_sync_pull_includes_wallets(client: AsyncClient, auth_headers: dict):
+    pull = await client.get("/api/v1/sync/pull", headers=auth_headers)
+    assert pull.status_code == 200
+    data = pull.json()
+    assert "wallets" in data
+    assert "transactions" in data
+    assert "receipts" in data
+    assert len(data["wallets"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_input_capabilities(client: AsyncClient):
+    resp = await client.get("/api/v1/input/capabilities")
+    assert resp.status_code == 200
+    assert "voice_available" in resp.json()
+
+
+@pytest.mark.asyncio
 async def test_sync_push_and_pull(client: AsyncClient, auth_headers: dict):
     op_id = str(uuid.uuid4())
     push = await client.post("/api/v1/sync/push", headers=auth_headers, json={

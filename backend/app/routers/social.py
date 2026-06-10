@@ -90,6 +90,7 @@ async def shared_wallet_expense(
     try:
         wallet = await shared_service.add_expense(
             db, wallet_id, Decimal(str(amount)), description, user.full_name or user.email,
+            user_id=user.id,
         )
         return {"balance": float(wallet.balance)}
     except Exception as e:

@@ -3,6 +3,7 @@ import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "reac
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { speakBudgetAlertsAfterSpend } from "@/services/speech";
 
 interface Props {
   visible: boolean;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCancel }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [price, setPrice] = useState("");
   const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
@@ -32,6 +33,7 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
     if (!price) { setError(t.shopping.priceRequired); return; }
     try {
       await api.completeShoppingItem(itemId, parseFloat(price), selectedWallet || undefined);
+      await speakBudgetAlertsAfterSpend(locale);
       setPrice("");
       onComplete();
     } catch (e: any) {

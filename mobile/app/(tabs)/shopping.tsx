@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
+import { VoiceInput } from "@/components/VoiceInput";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
@@ -47,10 +48,22 @@ export default function ShoppingScreen() {
       <View style={styles.addRow}>
         <TextInput style={styles.input} placeholder={t.shopping.addPlaceholder} placeholderTextColor={Colors.textMuted}
           value={newItem} onChangeText={setNewItem} onSubmitEditing={handleAdd} />
+        <View style={styles.voiceWrap}>
+          <VoiceInput compact whisperMode={false} onResult={async (_text, result) => {
+            if (result?.parsed?.intent === "add_shopping" && result.parsed.items?.length) {
+              await api.addShoppingItems(result.parsed.items);
+              loadList();
+            } else if (result?.parsed?.description) {
+              await api.addShoppingItems([result.parsed.description]);
+              loadList();
+            }
+          }} />
+        </View>
         <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
           <Text style={styles.addBtnText}>+</Text>
         </TouchableOpacity>
       </View>
+      <Text style={styles.voiceHint}>{t.shopping.voiceHint}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -109,6 +122,8 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
     color: Colors.text, borderWidth: 1, borderColor: Colors.border,
   },
+  voiceWrap: { justifyContent: "center" },
+  voiceHint: { color: Colors.textMuted, fontSize: 12, marginTop: -8, marginBottom: Spacing.sm },
   addBtn: { backgroundColor: Colors.accent, width: 48, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   addBtnText: { color: Colors.bg, fontSize: 24, fontWeight: "700" },
   category: { marginBottom: Spacing.lg },

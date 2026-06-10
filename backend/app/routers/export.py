@@ -1,3 +1,6 @@
+from collections import defaultdict
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy import select
@@ -30,7 +33,8 @@ async def export_pdf(
     data = await _gather_data(db, user, limit=limit)
     content = pdf_service.generate_report(
         user.full_name or user.email, data["net_worth"],
-        data["wallets"], data["transactions"], data["agenda"], locale,
+        data["wallets"], data["transactions"], data["agenda"],
+        data["category_totals"], locale,
     )
     filename = t("export.filename", locale)
     return Response(content, media_type="application/pdf", headers={
@@ -63,11 +67,18 @@ async def _gather_data(db: AsyncSession, user: User, limit: int = 500) -> dict:
     tx_result = await db.execute(
         select(Transaction).where(Transaction.user_id == user.id).order_by(Transaction.created_at.desc()).limit(min(limit, 2000))
     )
+    tx_rows = list(tx_result.scalars().all())
     transactions = [
-        {"date": t.created_at.strftime("%d.%m.%Y"), "category": t.category,
-         "amount": float(t.amount), "description": t.description, "place": t.place}
-        for t in tx_result.scalars().all()
+        {"date": tx.created_at.strftime("%d.%m.%Y"), "category": tx.category,
+         "amount": float(tx.amount), "description": tx.description, "place": tx.place}
+        for tx in tx_rows
     ]
+    now = datetime.utcnow()
+    category_totals: dict[str, float] = defaultdict(float)
+    for tx in tx_rows:
+        if tx.created_at.month == now.month and tx.created_at.year == now.year:
+            if tx.transaction_type.value == "expense":
+                category_totals[tx.category or "Genel"] += float(tx.amount)
 
     ag_result = await db.execute(select(AgendaItem).where(AgendaItem.user_id == user.id))
     agenda = [
@@ -76,4 +87,7 @@ async def _gather_data(db: AsyncSession, user: User, limit: int = 500) -> dict:
         for a in ag_result.scalars().all()
     ]
 
-    return {"net_worth": nw.total_try, "wallets": wallets, "transactions": transactions, "agenda": agenda}
+    return {
+        "net_worth": nw.total_try, "wallets": wallets, "transactions": transactions,
+        "agenda": agenda, "category_totals": dict(category_totals),
+    }

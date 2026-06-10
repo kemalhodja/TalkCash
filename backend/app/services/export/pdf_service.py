@@ -18,6 +18,7 @@ class PDFExportService:
         wallets: list[dict],
         transactions: list[dict],
         agenda_items: list[dict],
+        category_totals: dict[str, float] | None = None,
         locale: str = "tr",
     ) -> bytes:
         buffer = io.BytesIO()
@@ -31,6 +32,13 @@ class PDFExportService:
         elements.append(Spacer(1, 20))
         elements.append(Paragraph(t("export.net_worth", locale, amount=f"{net_worth:,.2f}"), styles["Heading2"]))
         elements.append(Spacer(1, 12))
+
+        if category_totals:
+            elements.append(Paragraph(t("export.spending_chart", locale), styles["Heading3"]))
+            chart_table = self._build_category_chart_table(category_totals, locale)
+            if chart_table:
+                elements.append(chart_table)
+            elements.append(Spacer(1, 16))
 
         if wallets:
             elements.append(Paragraph(t("export.wallets", locale), styles["Heading3"]))
@@ -84,3 +92,22 @@ class PDFExportService:
 
         doc.build(elements)
         return buffer.getvalue()
+
+    @staticmethod
+    def _build_category_chart_table(category_totals: dict[str, float], locale: str):
+        if not category_totals:
+            return None
+        sorted_cats = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)[:8]
+        max_val = max(v for _, v in sorted_cats) or 1
+        rows = [[t("export.col.category", locale), t("export.col.amount", locale), ""]]
+        for cat, val in sorted_cats:
+            bar = "█" * max(1, int(24 * val / max_val))
+            rows.append([cat[:20], f"{val:,.2f}", bar])
+        table = Table(rows, colWidths=[120, 80, 280])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#00D4AA")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("TEXTCOLOR", (2, 1), (2, -1), colors.HexColor("#00D4AA")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        return table

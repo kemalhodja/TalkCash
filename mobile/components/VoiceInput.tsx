@@ -9,15 +9,21 @@ import { api } from "@/services/api";
 interface Props {
   onResult: (text: string, parsed?: any) => void;
   whisperMode?: boolean;
+  disabled?: boolean;
+  compact?: boolean;
 }
 
-export function VoiceInput({ onResult, whisperMode = false }: Props) {
+export function VoiceInput({ onResult, whisperMode = false, disabled = false, compact = false }: Props) {
   const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
 
   const startRecording = async () => {
+    if (disabled) {
+      Alert.alert(t.input.aiUnavailable);
+      return;
+    }
     try {
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
@@ -63,20 +69,23 @@ export function VoiceInput({ onResult, whisperMode = false }: Props) {
         ? t.input.whisperMode
         : t.input.voiceCommand;
 
+  const btnSize = compact ? 48 : 64;
+  const iconSize = compact ? 22 : 28;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.compact]}>
       <TouchableOpacity
-        style={[styles.micBtn, recording && styles.micActive]}
+        style={[styles.micBtn, { width: btnSize, height: btnSize, borderRadius: btnSize / 2 }, recording && styles.micActive, disabled && styles.micDisabled]}
         onPress={handlePress}
-        disabled={processing}
+        disabled={processing || disabled}
       >
         {processing ? (
           <ActivityIndicator color={Colors.bg} />
         ) : (
-          <Ionicons name={recording ? "stop" : "mic"} size={28} color={Colors.bg} />
+          <Ionicons name={recording ? "stop" : "mic"} size={iconSize} color={Colors.bg} />
         )}
       </TouchableOpacity>
-      <Text style={styles.hint}>{hint}</Text>
+      {!compact && <Text style={styles.hint}>{hint}</Text>}
     </View>
   );
 }
@@ -88,5 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent, justifyContent: "center", alignItems: "center",
   },
   micActive: { backgroundColor: Colors.danger },
+  micDisabled: { opacity: 0.4 },
+  compact: { padding: 0, alignItems: "center", justifyContent: "center" },
   hint: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
 });

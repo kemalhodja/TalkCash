@@ -133,11 +133,13 @@ export const api = {
     return request<any>("/ocr/scan", { method: "POST", body: form });
   },
   getReceipts: () => request<any[]>("/ocr/"),
-  verifyReceipt: (receiptAmount: number, transactionAmount: number, receiptId?: string) => {
-    let url = `/ocr/verify?receipt_amount=${receiptAmount}&transaction_amount=${transactionAmount}`;
+  verifyReceipt: (transactionAmount: number, receiptAmount?: number, receiptId?: string) => {
+    let url = `/ocr/verify?transaction_amount=${transactionAmount}`;
+    if (receiptAmount != null) url += `&receipt_amount=${receiptAmount}`;
     if (receiptId) url += `&receipt_id=${receiptId}`;
-    return request<{ verified: boolean }>(url, { method: "POST" });
+    return request<{ verified: boolean; receipt_amount?: number; transaction_amount?: number }>(url, { method: "POST" });
   },
+  getInputCapabilities: () => request<any>("/input/capabilities"),
 
   getNearbyMarkets: (lat: number, lng: number, radiusKm = 2, useOsm = true) =>
     request<{

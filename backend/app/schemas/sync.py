@@ -7,7 +7,10 @@ from pydantic import BaseModel, Field
 
 class SyncOperation(BaseModel):
     id: UUID
-    type: Literal["execute", "shopping_add", "shopping_complete"]
+    type: Literal[
+        "execute", "shopping_add", "shopping_complete",
+        "wallet_income", "wallet_transfer", "wallet_expense",
+    ]
     payload: dict[str, Any]
     client_timestamp: datetime
     resolve_strategy: Literal["local", "server"] | None = None
@@ -35,4 +38,7 @@ class SyncPushResponse(BaseModel):
 class SyncPullResponse(BaseModel):
     shopping: list[dict[str, Any]]
     agenda: list[dict[str, Any]]
+    wallets: list[dict[str, Any]]
+    transactions: list[dict[str, Any]]
+    receipts: list[dict[str, Any]]
     server_timestamp: datetime

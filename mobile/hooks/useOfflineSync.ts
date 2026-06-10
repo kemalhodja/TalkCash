@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { flushQueue, getPendingCount, type SyncConflict } from "@/services/offlineQueue";
+import { pullAndCacheSnapshot } from "@/services/syncCache";
 
 export function useOfflineSync() {
   const [pendingCount, setPendingCount] = useState(0);
@@ -24,6 +25,7 @@ export function useOfflineSync() {
         resolverRef.current = resolve;
       });
     });
+    await pullAndCacheSnapshot();
     await refreshCount();
     return result;
   }, [refreshCount]);

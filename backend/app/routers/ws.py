@@ -17,6 +17,11 @@ async def shared_wallet_ws(websocket: WebSocket, wallet_id: str, token: str = Qu
         await websocket.close(code=4001)
         return
 
+    async with async_session() as db:
+        if not await shared_service.is_member(db, UUID(wallet_id), UUID(user_id)):
+            await websocket.close(code=4003)
+            return
+
     await websocket.accept()
     await wallet_manager.connect(wallet_id, websocket)
     try:
@@ -31,6 +36,7 @@ async def shared_wallet_ws(websocket: WebSocket, wallet_id: str, token: str = Qu
                         amount=data["amount"],
                         description=data.get("description", ""),
                         user_name=data.get("user_name", "User"),
+                        user_id=UUID(user_id),
                     )
             elif action == "ping":
                 await websocket.send_json({"type": "pong"})

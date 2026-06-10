@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
 import { PayBillModal } from "@/components/PayBillModal";
@@ -9,6 +9,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
+import { speakBudgetAlertsAfterSpend } from "@/services/speech";
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
@@ -24,6 +25,11 @@ export default function InputScreen() {
   const [error, setError] = useState("");
   const [payModal, setPayModal] = useState<{ title: string } | null>(null);
   const [slashMode, setSlashMode] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(true);
+
+  useEffect(() => {
+    api.getInputCapabilities().then((c) => setAiAvailable(c.voice_available && c.llm_available)).catch(() => setAiAvailable(false));
+  }, []);
 
   const slashHints = locale === "en"
     ? ["/150 coffee bank", "/500 transfer bank cash", "/bill electricity 200"]
@@ -72,13 +78,22 @@ export default function InputScreen() {
             locale,
           );
         }
+        if (parsedData.intent === "add_expense") {
+          await speakBudgetAlertsAfterSpend(locale);
+        }
         if (parsedData.receipt_id && parsedData.amount) {
-          const { verified } = await api.verifyReceipt(
-            parsedData.amount, parsedData.amount, parsedData.receipt_id,
+          const receiptTotal = parsedData.receipt_total_amount ?? parsedData.receipt_total ?? parsedData.amount;
+          const { verified, receipt_amount, transaction_amount } = await api.verifyReceipt(
+            parsedData.amount, receiptTotal, parsedData.receipt_id,
           );
+          const mismatchDetail = !verified && receipt_amount != null
+            ? t.scanner.mismatchDetail
+                .replace("{receipt}", String(receipt_amount))
+                .replace("{tx}", String(transaction_amount ?? parsedData.amount))
+            : undefined;
           Alert.alert(
             verified ? t.scanner.verified : t.scanner.mismatch,
-            verified ? t.agenda.receiptLinked : undefined,
+            verified ? t.agenda.receiptLinked : mismatchDetail,
           );
         }
         setText("");
@@ -112,7 +127,12 @@ export default function InputScreen() {
         </TouchableOpacity>
       </View>
 
-      <VoiceInput onResult={handleVoiceResult} whisperMode={whisperMode} />
+      {!aiAvailable && (
+        <View style={styles.aiBanner}>
+          <Text style={styles.aiBannerText}>{t.input.aiUnavailable}</Text>
+        </View>
+      )}
+      <VoiceInput onResult={handleVoiceResult} whisperMode={whisperMode} disabled={!aiAvailable} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.divider}>
@@ -185,7 +205,10 @@ export default function InputScreen() {
               t.input.receiptConfirm
                 .replace("{amount}", String(data.total_amount || "?"))
                 .replace("{merchant}", data.merchant || t.input.receipt),
-              { intent: "add_expense", amount: data.total_amount, description: data.merchant, receipt_id: data.receipt_id },
+              {
+                intent: "add_expense", amount: data.total_amount, description: data.merchant,
+                receipt_id: data.receipt_id, receipt_total_amount: data.total_amount,
+              },
             );
           }}
           onClose={() => setShowScanner(false)}
@@ -219,4 +242,9 @@ const styles = StyleSheet.create({
   submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 12, alignItems: "center", marginTop: Spacing.md },
   submitText: { color: Colors.bg, fontWeight: "700", fontSize: 16 },
   error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
+  aiBanner: {
+    backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 10, padding: Spacing.sm,
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "rgba(245,158,11,0.4)",
+  },
+  aiBannerText: { color: Colors.warning, fontSize: 13, textAlign: "center" },
 });

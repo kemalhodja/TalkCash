@@ -55,10 +55,22 @@ class SharedWalletService:
                 wallets.append(w)
         return wallets
 
-    async def add_expense(self, db: AsyncSession, wallet_id: UUID, amount: Decimal, description: str, user_name: str) -> SharedWallet:
+    async def is_member(self, db: AsyncSession, wallet_id: UUID, user_id: UUID) -> bool:
+        wallet = await self.get(db, wallet_id)
+        if not wallet:
+            return False
+        members = json.loads(wallet.member_ids or "[]")
+        return str(user_id) in members
+
+    async def add_expense(
+        self, db: AsyncSession, wallet_id: UUID, amount: Decimal,
+        description: str, user_name: str, user_id: UUID | None = None,
+    ) -> SharedWallet:
         wallet = await db.get(SharedWallet, wallet_id)
         if not wallet:
             raise I18nError("social.wallet_not_found")
+        if user_id and not await self.is_member(db, wallet_id, user_id):
+            raise I18nError("social.wallet_not_member")
         wallet.balance -= amount
         await db.commit()
         msg = {

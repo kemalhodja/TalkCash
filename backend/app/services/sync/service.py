@@ -7,16 +7,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import t
+from app.models.receipt import Receipt
 from app.models.shopping import ShoppingItem
+from app.models.transaction import Transaction
 from app.routers.execute import _dispatch
 from app.schemas.common import ParsedInput
 from app.schemas.sync import SyncConflict, SyncOperation, SyncPushResponse, SyncPullResponse
+from app.schemas.wallet import TransferRequest
 from app.services.agenda.service import AgendaService
 from app.services.shopping.service import ShoppingService
+from app.services.storage.service import StorageService
+from app.services.wallet.service import WalletService
 from app.utils.redis_client import get_redis
 
 shopping_service = ShoppingService()
 agenda_service = AgendaService()
+wallet_service = WalletService()
+storage_service = StorageService()
 
 
 class SyncService:
@@ -46,11 +53,43 @@ class SyncService:
     async def pull(self, db: AsyncSession, user_id: UUID) -> SyncPullResponse:
         shopping = await shopping_service.list_active(db, user_id)
         agenda = await agenda_service.list_upcoming(db, user_id, days=60)
+        nw = await wallet_service.get_net_worth(db, user_id)
+
+        tx_result = await db.execute(
+            select(Transaction).where(Transaction.user_id == user_id)
+            .order_by(Transaction.created_at.desc()).limit(100)
+        )
+        transactions = [
+            {
+                "id": str(tx.id), "amount": float(tx.amount), "currency": tx.currency,
+                "category": tx.category, "description": tx.description, "place": tx.place,
+                "type": tx.transaction_type.value, "wallet_id": str(tx.wallet_id),
+                "date": tx.created_at.isoformat(),
+                "receipt_id": str(tx.receipt_id) if tx.receipt_id else None,
+            }
+            for tx in tx_result.scalars().all()
+        ]
+
+        rc_result = await db.execute(
+            select(Receipt).where(Receipt.user_id == user_id)
+            .order_by(Receipt.created_at.desc()).limit(50)
+        )
+        receipts = []
+        for r in rc_result.scalars().all():
+            url = await storage_service.get_url(r.image_url)
+            receipts.append({
+                "id": str(r.id), "total_amount": float(r.total_amount) if r.total_amount else None,
+                "merchant": r.merchant, "verified": r.is_verified,
+                "date": r.receipt_date.isoformat() if r.receipt_date else None,
+                "image_url": url,
+            })
+
         return SyncPullResponse(
             shopping=[
                 {
                     "id": str(i.id), "name": i.name, "category": i.category.value,
-                    "is_completed": i.is_completed, "completed_at": i.completed_at.isoformat() if i.completed_at else None,
+                    "is_completed": i.is_completed,
+                    "completed_at": i.completed_at.isoformat() if i.completed_at else None,
                 }
                 for i in shopping
             ],
@@ -61,6 +100,15 @@ class SyncService:
                 }
                 for i in agenda
             ],
+            wallets=[
+                {
+                    "id": str(w.id), "name": w.name, "balance": float(w.balance),
+                    "currency": w.currency, "wallet_type": w.wallet_type.value,
+                }
+                for w in nw.wallets
+            ],
+            transactions=transactions,
+            receipts=receipts,
             server_timestamp=datetime.utcnow(),
         )
 
@@ -71,6 +119,39 @@ class SyncService:
             parsed = ParsedInput(**op.payload.get("parsed", {}))
             result = await _dispatch(user_id, parsed, db, locale)
             return result, None
+
+        if op.type == "wallet_income":
+            wallet_id = UUID(op.payload["wallet_id"])
+            amount = Decimal(str(op.payload["amount"]))
+            tx = await wallet_service.add_income(
+                db, user_id, wallet_id, amount,
+                op.payload.get("description", ""), input_method="sync",
+            )
+            return {"transaction_id": str(tx.id)}, None
+
+        if op.type == "wallet_transfer":
+            req = TransferRequest(
+                from_wallet_id=UUID(op.payload["from_wallet_id"]),
+                to_wallet_id=UUID(op.payload["to_wallet_id"]),
+                amount=Decimal(str(op.payload["amount"])),
+                description=op.payload.get("description", ""),
+            )
+            from_w, to_w = await wallet_service.transfer(
+                db, user_id, req.from_wallet_id, req.to_wallet_id, req.amount, req.description,
+            )
+            return {"from": from_w.name, "to": to_w.name}, None
+
+        if op.type == "wallet_expense":
+            wallet_id = UUID(op.payload["wallet_id"])
+            amount = Decimal(str(op.payload["amount"]))
+            tx = await wallet_service.add_expense(
+                db, user_id, wallet_id, amount,
+                op.payload.get("category", "Genel"),
+                op.payload.get("description", ""),
+                input_method="sync",
+                receipt_id=UUID(op.payload["receipt_id"]) if op.payload.get("receipt_id") else None,
+            )
+            return {"transaction_id": str(tx.id)}, None
 
         if op.type == "shopping_add":
             items = op.payload.get("items", [])
