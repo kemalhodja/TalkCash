@@ -12,7 +12,17 @@ export interface AuthUser {
   hasPin: boolean;
 }
 
+let sessionUnlocked = false;
+
 export const auth = {
+  isUnlocked(): boolean {
+    return sessionUnlocked;
+  },
+
+  setUnlocked(value: boolean) {
+    sessionUnlocked = value;
+  },
+
   async save(user: AuthUser) {
     await SecureStore.setItemAsync(TOKEN_KEY, user.token);
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
@@ -28,6 +38,7 @@ export const auth = {
   },
 
   async clear() {
+    sessionUnlocked = false;
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
   },
@@ -38,7 +49,7 @@ export const auth = {
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify({ ...user, ...partial }));
   },
 
-  async authenticateBiometric(promptMessage = "TalkCash'e giriş yap"): Promise<boolean> {
+  async authenticateBiometric(promptMessage = "TalkCash"): Promise<boolean> {
     const compatible = await LocalAuthentication.hasHardwareAsync();
     if (!compatible) return false;
     const enrolled = await LocalAuthentication.isEnrolledAsync();

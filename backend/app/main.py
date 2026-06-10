@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, t
+from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
 from app.routers import agenda, ai, auth, budgets, execute, export, input, notifications, ocr, shopping, social, transactions, wallets, ws
 from app.tasks.scheduler import start_scheduler
 
@@ -47,6 +47,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             for item in detail
         ]
     return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    lang = locale_from_request(request)
+    return JSONResponse(status_code=400, content={"detail": resolve_error(exc, lang)})
 
 
 app.include_router(auth.router, prefix="/api/v1")

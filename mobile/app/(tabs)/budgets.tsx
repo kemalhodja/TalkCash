@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 export default function BudgetsScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [budgets, setBudgets] = useState<any[]>([]);
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
+  const [editing, setEditing] = useState<any>(null);
+  const [editLimit, setEditLimit] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const load = async () => {
     try {
@@ -32,6 +36,13 @@ export default function BudgetsScreen() {
     load();
   };
 
+  const handleUpdate = async () => {
+    if (!editing || !editLimit) return;
+    await api.updateBudget(editing.id, parseFloat(editLimit));
+    setEditing(null); setEditLimit("");
+    load();
+  };
+
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
 
   return (
@@ -49,18 +60,37 @@ export default function BudgetsScreen() {
       </View>
 
       {budgets.map((b) => (
-        <View key={b.id} style={styles.card}>
+        <TouchableOpacity key={b.id} style={styles.card}
+          onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}>
           <View>
             <Text style={styles.catName}>{b.category}</Text>
-            <Text style={styles.limit}>{Number(b.monthly_limit).toLocaleString("tr-TR")} {t.budget.perMonth}</Text>
+            <Text style={styles.limit}>{Number(b.monthly_limit).toLocaleString(dateLocale)} {t.budget.perMonth}</Text>
           </View>
           <TouchableOpacity onPress={async () => { await api.deleteBudget(b.id); load(); }}>
             <Text style={styles.delete}>{t.common.delete}</Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       ))}
 
       {budgets.length === 0 && <Text style={styles.empty}>{t.budget.empty}</Text>}
+
+      <Modal visible={!!editing} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t.budget.edit}: {editing?.category}</Text>
+            <TextInput style={styles.input} placeholder={t.budget.newLimit} placeholderTextColor={Colors.textMuted}
+              keyboardType="decimal-pad" value={editLimit} onChangeText={setEditLimit} />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditing(null)}>
+                <Text style={styles.cancelText}>{t.common.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btn} onPress={handleUpdate}>
+                <Text style={styles.btnText}>{t.common.save}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -86,4 +116,10 @@ const styles = StyleSheet.create({
   limit: { color: Colors.accent, marginTop: 4 },
   delete: { color: Colors.danger },
   empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: Spacing.lg },
+  modalCard: { backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg },
+  modalTitle: { color: Colors.text, fontWeight: "700", marginBottom: Spacing.md },
+  modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
+  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
+  cancelText: { color: Colors.textSecondary },
 });

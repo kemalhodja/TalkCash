@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import I18nError
 from app.models.budget import BudgetLimit
 
 
@@ -22,7 +23,7 @@ class BudgetService:
     async def update(self, db: AsyncSession, budget_id: UUID, user_id: UUID, monthly_limit: Decimal) -> BudgetLimit:
         budget = await db.get(BudgetLimit, budget_id)
         if not budget or budget.user_id != user_id:
-            raise ValueError("Bütçe bulunamadı")
+            raise I18nError("budget.not_found")
         budget.monthly_limit = monthly_limit
         await db.commit()
         await db.refresh(budget)
@@ -31,6 +32,6 @@ class BudgetService:
     async def delete(self, db: AsyncSession, budget_id: UUID, user_id: UUID) -> None:
         budget = await db.get(BudgetLimit, budget_id)
         if not budget or budget.user_id != user_id:
-            raise ValueError("Bütçe bulunamadı")
+            raise I18nError("budget.not_found")
         await db.delete(budget)
         await db.commit()

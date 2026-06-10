@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { TransferModal } from "@/components/TransferModal";
+import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -21,6 +22,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [transferVisible, setTransferVisible] = useState(false);
+  const [walletCreateVisible, setWalletCreateVisible] = useState(false);
 
   const loadData = async () => {
     const user = await auth.getUser();
@@ -66,9 +68,14 @@ export default function DashboardScreen() {
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.transferBtn} onPress={() => setTransferVisible(true)}>
-        <Text style={styles.transferText}>{t.home.transfer}</Text>
-      </TouchableOpacity>
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => setTransferVisible(true)}>
+          <Text style={styles.actionText}>{t.home.transfer}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => setWalletCreateVisible(true)}>
+          <Text style={styles.actionText}>{t.home.createWallet}</Text>
+        </TouchableOpacity>
+      </View>
 
       {forecast?.warning && (
         <View style={styles.alertCard}><Text style={styles.alertText}>⚠️ {forecast.message}</Text></View>
@@ -90,6 +97,7 @@ export default function DashboardScreen() {
       ))}
 
       <TransferModal visible={transferVisible} onClose={() => setTransferVisible(false)} onSuccess={loadData} />
+      <WalletCreateModal visible={walletCreateVisible} onClose={() => setWalletCreateVisible(false)} onSuccess={loadData} />
     </ScrollView>
   );
 }
@@ -105,11 +113,12 @@ const styles = StyleSheet.create({
   },
   label: { color: Colors.textSecondary, fontSize: 14 },
   netWorth: { color: Colors.accent, fontSize: 36, fontWeight: "800", marginTop: 4 },
-  transferBtn: {
-    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    alignItems: "center", marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.accent,
+  actionRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.lg },
+  actionBtn: {
+    flex: 1, backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    alignItems: "center", borderWidth: 1, borderColor: Colors.accent,
   },
-  transferText: { color: Colors.accent, fontWeight: "700" },
+  actionText: { color: Colors.accent, fontWeight: "700", fontSize: 13 },
   sectionTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
   alertCard: {
     backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10, padding: Spacing.md,

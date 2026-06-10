@@ -18,7 +18,7 @@ export default function LockScreen() {
       setUser(u);
       if (u.biometricEnabled) {
         const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
-        if (ok) router.replace("/(tabs)");
+        if (ok) { auth.setUnlocked(true); router.replace("/(tabs)"); }
       }
     });
   }, [t.lock.biometricPrompt]);
@@ -26,6 +26,7 @@ export default function LockScreen() {
   const verifyPin = async () => {
     try {
       await api.verifyPin(pin);
+      auth.setUnlocked(true);
       router.replace("/(tabs)");
     } catch {
       setError(t.lock.wrongPin);
@@ -38,6 +39,7 @@ export default function LockScreen() {
     try {
       await api.setPin(pin);
       await auth.updateUser({ hasPin: true });
+      auth.setUnlocked(true);
       router.replace("/(tabs)");
     } catch {
       setError(t.lock.pinFailed);
@@ -69,7 +71,7 @@ export default function LockScreen() {
       {user?.biometricEnabled && (
         <TouchableOpacity style={styles.bioBtn} onPress={async () => {
           const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
-          if (ok) router.replace("/(tabs)");
+          if (ok) { auth.setUnlocked(true); router.replace("/(tabs)"); }
         }}>
           <Text style={styles.bioText}>{t.lock.biometric}</Text>
         </TouchableOpacity>

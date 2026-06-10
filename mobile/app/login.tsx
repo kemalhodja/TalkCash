@@ -31,7 +31,8 @@ export default function LoginScreen() {
         hasPin: result.has_pin,
       };
       await auth.save(user);
-      router.replace(result.has_pin ? "/(tabs)" : "/lock");
+      auth.setUnlocked(false);
+      router.replace("/lock");
     } catch (e: any) {
       setError(e.message || t.common.error);
     } finally {

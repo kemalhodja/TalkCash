@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.i18n import t
+from app.i18n import resolve_error, t
 from app.models.user import User
 from app.schemas.common import ParsedInput
 from app.schemas.execute import ExecuteRequest
@@ -35,7 +35,7 @@ async def execute_confirmed_action(
         result = await _dispatch(user.id, body.parsed, db, locale)
         return {"status": "success", "result": result}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=resolve_error(e, locale))
 
 
 async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession, locale: str = "tr") -> dict:

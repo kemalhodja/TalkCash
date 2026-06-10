@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import I18nError
 from app.models.transaction import Transaction, TransactionType
 from app.models.wallet import Wallet, WalletType
 from app.schemas.wallet import NetWorthResponse, WalletCreate, WalletResponse
@@ -61,7 +62,7 @@ class WalletService:
         from_wallet = await db.get(Wallet, from_id)
         to_wallet = await db.get(Wallet, to_id)
         if not from_wallet or not to_wallet:
-            raise ValueError("Kasa bulunamadı")
+            raise I18nError("wallet.not_found")
 
         from_wallet.balance -= amount
         to_wallet.balance += amount
@@ -77,7 +78,7 @@ class WalletService:
     async def add_income(self, db: AsyncSession, user_id: UUID, wallet_id: UUID, amount: Decimal, description: str = "") -> Wallet:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
-            raise ValueError("Kasa bulunamadı")
+            raise I18nError("wallet.not_found")
         wallet.balance += amount
         db.add(Transaction(
             user_id=user_id, wallet_id=wallet_id,
@@ -94,7 +95,7 @@ class WalletService:
     ) -> Transaction:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
-            raise ValueError("Kasa bulunamadı")
+            raise I18nError("wallet.not_found")
         wallet.balance -= amount
         tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,

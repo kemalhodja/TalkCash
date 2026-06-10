@@ -5,12 +5,13 @@ from uuid import UUID
 from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import t
 from app.models.budget import BudgetLimit
 from app.models.transaction import Transaction, TransactionType
 
 
 class AIMentorService:
-    async def check_budget_alerts(self, db: AsyncSession, user_id: UUID) -> list[dict]:
+    async def check_budget_alerts(self, db: AsyncSession, user_id: UUID, locale: str = "tr") -> list[dict]:
         alerts = []
         now = datetime.utcnow()
         budgets = await db.execute(select(BudgetLimit).where(BudgetLimit.user_id == user_id))
@@ -32,17 +33,21 @@ class AIMentorService:
                 alerts.append({
                     "type": "budget_exceeded",
                     "category": budget.category,
-                    "message": f"{budget.category} bütçenizi aştınız! ({spent}/{budget.monthly_limit} TL)",
+                    "message": t("ai.budget_exceeded", locale,
+                                 category=budget.category, spent=spent, limit=budget.monthly_limit),
                 })
             elif ratio >= 0.8:
                 alerts.append({
                     "type": "budget_warning",
                     "category": budget.category,
-                    "message": f"{budget.category} bütçenizin %{int(ratio * 100)}'ine ulaştınız.",
+                    "message": t("ai.budget_warning", locale,
+                                 category=budget.category, percent=int(ratio * 100)),
                 })
         return alerts
 
-    async def predict_month_end(self, db: AsyncSession, user_id: UUID, current_balance: Decimal) -> dict:
+    async def predict_month_end(
+        self, db: AsyncSession, user_id: UUID, current_balance: Decimal, locale: str = "tr",
+    ) -> dict:
         now = datetime.utcnow()
         days_passed = max(now.day, 1)
         days_in_month = 30
@@ -63,13 +68,15 @@ class AIMentorService:
             "projected_balance": round(projected, 2),
             "warning": projected < 0,
             "message": (
-                "Bu hızla harcarsanız ay sonuna kasanız eksiye düşebilir."
+                t("ai.forecast_negative", locale)
                 if projected < 0
-                else f"Ay sonu tahmini bakiye: {projected:.2f} TL"
+                else t("ai.forecast_positive", locale, balance=f"{projected:.2f}")
             ),
         }
 
-    async def price_change_report(self, db: AsyncSession, user_id: UUID, product_name: str) -> dict | None:
+    async def price_change_report(
+        self, db: AsyncSession, user_id: UUID, product_name: str, locale: str = "tr",
+    ) -> dict | None:
         now = datetime.utcnow()
         this_month = await db.execute(
             select(func.avg(Transaction.amount)).where(
@@ -91,10 +98,11 @@ class AIMentorService:
             return None
 
         change = ((float(current) - float(previous)) / float(previous)) * 100
+        key = "ai.price_increased" if change > 0 else "ai.price_decreased"
         return {
             "product": product_name,
             "current_avg": round(float(current), 2),
             "previous_avg": round(float(previous), 2),
             "change_percent": round(change, 1),
-            "message": f"Aldığınız {product_name} geçen aya göre %{abs(change):.0f} {'zamlanmış' if change > 0 else 'ucuzlamış'}.",
+            "message": t(key, locale, product=product_name, percent=f"{abs(change):.0f}"),
         }

@@ -1,6 +1,8 @@
+import * as SecureStore from "expo-secure-store";
 import { auth } from "./auth";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const LOCALE_KEY = "talkcash_locale";
 
 export class ApiError extends Error {
   status: number;
@@ -12,9 +14,11 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await auth.getToken();
+  const locale = await SecureStore.getItemAsync(LOCALE_KEY);
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
   };
+  if (locale) headers["Accept-Language"] = locale;
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (!(options?.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
@@ -103,6 +107,8 @@ export const api = {
   getBudgets: () => request<any[]>("/budgets/"),
   createBudget: (category: string, monthlyLimit: number) =>
     request("/budgets/", { method: "POST", body: JSON.stringify({ category, monthly_limit: monthlyLimit }) }),
+  updateBudget: (id: string, monthlyLimit: number) =>
+    request(`/budgets/${id}`, { method: "PUT", body: JSON.stringify({ monthly_limit: monthlyLimit }) }),
   deleteBudget: (id: string) => request(`/budgets/${id}`, { method: "DELETE" }),
 
   // AI

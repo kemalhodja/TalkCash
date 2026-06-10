@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_locale
+from app.i18n import resolve_error
 from app.models.user import User
 from app.services.social.service import SocialService
 from app.services.social.shared_wallet_service import SharedWalletService
@@ -32,8 +33,8 @@ async def settle_debt(debt_id: UUID, user: User = Depends(get_current_user), db:
     try:
         record = await social_service.settle_debt(db, user.id, debt_id)
         return {"id": str(record.id), "settled": True}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
 
 
 @router.post("/debt")
@@ -50,7 +51,7 @@ async def split_bill(
     total: float, person_count: int = 2,
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    bill = await social_service.split_bill(db, user.id, Decimal(str(total)), person_count)
+    bill = await social_service.split_bill(db, user.id, Decimal(str(total)), person_count, user_locale(user))
     return {
         "per_person": float(bill.per_person),
         "share_message": bill.share_message,
@@ -84,5 +85,5 @@ async def shared_wallet_expense(
             db, wallet_id, Decimal(str(amount)), description, user.full_name or user.email,
         )
         return {"balance": float(wallet.balance)}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))

@@ -31,6 +31,7 @@ jobs:
       DATABASE_URL: postgresql+asyncpg://talkcash:talkcash@localhost:5432/talkcash_test
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY: test-secret-key
+      SCHEDULER_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,7 +41,7 @@ jobs:
         run: pip install -r backend/requirements.txt
       - name: Run unit tests
         working-directory: backend
-        run: pytest tests/test_nlp.py tests/test_security.py -v
+        run: pytest tests/ -v --ignore=tests/e2e
       - name: Run E2E tests
         working-directory: backend
         run: pytest tests/e2e/ -v

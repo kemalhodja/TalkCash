@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_locale
+from app.i18n import resolve_error
 from app.models.user import User
 from app.schemas.transaction import TransactionResponse
 from app.schemas.wallet import NetWorthResponse, TransferRequest, WalletCreate, WalletResponse
@@ -37,8 +38,8 @@ async def transfer(data: TransferRequest, user: User = Depends(get_current_user)
             db, user.id, data.from_wallet_id, data.to_wallet_id, data.amount, data.description
         )
         return {"from_balance": float(from_w.balance), "to_balance": float(to_w.balance)}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, user_locale(user)))
 
 
 @router.post("/expense", response_model=TransactionResponse)

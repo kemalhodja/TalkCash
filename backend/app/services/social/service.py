@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import I18nError, t
 from app.models.social import DebtRecord, SplitBill
 
 
@@ -21,12 +22,13 @@ class SocialService:
         await db.refresh(record)
         return record
 
-    async def split_bill(self, db: AsyncSession, user_id: UUID, total: Decimal, person_count: int) -> SplitBill:
+    async def split_bill(
+        self, db: AsyncSession, user_id: UUID, total: Decimal, person_count: int, locale: str = "tr",
+    ) -> SplitBill:
         per_person = (total / person_count).quantize(Decimal("0.01"))
-        message = (
-            f"Merhaba! Hesap toplamı {total} TL, {person_count} kişi arasında bölündü.\n"
-            f"Kişi başı: {per_person} TL\n"
-            f"— TalkCash ile paylaşıldı"
+        message = t(
+            "social.split_message", locale,
+            total=total, count=person_count, per_person=per_person,
         )
         bill = SplitBill(
             user_id=user_id, total_amount=total,
@@ -47,7 +49,7 @@ class SocialService:
     async def settle_debt(self, db: AsyncSession, user_id: UUID, debt_id: UUID) -> DebtRecord:
         record = await db.get(DebtRecord, debt_id)
         if not record or record.user_id != user_id:
-            raise ValueError("Borç kaydı bulunamadı")
+            raise I18nError("debt.not_found")
         record.is_settled = True
         await db.commit()
         return record

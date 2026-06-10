@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_locale
+from app.i18n import resolve_error
 from app.models.user import User
 from app.schemas.budget import BudgetCreate, BudgetResponse, BudgetUpdate
 from app.services.budget.service import BudgetService
@@ -34,8 +35,8 @@ async def update_budget(
     try:
         budget = await budget_service.update(db, budget_id, user.id, data.monthly_limit)
         return BudgetResponse.model_validate(budget)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
 
 
 @router.delete("/{budget_id}")
@@ -43,5 +44,5 @@ async def delete_budget(budget_id: UUID, user: User = Depends(get_current_user),
     try:
         await budget_service.delete(db, budget_id, user.id)
         return {"status": "deleted"}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))

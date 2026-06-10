@@ -6,6 +6,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import and_, extract, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import I18nError
 from app.models.agenda import AgendaItem, AgendaStatus
 from app.services.wallet.service import WalletService
 
@@ -21,7 +22,7 @@ class AgendaService:
         if not force:
             duplicate = await self._check_duplicate(db, user_id, title)
             if duplicate:
-                raise ValueError(f"Bu ayki {title} zaten eklendi. Emin misiniz?")
+                raise I18nError("agenda.duplicate_bill", title=title)
 
         item = AgendaItem(
             user_id=user_id, title=title, amount=amount,
@@ -70,7 +71,7 @@ class AgendaService:
         )
         item = result.scalars().first()
         if not item:
-            raise ValueError(f"'{title}' için bekleyen borç bulunamadı")
+            raise I18nError("agenda.not_found_title", title=title)
 
         item.status = AgendaStatus.PAID
         if wallet_id:

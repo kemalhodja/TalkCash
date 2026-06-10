@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 
 interface Props {
   value: string;
@@ -10,12 +11,11 @@ interface Props {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
 
 export function NumericKeypad({ value, onChange, onSubmit }: Props) {
+  const { t } = useI18n();
+
   const handleKey = (key: string) => {
-    if (key === "⌫") {
-      onChange(value.slice(0, -1));
-    } else {
-      onChange(value + key);
-    }
+    if (key === "⌫") onChange(value.slice(0, -1));
+    else onChange(value + key);
   };
 
   return (
@@ -29,7 +29,7 @@ export function NumericKeypad({ value, onChange, onSubmit }: Props) {
         ))}
       </View>
       <TouchableOpacity style={styles.submitBtn} onPress={onSubmit}>
-        <Text style={styles.submitText}>Kaydet</Text>
+        <Text style={styles.submitText}>{t.common.save}</Text>
       </TouchableOpacity>
     </View>
   );

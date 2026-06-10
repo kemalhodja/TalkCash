@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import I18nError
 from app.models.social import SharedWallet
 
 
@@ -57,7 +58,7 @@ class SharedWalletService:
     async def add_expense(self, db: AsyncSession, wallet_id: UUID, amount: Decimal, description: str, user_name: str) -> SharedWallet:
         wallet = await db.get(SharedWallet, wallet_id)
         if not wallet:
-            raise ValueError("Ortak kasa bulunamadı")
+            raise I18nError("social.wallet_not_found")
         wallet.balance -= amount
         await db.commit()
         msg = {

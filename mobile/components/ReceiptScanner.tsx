@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function ReceiptScanner({ onResult, onClose }: Props) {
+  const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
@@ -18,9 +20,9 @@ export function ReceiptScanner({ onResult, onClose }: Props) {
   if (!permission?.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.text}>Kamera izni gerekli</Text>
+        <Text style={styles.text}>{t.scanner.cameraPermission}</Text>
         <TouchableOpacity style={styles.btn} onPress={requestPermission}>
-          <Text style={styles.btnText}>İzin Ver</Text>
+          <Text style={styles.btnText}>{t.scanner.grantPermission}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -37,7 +39,7 @@ export function ReceiptScanner({ onResult, onClose }: Props) {
         onResult(result);
       }
     } catch (e: any) {
-      setError(e.message || "Fiş taranamadı");
+      setError(e.message || t.scanner.scanFailed);
     } finally {
       setScanning(false);
     }
@@ -48,7 +50,7 @@ export function ReceiptScanner({ onResult, onClose }: Props) {
       <CameraView ref={cameraRef} style={styles.camera} facing="back" />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={styles.controls}>
-        <TouchableOpacity onPress={onClose}><Text style={styles.btnText}>Kapat</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onClose}><Text style={styles.btnText}>{t.common.close}</Text></TouchableOpacity>
         <TouchableOpacity style={styles.captureBtn} onPress={takePhoto} disabled={scanning}>
           {scanning ? <ActivityIndicator color={Colors.bg} /> : <Text style={styles.captureText}>📷</Text>}
         </TouchableOpacity>

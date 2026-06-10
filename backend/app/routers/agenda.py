@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_locale
+from app.i18n import resolve_error
 from app.models.user import User
 from app.services.agenda.service import AgendaService
 
@@ -36,8 +37,8 @@ async def add_bill(
     try:
         item = await agenda_service.add_bill(db, user.id, title, Decimal(str(amount)), due_date, is_recurring, force=force)
         return {"id": str(item.id), "title": item.title}
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=409, detail=resolve_error(e, user_locale(user)))
 
 
 @router.post("/installments")
@@ -57,5 +58,5 @@ async def mark_paid(
     try:
         item = await agenda_service.mark_paid(db, user.id, title, wallet_id)
         return {"id": str(item.id), "status": item.status.value}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))

@@ -12,7 +12,7 @@ export default function RootLayout() {
     auth.getUser().then((user) => {
       if (!user) {
         router.replace("/login");
-      } else if (!user.hasPin) {
+      } else if (!auth.isUnlocked()) {
         router.replace("/lock");
       }
       setReady(true);

@@ -52,6 +52,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://talkcash:talkcash@db:5432/talkcash
       REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      SCHEDULER_ENABLED: "true"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       S3_ENABLED: "true"
       S3_ENDPOINT: http://minio:9000

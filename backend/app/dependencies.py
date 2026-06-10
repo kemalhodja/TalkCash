@@ -17,8 +17,12 @@ async def get_current_user(
 ) -> User:
     user_id = decode_token(credentials.credentials)
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="auth.invalid_token")
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Kullanıcı bulunamadı")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="auth.user_not_found")
     return user
+
+
+def user_locale(user: User) -> str:
+    return user.locale if user.locale in ("tr", "en") else "tr"

@@ -23,7 +23,8 @@ async def test_register_and_login(client: AsyncClient):
     reg = await client.post("/api/v1/auth/register", json={
         "email": email, "password": "securepass", "full_name": "E2E User",
     })
-    if reg.status_code == 400 and "kayıtlı" in reg.json().get("detail", ""):
+    detail = reg.json().get("detail", "").lower()
+    if reg.status_code == 400 and ("kayıtlı" in detail or "registered" in detail):
         login = await client.post("/api/v1/auth/login", json={"email": email, "password": "securepass"})
         assert login.status_code == 200
     else:

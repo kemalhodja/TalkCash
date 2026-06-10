@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import I18nError
 from app.models.shopping import ShoppingCategory, ShoppingItem
 from app.services.wallet.service import WalletService
 
@@ -56,7 +57,7 @@ class ShoppingService:
     ) -> ShoppingItem:
         item = await db.get(ShoppingItem, item_id)
         if not item:
-            raise ValueError("Ürün bulunamadı")
+            raise I18nError("shopping.item_not_found")
 
         item.is_completed = True
         item.completed_at = datetime.utcnow()

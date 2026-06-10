@@ -5,6 +5,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.i18n import t
 from app.models.agenda import AgendaItem, AgendaStatus
 from app.models.notification import Notification
 from app.models.user import User
@@ -48,15 +49,16 @@ class NotificationService:
         )
         sent = 0
         for item, user in result.all():
+            locale = user.locale or "tr"
             due = item.due_date.replace(tzinfo=None) if item.due_date.tzinfo else item.due_date
             title, body = None, None
 
             if tomorrow.replace(hour=0) <= due < tomorrow.replace(hour=23, minute=59):
-                title = f"Yarın: {item.title}"
-                body = f"{item.amount} TL ödeme yarın son gün!"
+                title = t("notif.agenda_tomorrow_title", locale, title=item.title)
+                body = t("notif.agenda_tomorrow_body", locale, amount=item.amount)
             elif today_start <= due < today_end:
-                title = f"Bugün: {item.title}"
-                body = f"{item.amount} TL ödeme bugün son gün!"
+                title = t("notif.agenda_today_title", locale, title=item.title)
+                body = t("notif.agenda_today_body", locale, amount=item.amount)
 
             if title and body:
                 await self.create_in_app(db, user.id, title, body, "agenda_reminder")

@@ -5,6 +5,13 @@ _LOCALES: dict[str, dict[str, str]] = {}
 _LOCALE_DIR = Path(__file__).parent / "locales"
 
 
+class I18nError(ValueError):
+    def __init__(self, key: str, **kwargs):
+        self.key = key
+        self.kwargs = kwargs
+        super().__init__(key)
+
+
 def _load_locale(lang: str) -> dict[str, str]:
     if lang not in _LOCALES:
         path = _LOCALE_DIR / f"{lang}.json"
@@ -25,9 +32,6 @@ def t(key: str, lang: str = "tr", **kwargs) -> str:
     return text
 
 
-SUPPORTED_LOCALES = ["tr", "en"]
-
-
 def locale_from_request(request) -> str:
     lang = request.headers.get("Accept-Language", "tr")[:2]
     return lang if lang in SUPPORTED_LOCALES else "tr"
@@ -40,3 +44,12 @@ def maybe_translate(text: str, lang: str) -> str:
     if text in messages:
         return messages[text]
     return text
+
+
+def resolve_error(exc: Exception, lang: str) -> str:
+    if isinstance(exc, I18nError):
+        return t(exc.key, lang, **exc.kwargs)
+    return maybe_translate(str(exc), lang)
+
+
+SUPPORTED_LOCALES = ["tr", "en"]
