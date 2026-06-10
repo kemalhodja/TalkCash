@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import agenda, ai, auth, execute, export, input, notifications, ocr, shopping, social, wallets, ws
+from app.routers import agenda, ai, auth, budgets, execute, export, input, notifications, ocr, shopping, social, transactions, wallets, ws
 from app.tasks.scheduler import start_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +44,8 @@ app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
 app.include_router(social.router, prefix="/api/v1")
 app.include_router(execute.router, prefix="/api/v1")
+app.include_router(budgets.router, prefix="/api/v1")
+app.include_router(transactions.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(export.router, prefix="/api/v1")
 app.include_router(ws.router, prefix="/api/v1")

@@ -60,11 +60,14 @@ class SharedWalletService:
             raise ValueError("Ortak kasa bulunamadı")
         wallet.balance -= amount
         await db.commit()
-        await wallet_manager.broadcast(str(wallet_id), {
+        msg = {
             "type": "expense",
             "amount": float(amount),
             "description": description,
             "by": user_name,
             "balance": float(wallet.balance),
-        })
+        }
+        await wallet_manager.broadcast(str(wallet_id), msg)
+        from app.utils.redis_client import publish
+        await publish(f"shared_wallet:{wallet_id}", msg)
         return wallet

@@ -29,7 +29,7 @@ export default function LoginScreen() {
         hasPin: result.has_pin,
       };
       await auth.save(user);
-      router.replace("/(tabs)");
+      router.replace(result.has_pin ? "/(tabs)" : "/lock");
     } catch (e: any) {
       setError(e.message || "Giriş başarısız");
     } finally {

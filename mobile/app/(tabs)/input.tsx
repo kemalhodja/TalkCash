@@ -6,7 +6,6 @@ import { ReceiptScanner } from "@/components/ReceiptScanner";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Colors, Spacing } from "@/constants/theme";
 import { api } from "@/services/api";
-import { auth } from "@/services/auth";
 
 export default function InputScreen() {
   const [text, setText] = useState("");
@@ -18,11 +17,13 @@ export default function InputScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [whisperMode, setWhisperMode] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [error, setError] = useState("");
 
   const showConfirmation = (message: string, parsed: any) => {
     setConfirmMessage(message);
     setParsedData(parsed);
     setConfirmVisible(true);
+    setError("");
   };
 
   const handleTextSubmit = async () => {
@@ -30,26 +31,22 @@ export default function InputScreen() {
     try {
       const result = await api.parseText(text, whisperMode);
       showConfirmation(result.message, result.parsed);
-    } catch {
-      showConfirmation(`"${text}" kaydedilsin mi?`, { intent: "add_expense", raw_text: text });
+    } catch (e: any) {
+      setError(e.message || "Parse hatası");
     }
   };
 
   const handleVoiceResult = (voiceText: string, result?: any) => {
-    if (result?.message) {
-      showConfirmation(result.message, result.parsed);
-    } else {
-      showConfirmation(`${voiceText} kaydedilsin mi?`, { intent: "add_expense", raw_text: voiceText });
-    }
+    if (result?.message) showConfirmation(result.message, result.parsed);
+    else showConfirmation(`${voiceText} kaydedilsin mi?`, { intent: "add_expense", raw_text: voiceText });
   };
 
   const handleConfirm = async () => {
     setConfirmVisible(false);
-    const user = await auth.getUser();
-    if (user && parsedData) {
-      try { await api.executeAction(user.userId, parsedData, true); } catch { /* */ }
+    if (parsedData) {
+      try { await api.executeAction(parsedData, true); setText(""); }
+      catch (e: any) { setError(e.message); }
     }
-    setText("");
     setParsedData(null);
   };
 
@@ -70,7 +67,7 @@ export default function InputScreen() {
           <Text style={styles.modeText}>Normal</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.modeBtn, whisperMode && styles.modeActive]} onPress={() => setWhisperMode(true)}>
-          <Text style={styles.modeText}>Fısıltı Modu</Text>
+          <Text style={styles.modeText}>Fısıltı</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.scanBtn} onPress={() => setShowScanner(true)}>
           <Text style={styles.modeText}>📷 Fiş</Text>
@@ -78,12 +75,13 @@ export default function InputScreen() {
       </View>
 
       <VoiceInput onResult={handleVoiceResult} whisperMode={whisperMode} />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.divider}>
         <View style={styles.line} /><Text style={styles.dividerText}>veya yazın</Text><View style={styles.line} />
       </View>
 
-      <TextInput style={styles.input} placeholder="/150 kahve banka veya doğal dil..."
+      <TextInput style={styles.input} placeholder="/150 kahve banka"
         placeholderTextColor={Colors.textMuted} value={text} onChangeText={handleTextChange}
         onSubmitEditing={handleTextSubmit} returnKeyType="done" />
 
@@ -98,13 +96,11 @@ export default function InputScreen() {
       )}
 
       <TouchableOpacity style={styles.keypadToggle} onPress={() => setShowKeypad(!showKeypad)}>
-        <Text style={styles.keypadToggleText}>{showKeypad ? "Klavyeyi Gizle" : "Sayısal Klavye"}</Text>
+        <Text style={styles.keypadToggleText}>{showKeypad ? "Gizle" : "Sayısal Klavye"}</Text>
       </TouchableOpacity>
 
-      {showKeypad && (
-        <NumericKeypad value={keypadValue} onChange={setKeypadValue}
-          onSubmit={() => { setText(keypadValue); setShowKeypad(false); }} />
-      )}
+      {showKeypad && <NumericKeypad value={keypadValue} onChange={setKeypadValue}
+        onSubmit={() => { setText(keypadValue); setShowKeypad(false); }} />}
 
       <TouchableOpacity style={styles.submitBtn} onPress={handleTextSubmit}>
         <Text style={styles.submitText}>Gönder</Text>
@@ -119,7 +115,7 @@ export default function InputScreen() {
             setShowScanner(false);
             showConfirmation(
               `${data.total_amount || "?"} TL - ${data.merchant || "Fiş"} kaydedilsin mi?`,
-              { intent: "add_expense", amount: data.total_amount, description: data.merchant },
+              { intent: "add_expense", amount: data.total_amount, description: data.merchant, receipt_id: data.receipt_id },
             );
           }}
           onClose={() => setShowScanner(false)}
@@ -139,10 +135,7 @@ const styles = StyleSheet.create({
   divider: { flexDirection: "row", alignItems: "center", marginVertical: Spacing.md },
   line: { flex: 1, height: 1, backgroundColor: Colors.border },
   dividerText: { color: Colors.textMuted, marginHorizontal: Spacing.sm, fontSize: 13 },
-  input: {
-    backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md,
-    color: Colors.text, fontSize: 16, borderWidth: 1, borderColor: Colors.border,
-  },
+  input: { backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md, color: Colors.text, fontSize: 16, borderWidth: 1, borderColor: Colors.border },
   suggestions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.sm },
   chip: { backgroundColor: Colors.card, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
   chipText: { color: Colors.accent, fontSize: 13 },
@@ -150,4 +143,5 @@ const styles = StyleSheet.create({
   keypadToggleText: { color: Colors.accent, fontSize: 14 },
   submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 12, alignItems: "center", marginTop: Spacing.md },
   submitText: { color: Colors.bg, fontWeight: "700", fontSize: 16 },
+  error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
 });

@@ -89,7 +89,8 @@ class WalletService:
 
     async def add_expense(
         self, db: AsyncSession, user_id: UUID, wallet_id: UUID,
-        amount: Decimal, category: str, description: str = "", place: str = "", input_method: str = "voice",
+        amount: Decimal, category: str, description: str = "", place: str = "",
+        input_method: str = "voice", receipt_id: UUID | None = None,
     ) -> Transaction:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
@@ -99,6 +100,7 @@ class WalletService:
             user_id=user_id, wallet_id=wallet_id,
             transaction_type=TransactionType.EXPENSE, amount=amount,
             category=category, description=description, place=place, input_method=input_method,
+            receipt_id=receipt_id,
         )
         db.add(tx)
         await db.commit()

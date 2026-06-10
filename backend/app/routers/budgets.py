@@ -1,0 +1,47 @@
+from decimal import Decimal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models.user import User
+from app.schemas.budget import BudgetCreate, BudgetResponse, BudgetUpdate
+from app.services.budget.service import BudgetService
+
+router = APIRouter(prefix="/budgets", tags=["Budgets"])
+budget_service = BudgetService()
+
+
+@router.get("/", response_model=list[BudgetResponse])
+async def list_budgets(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    budgets = await budget_service.list_budgets(db, user.id)
+    return [BudgetResponse.model_validate(b) for b in budgets]
+
+
+@router.post("/", response_model=BudgetResponse)
+async def create_budget(data: BudgetCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    budget = await budget_service.create(db, user.id, data.category, data.monthly_limit)
+    return BudgetResponse.model_validate(budget)
+
+
+@router.put("/{budget_id}", response_model=BudgetResponse)
+async def update_budget(
+    budget_id: UUID, data: BudgetUpdate,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        budget = await budget_service.update(db, budget_id, user.id, data.monthly_limit)
+        return BudgetResponse.model_validate(budget)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{budget_id}")
+async def delete_budget(budget_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        await budget_service.delete(db, budget_id, user.id)
+        return {"status": "deleted"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

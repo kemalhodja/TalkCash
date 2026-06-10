@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.social import DebtRecord, SplitBill
@@ -36,3 +37,17 @@ class SocialService:
         await db.commit()
         await db.refresh(bill)
         return bill
+
+    async def list_debts(self, db: AsyncSession, user_id: UUID) -> list[DebtRecord]:
+        result = await db.execute(
+            select(DebtRecord).where(DebtRecord.user_id == user_id, DebtRecord.is_settled == False)
+        )
+        return list(result.scalars().all())
+
+    async def settle_debt(self, db: AsyncSession, user_id: UUID, debt_id: UUID) -> DebtRecord:
+        record = await db.get(DebtRecord, debt_id)
+        if not record or record.user_id != user_id:
+            raise ValueError("Borç kaydı bulunamadı")
+        record.is_settled = True
+        await db.commit()
+        return record

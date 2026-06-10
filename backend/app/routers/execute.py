@@ -1,9 +1,12 @@
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies import get_current_user
+from app.models.user import User
 from app.schemas.common import ParsedInput
 from app.schemas.execute import ExecuteRequest
 from app.services.agenda.service import AgendaService
@@ -21,13 +24,13 @@ social_service = SocialService()
 @router.post("/confirm")
 async def execute_confirmed_action(
     body: ExecuteRequest,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if not body.action.confirmed:
         return {"status": "cancelled"}
-
     try:
-        result = await _dispatch(body.user_id, body.parsed, db)
+        result = await _dispatch(user.id, body.parsed, db)
         return {"status": "success", "result": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -37,16 +40,21 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession) -> dic
     intent = parsed.intent
 
     if intent == "add_expense":
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
         wallet = await wallet_service.find_by_name(db, user_id, parsed.wallet_name or "Nakit")
         if not wallet:
             raise ValueError("Kasa bulunamadı")
+        receipt_uuid = UUID(parsed.receipt_id) if parsed.receipt_id else None
         tx = await wallet_service.add_expense(
             db, user_id, wallet.id, parsed.amount, parsed.category or "Genel",
-            parsed.description or "", parsed.place or "",
+            parsed.description or "", parsed.place or "", receipt_id=receipt_uuid,
         )
         return {"transaction_id": str(tx.id), "amount": float(tx.amount)}
 
     if intent == "add_income":
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
         wallet = await wallet_service.find_by_name(db, user_id, parsed.wallet_name or "Banka")
         if not wallet:
             raise ValueError("Kasa bulunamadı")
@@ -54,6 +62,8 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession) -> dic
         return {"wallet": wallet.name, "balance": float(w.balance)}
 
     if intent == "transfer":
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
         from_w = await wallet_service.find_by_name(db, user_id, parsed.wallet_name or "Banka")
         to_w = await wallet_service.find_by_name(db, user_id, parsed.target_wallet_name or "Nakit")
         if not from_w or not to_w:
@@ -62,14 +72,33 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession) -> dic
         return {"from": from_w.name, "to": to_w.name, "amount": float(parsed.amount)}
 
     if intent == "add_shopping":
-        items = await shopping_service.add_items(db, user_id, parsed.items or [parsed.description])
-        return {"added": [i.name for i in items]}
+        items = parsed.items or ([parsed.description] if parsed.description else [])
+        if not items:
+            raise ValueError("Ürün belirlenemedi")
+        created = await shopping_service.add_items(db, user_id, items)
+        return {"added": [i.name for i in created]}
 
     if intent == "mark_paid":
-        item = await agenda_service.mark_paid(db, user_id, parsed.description or "")
+        wallet_id = None
+        if parsed.wallet_name:
+            w = await wallet_service.find_by_name(db, user_id, parsed.wallet_name)
+            wallet_id = w.id if w else None
+        item = await agenda_service.mark_paid(db, user_id, parsed.description or "", wallet_id)
         return {"title": item.title, "status": item.status.value}
 
+    if intent == "add_bill":
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
+        due = parsed.date or (datetime.utcnow() + timedelta(days=7))
+        item = await agenda_service.add_bill(
+            db, user_id, parsed.description or parsed.category or "Fatura",
+            parsed.amount, due, force=parsed.force,
+        )
+        return {"id": str(item.id), "title": item.title}
+
     if intent == "add_installment":
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
         items = await agenda_service.create_installments(
             db, user_id, parsed.description or "Taksit",
             parsed.amount, parsed.installment_count or 6,
@@ -77,11 +106,17 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession) -> dic
         return {"installments": len(items), "per_month": float(items[0].amount)}
 
     if intent == "add_debt":
-        record = await social_service.add_debt(db, user_id, parsed.person_name or "?", parsed.amount)
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
+        is_lent = "aldım" not in (parsed.raw_text or "").lower()
+        record = await social_service.add_debt(db, user_id, parsed.person_name or "?", parsed.amount, is_lent)
         return {"person": record.person_name, "amount": float(record.amount)}
 
     if intent == "split_bill":
-        bill = await social_service.split_bill(db, user_id, parsed.amount, 3)
+        if not parsed.amount:
+            raise ValueError("Tutar belirlenemedi")
+        count = parsed.person_count or 2
+        bill = await social_service.split_bill(db, user_id, parsed.amount, count)
         return {"per_person": float(bill.per_person), "message": bill.share_message}
 
     raise ValueError(f"Desteklenmeyen intent: {intent}")

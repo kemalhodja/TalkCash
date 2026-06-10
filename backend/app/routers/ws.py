@@ -1,18 +1,22 @@
-import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.database import async_session
 from app.services.social.shared_wallet_service import SharedWalletService, wallet_manager
+from app.utils.security import decode_token
 
 router = APIRouter(tags=["WebSocket"])
 shared_service = SharedWalletService()
 
 
 @router.websocket("/ws/shared-wallet/{wallet_id}")
-async def shared_wallet_ws(websocket: WebSocket, wallet_id: str):
+async def shared_wallet_ws(websocket: WebSocket, wallet_id: str, token: str = Query(...)):
+    user_id = decode_token(token)
+    if not user_id:
+        await websocket.close(code=4001)
+        return
+
     await websocket.accept()
     await wallet_manager.connect(wallet_id, websocket)
     try:

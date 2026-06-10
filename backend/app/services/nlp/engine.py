@@ -1,5 +1,7 @@
 import json
+import re
 from datetime import datetime
+from decimal import Decimal
 
 from openai import AsyncOpenAI
 
@@ -90,6 +92,11 @@ class NLPEngine:
                 raw_text=text,
             )
 
+        person_count = None
+        count_match = re.search(r"(\d+)\s*kişi", text.lower())
+        if count_match:
+            person_count = int(count_match.group(1))
+
         return ParsedInput(
             intent=intent,
             amount=parse_turkish_amount(text),
@@ -97,6 +104,7 @@ class NLPEngine:
             wallet_name=extract_wallet_name(text),
             items=extract_shopping_items(text),
             description=text,
+            person_count=person_count,
             raw_text=text,
         )
 
@@ -114,4 +122,6 @@ class NLPEngine:
             return f"{parsed.description} ödendi olarak işaretlensin mi?"
         if parsed.intent == "split_bill":
             return f"{parsed.amount} {parsed.currency} tutarı bölünsün mü?"
+        if parsed.intent == "add_bill":
+            return f"{parsed.amount} {parsed.currency} - {parsed.description or 'Fatura'} ajandaya eklensin mi?"
         return f"İşlem onaylansın mı: {parsed.description or parsed.raw_text}?"

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
 import { Colors, Spacing } from "@/constants/theme";
 import { api } from "@/services/api";
-import { auth } from "@/services/auth";
 
 const CATEGORY_LABELS: Record<string, string> = {
   sarkuteri: "🥩 Şarküteri", manav: "🥬 Manav", sut_urunleri: "🥛 Süt Ürünleri",
@@ -13,33 +12,53 @@ const CATEGORY_LABELS: Record<string, string> = {
 export default function ShoppingScreen() {
   const [grouped, setGrouped] = useState<Record<string, any[]>>({});
   const [buyModal, setBuyModal] = useState<{ id: string; name: string } | null>(null);
+  const [newItem, setNewItem] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadList = async () => {
+    try {
+      setError("");
+      setGrouped(await api.getShoppingList());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => { loadList(); }, []);
 
-  const loadList = async () => {
-    const user = await auth.getUser();
-    if (!user) return;
-    try {
-      setGrouped(await api.getShoppingList(user.userId));
-    } catch {
-      setGrouped({
-        firin: [{ id: "1", name: "Ekmek", is_routine: true }],
-        sut_urunleri: [{ id: "2", name: "Süt" }, { id: "3", name: "Yumurta" }],
-      });
-    }
+  const handleAdd = async () => {
+    if (!newItem.trim()) return;
+    await api.addShoppingItems([newItem.trim()]);
+    setNewItem("");
+    loadList();
   };
+
+  if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Alışveriş Listesi</Text>
-      <Text style={styles.subtitle}>Gece yarısı tamamlananlar temizlenir, rutinler kalır</Text>
+
+      <View style={styles.addRow}>
+        <TextInput style={styles.input} placeholder="Ürün ekle..." placeholderTextColor={Colors.textMuted}
+          value={newItem} onChangeText={setNewItem} onSubmitEditing={handleAdd} />
+        <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
+          <Text style={styles.addBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {Object.entries(grouped).map(([category, items]) => (
         <View key={category} style={styles.category}>
           <Text style={styles.categoryTitle}>{CATEGORY_LABELS[category] || category}</Text>
           {items.map((item) => (
             <TouchableOpacity key={item.id} style={styles.item}
-              onPress={() => setBuyModal({ id: item.id, name: item.name })}>
+              onPress={() => setBuyModal({ id: item.id, name: item.name })}
+              onLongPress={async () => { await api.setRoutine(item.id, !item.is_routine); loadList(); }}>
               <View style={styles.checkbox} />
               <Text style={styles.itemName}>
                 {item.name}{item.is_routine && <Text style={styles.routine}> 🔄</Text>}
@@ -49,18 +68,13 @@ export default function ShoppingScreen() {
         </View>
       ))}
 
-      {Object.keys(grouped).length === 0 && (
+      {Object.keys(grouped).length === 0 && !error && (
         <Text style={styles.empty}>Liste boş. Sesle veya yazarak ürün ekleyin.</Text>
       )}
 
       {buyModal && (
-        <BuyToSpendModal
-          visible={!!buyModal}
-          itemId={buyModal.id}
-          itemName={buyModal.name}
-          onComplete={() => { setBuyModal(null); loadList(); }}
-          onCancel={() => setBuyModal(null)}
-        />
+        <BuyToSpendModal visible={!!buyModal} itemId={buyModal.id} itemName={buyModal.name}
+          onComplete={() => { setBuyModal(null); loadList(); }} onCancel={() => setBuyModal(null)} />
       )}
     </ScrollView>
   );
@@ -69,17 +83,24 @@ export default function ShoppingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   content: { padding: Spacing.md },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700" },
-  subtitle: { color: Colors.textMuted, fontSize: 13, marginBottom: Spacing.lg },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
+  title: { color: Colors.text, fontSize: 22, fontWeight: "700", marginBottom: Spacing.md },
+  addRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
+  input: {
+    flex: 1, backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    color: Colors.text, borderWidth: 1, borderColor: Colors.border,
+  },
+  addBtn: { backgroundColor: Colors.accent, width: 48, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  addBtnText: { color: Colors.bg, fontSize: 24, fontWeight: "700" },
   category: { marginBottom: Spacing.lg },
   categoryTitle: { color: Colors.textSecondary, fontSize: 15, fontWeight: "600", marginBottom: Spacing.sm },
   item: {
     flexDirection: "row", alignItems: "center", backgroundColor: Colors.card,
-    borderRadius: 10, padding: Spacing.md, marginBottom: 6,
-    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 10, padding: Spacing.md, marginBottom: 6, borderWidth: 1, borderColor: Colors.border,
   },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.accent, marginRight: Spacing.md },
   itemName: { color: Colors.text, fontSize: 16 },
   routine: { fontSize: 12 },
   empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
+  error: { color: Colors.danger, marginBottom: Spacing.md },
 });

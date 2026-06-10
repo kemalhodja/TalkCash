@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
 import { api } from "@/services/api";
@@ -11,35 +11,42 @@ export default function DashboardScreen() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [forecast, setForecast] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [priceReport, setPriceReport] = useState<any>(null);
   const [userName, setUserName] = useState("");
-
-  useEffect(() => {
-    loadData();
-    registerForPushNotifications();
-  }, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const loadData = async () => {
     const user = await auth.getUser();
     if (!user) return;
     setUserName(user.fullName);
     try {
-      const nw = await api.getNetWorth(user.userId);
+      setError("");
+      const nw = await api.getNetWorth();
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
-      setForecast(await api.getForecast(user.userId, nw.total_try));
-      setAlerts(await api.getBudgetAlerts(user.userId));
-    } catch {
-      setWallets([
-        { name: "Nakit", balance: 2500, wallet_type: "cash" },
-        { name: "Banka", balance: 45000, wallet_type: "bank" },
-      ]);
-      setNetWorth(47500);
+      setForecast(await api.getForecast(nw.total_try));
+      setAlerts(await api.getBudgetAlerts());
+      setPriceReport(await api.getPriceTracker("süt"));
+    } catch (e: any) {
+      setError(e.message || "Veriler yüklenemedi");
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => { loadData(); registerForPushNotifications(); }, []);
+
+  if (loading) {
+    return <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>;
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={false} onRefresh={loadData} tintColor={Colors.accent} />}>
       <Text style={styles.greeting}>Merhaba, {userName || "Kullanıcı"}</Text>
+
+      {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
 
       <View style={styles.netWorthCard}>
         <Text style={styles.label}>Net Varlık</Text>
@@ -49,9 +56,7 @@ export default function DashboardScreen() {
       </View>
 
       {forecast?.warning && (
-        <View style={styles.alertCard}>
-          <Text style={styles.alertText}>⚠️ {forecast.message}</Text>
-        </View>
+        <View style={styles.alertCard}><Text style={styles.alertText}>⚠️ {forecast.message}</Text></View>
       )}
 
       {alerts.map((a, i) => (
@@ -60,9 +65,13 @@ export default function DashboardScreen() {
         </View>
       ))}
 
+      {priceReport?.message && !priceReport.message.includes("bulunamadı") && (
+        <View style={styles.alertCard}><Text style={styles.alertText}>📊 {priceReport.message}</Text></View>
+      )}
+
       <Text style={styles.sectionTitle}>Kasalarım</Text>
-      {wallets.map((w, i) => (
-        <WalletCard key={i} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
+      {wallets.map((w) => (
+        <WalletCard key={w.id} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
       ))}
     </ScrollView>
   );
@@ -71,20 +80,21 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   content: { padding: Spacing.md },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
   greeting: { color: Colors.textSecondary, fontSize: 16, marginBottom: Spacing.sm },
   netWorthCard: {
     backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg,
-    alignItems: "center", marginBottom: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.border,
+    alignItems: "center", marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.border,
   },
   label: { color: Colors.textSecondary, fontSize: 14 },
   netWorth: { color: Colors.accent, fontSize: 36, fontWeight: "800", marginTop: 4 },
   sectionTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
   alertCard: {
-    backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10,
-    padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: "rgba(245,158,11,0.3)",
+    backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10, padding: Spacing.md,
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "rgba(245,158,11,0.3)",
   },
   alertDanger: { backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" },
   alertText: { color: Colors.warning, fontSize: 14 },
+  errorCard: { backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.md },
+  errorText: { color: Colors.danger, textAlign: "center" },
 });

@@ -26,6 +26,9 @@ class ParsedInput(BaseModel):
     items: list[str] = []
     person_name: str | None = None
     installment_count: int | None = None
+    person_count: int | None = None
+    receipt_id: str | None = None
+    force: bool = False
     raw_text: str = ""
     confidence: float = 1.0
 

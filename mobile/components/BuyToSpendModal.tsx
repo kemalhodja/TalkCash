@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
 import { api } from "@/services/api";
-import { auth } from "@/services/auth";
 
 interface Props {
   visible: boolean;
@@ -16,29 +15,26 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
   const [price, setPrice] = useState("");
   const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (visible) {
-      auth.getUser().then(async (user) => {
-        if (user) {
-          try {
-            const w = await api.getWallets(user.userId);
-            setWallets(w);
-            if (w.length) setSelectedWallet(w[0].id);
-          } catch { /* demo */ }
-        }
-      });
+      api.getWallets().then((w) => {
+        setWallets(w);
+        if (w.length) setSelectedWallet(w[0].id);
+      }).catch((e) => setError(e.message));
     }
   }, [visible]);
 
   const handleConfirm = async () => {
-    const user = await auth.getUser();
-    if (!user || !price) return;
+    if (!price) { setError("Fiyat girin"); return; }
     try {
-      await api.completeShoppingItem(user.userId, itemId, parseFloat(price), selectedWallet || undefined);
-    } catch { /* demo */ }
-    setPrice("");
-    onComplete();
+      await api.completeShoppingItem(itemId, parseFloat(price), selectedWallet || undefined);
+      setPrice("");
+      onComplete();
+    } catch (e: any) {
+      setError(e.message);
+    }
   };
 
   return (
@@ -47,28 +43,18 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
         <View style={styles.card}>
           <Text style={styles.title}>{itemName} alındı</Text>
           <Text style={styles.subtitle}>Fiyatı ne kadar? Kasadan düşelim mi?</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Fiyat (TL)"
-            placeholderTextColor={Colors.textMuted}
-            keyboardType="decimal-pad"
-            value={price}
-            onChangeText={setPrice}
-          />
-
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <TextInput style={styles.input} placeholder="Fiyat (TL)" placeholderTextColor={Colors.textMuted}
+            keyboardType="decimal-pad" value={price} onChangeText={setPrice} />
           <View style={styles.walletList}>
             {wallets.map((w) => (
-              <TouchableOpacity
-                key={w.id}
+              <TouchableOpacity key={w.id}
                 style={[styles.walletChip, selectedWallet === w.id && styles.walletActive]}
-                onPress={() => setSelectedWallet(w.id)}
-              >
+                onPress={() => setSelectedWallet(w.id)}>
                 <Text style={styles.walletText}>{w.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
-
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
               <Text style={styles.cancelText}>İptal</Text>
@@ -88,10 +74,8 @@ const styles = StyleSheet.create({
   card: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: Spacing.lg },
   title: { color: Colors.text, fontSize: 18, fontWeight: "700" },
   subtitle: { color: Colors.textSecondary, marginTop: 4, marginBottom: Spacing.md },
-  input: {
-    backgroundColor: Colors.bg, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, fontSize: 18, borderWidth: 1, borderColor: Colors.border,
-  },
+  error: { color: Colors.danger, marginBottom: Spacing.sm },
+  input: { backgroundColor: Colors.bg, borderRadius: 10, padding: Spacing.md, color: Colors.text, fontSize: 18, borderWidth: 1, borderColor: Colors.border },
   walletList: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: Spacing.md },
   walletChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
   walletActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },

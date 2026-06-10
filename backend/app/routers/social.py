@@ -15,6 +15,27 @@ social_service = SocialService()
 shared_service = SharedWalletService()
 
 
+@router.get("/debts")
+async def list_debts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    records = await social_service.list_debts(db, user.id)
+    return [
+        {
+            "id": str(r.id), "person": r.person_name, "amount": float(r.amount),
+            "is_lent": r.is_lent, "due_date": r.due_date.isoformat() if r.due_date else None,
+        }
+        for r in records
+    ]
+
+
+@router.post("/debts/{debt_id}/settle")
+async def settle_debt(debt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        record = await social_service.settle_debt(db, user.id, debt_id)
+        return {"id": str(record.id), "settled": True}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.post("/debt")
 async def add_debt(
     person_name: str, amount: float, is_lent: bool = True,
