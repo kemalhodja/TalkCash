@@ -21,7 +21,7 @@ class AuthService:
         user = User(email=email, hashed_password=hash_password(password), full_name=full_name)
         db.add(user)
         await db.flush()
-        await self.wallet_service.create_defaults(db, user.id)
+        await self.wallet_service.create_defaults(db, user.id, commit=False)
         await db.commit()
         await db.refresh(user)
         return user, create_access_token(user.id)

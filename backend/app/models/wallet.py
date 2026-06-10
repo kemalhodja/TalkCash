@@ -32,4 +32,8 @@ class Wallet(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="wallets")
-    transactions = relationship("Transaction", back_populates="wallet")
+    transactions = relationship(
+        "Transaction",
+        back_populates="wallet",
+        foreign_keys="Transaction.wallet_id",
+    )

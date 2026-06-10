@@ -23,12 +23,12 @@ async def test_register_and_login(client: AsyncClient):
     reg = await client.post("/api/v1/auth/register", json={
         "email": email, "password": "securepass", "full_name": "E2E User",
     })
-    detail = reg.json().get("detail", "").lower()
-    if reg.status_code == 400 and ("kayıtlı" in detail or "registered" in detail):
+    detail = str(reg.json().get("detail", "")).lower()
+    if reg.status_code == 400 and any(k in detail for k in ("kayıtlı", "registered", "zaten", "already")):
         login = await client.post("/api/v1/auth/login", json={"email": email, "password": "securepass"})
         assert login.status_code == 200
     else:
-        assert reg.status_code == 200
+        assert reg.status_code == 200, reg.text
         assert "access_token" in reg.json()
 
 

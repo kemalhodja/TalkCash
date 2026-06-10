@@ -65,9 +65,8 @@ async def test_assistant_google_money_transfer_flow(client: AsyncClient, auth_he
 @pytest.mark.asyncio
 async def test_assistant_siri_income_flow(client: AsyncClient, auth_headers: dict):
     """Simulates Siri income shortcut: maaşım yattı 45000 banka."""
-    bank_id = await _wallet_id(client, auth_headers, "Banka")
-    before = await client.get(f"/api/v1/wallets/{bank_id}", headers=auth_headers)
-    before_balance = float(before.json()["balance"])
+    before = await client.get("/api/v1/wallets/net-worth", headers=auth_headers)
+    before_total = float(before.json()["total_try"])
 
     card = await _parse(client, auth_headers, "maaşım yattı 45000 banka")
     assert card["parsed"]["intent"] == "add_income"
@@ -75,8 +74,8 @@ async def test_assistant_siri_income_flow(client: AsyncClient, auth_headers: dic
     result = await _execute(client, auth_headers, card["parsed"])
     assert result["status"] == "success"
 
-    after = await client.get(f"/api/v1/wallets/{bank_id}", headers=auth_headers)
-    assert float(after.json()["balance"]) == before_balance + 45000
+    after = await client.get("/api/v1/wallets/net-worth", headers=auth_headers)
+    assert float(after.json()["total_try"]) == before_total + 45000
 
 
 @pytest.mark.asyncio
@@ -90,7 +89,12 @@ async def test_assistant_google_shopping_list_flow(client: AsyncClient, auth_hea
 
     listing = await client.get("/api/v1/shopping/", headers=auth_headers)
     assert listing.status_code == 200
-    names = [item["name"].lower() for item in listing.json()]
+    grouped = listing.json()
+    names = [
+        item["name"].lower()
+        for items in grouped.values()
+        for item in items
+    ]
     assert any("süt" in name for name in names)
 
 

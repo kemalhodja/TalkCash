@@ -44,13 +44,16 @@ class WalletService:
     def __init__(self):
         self.exchange = ExchangeService()
 
-    async def create_defaults(self, db: AsyncSession, user_id: UUID) -> list[Wallet]:
+    async def create_defaults(self, db: AsyncSession, user_id: UUID, *, commit: bool = True) -> list[Wallet]:
         wallets = []
         for name, wtype in DEFAULT_WALLETS:
             wallet = Wallet(user_id=user_id, name=name, wallet_type=wtype)
             db.add(wallet)
             wallets.append(wallet)
-        await db.commit()
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
         return wallets
 
     async def list_wallets(self, db: AsyncSession, user_id: UUID) -> list[WalletResponse]:
