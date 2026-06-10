@@ -20,6 +20,7 @@ export default function AgendaScreen() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
+  const [dueDays, setDueDays] = useState("7");
   const [installmentCount, setInstallmentCount] = useState("6");
   const [duplicateMsg, setDuplicateMsg] = useState("");
   const [pendingBill, setPendingBill] = useState<any>(null);
@@ -37,13 +38,18 @@ export default function AgendaScreen() {
   useRefreshOnFocus(loadAgenda);
 
   const resetForm = () => {
-    setTitle(""); setAmount(""); setInstallmentCount("6"); setIsRecurring(false); setAddMode(null);
+    setTitle(""); setAmount(""); setInstallmentCount("6"); setIsRecurring(false); setDueDays("7"); setAddMode(null);
+  };
+
+  const buildDueDate = () => {
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + (parseInt(dueDays) || 7));
+    return dueDate;
   };
 
   const handleAddBill = async (force = false) => {
     if (!title || !amount) return;
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
+    const dueDate = buildDueDate();
     try {
       await api.addBill(title, parseFloat(amount), dueDate.toISOString(), force, isRecurring);
       await scheduleAgendaReminder(title, parseFloat(amount), dueDate, locale);
@@ -110,6 +116,17 @@ export default function AgendaScreen() {
             value={title} onChangeText={setTitle} />
           <TextInput style={styles.input} placeholder={t.agenda.amount} placeholderTextColor={Colors.textMuted}
             keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+          <Text style={styles.dueLabel}>{t.agenda.dueIn}</Text>
+          <View style={styles.presetRow}>
+            {([["7", t.agenda.duePresets.week], ["14", t.agenda.duePresets.twoWeeks], ["30", t.agenda.duePresets.month]] as const).map(([days, label]) => (
+              <TouchableOpacity key={days} style={[styles.presetChip, dueDays === days && styles.presetActive]}
+                onPress={() => setDueDays(days)}>
+                <Text style={styles.presetText}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput style={styles.input} placeholder={t.agenda.dueIn} placeholderTextColor={Colors.textMuted}
+            keyboardType="number-pad" value={dueDays} onChangeText={setDueDays} />
           <View style={styles.recurringRow}>
             <Text style={styles.recurringLabel}>{t.agenda.recurring}</Text>
             <Switch value={isRecurring} onValueChange={setIsRecurring} trackColor={{ true: Colors.accent }} />
@@ -196,6 +213,11 @@ const styles = StyleSheet.create({
   },
   recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
   recurringLabel: { color: Colors.textSecondary },
+  dueLabel: { color: Colors.textSecondary, marginBottom: Spacing.sm },
+  presetRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm, flexWrap: "wrap" },
+  presetChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
+  presetActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
+  presetText: { color: Colors.textSecondary, fontSize: 13 },
   submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
   submitText: { color: Colors.bg, fontWeight: "700" },
   card: {

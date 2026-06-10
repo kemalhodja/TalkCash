@@ -94,3 +94,31 @@ async def test_split_bill(client: AsyncClient, auth_headers: dict):
     resp = await client.post("/api/v1/social/split?total=300&person_count=3", headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["per_person"] == 100.0
+
+
+@pytest.mark.asyncio
+async def test_geofence_markets(client: AsyncClient, auth_headers: dict):
+    resp = await client.get(
+        "/api/v1/geofence/markets?lat=40.9902&lng=29.0298&radius_km=3",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["count"] >= 1
+    assert "name" in data["markets"][0]
+    assert "distance_km" in data["markets"][0]
+
+
+@pytest.mark.asyncio
+async def test_agenda_bill_and_pay(client: AsyncClient, auth_headers: dict):
+    from datetime import datetime, timedelta
+    due = (datetime.utcnow() + timedelta(days=14)).isoformat()
+    add = await client.post(
+        f"/api/v1/agenda/bill?title=TestNet&amount=99&due_date={due}&is_recurring=false&force=true",
+        headers=auth_headers,
+    )
+    assert add.status_code == 200
+
+    pay = await client.post("/api/v1/agenda/pay?title=TestNet", headers=auth_headers)
+    assert pay.status_code == 200
+    assert pay.json()["status"] == "paid"

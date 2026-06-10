@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
-from app.routers import agenda, ai, auth, budgets, execute, export, input, notifications, ocr, shopping, social, transactions, wallets, ws
+from app.routers import agenda, ai, auth, budgets, execute, export, geofence, input, notifications, ocr, shopping, social, transactions, wallets, ws
 from app.tasks.scheduler import start_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -68,6 +68,7 @@ app.include_router(budgets.router, prefix="/api/v1")
 app.include_router(transactions.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(export.router, prefix="/api/v1")
+app.include_router(geofence.router, prefix="/api/v1")
 app.include_router(ws.router, prefix="/api/v1")
 
 

@@ -114,6 +114,8 @@ export default {
     pickFromGallery: "Pick from Gallery",
     memberEmail: "Member email (optional)",
     receiptLinked: "Receipt attached",
+    dueIn: "Due in (days)",
+    duePresets: { week: "1 week", twoWeeks: "2 weeks", month: "1 month" },
   },
   budget: {
     title: "Budget Limits",

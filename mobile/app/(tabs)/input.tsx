@@ -49,7 +49,9 @@ export default function InputScreen() {
       try {
         await api.executeAction(parsedData, true);
         if (parsedData.receipt_id && parsedData.amount) {
-          const { verified } = await api.verifyReceipt(parsedData.amount, parsedData.amount);
+          const { verified } = await api.verifyReceipt(
+            parsedData.amount, parsedData.amount, parsedData.receipt_id,
+          );
           Alert.alert(
             verified ? t.scanner.verified : t.scanner.mismatch,
             verified ? t.agenda.receiptLinked : undefined,

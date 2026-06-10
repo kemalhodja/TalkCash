@@ -114,6 +114,8 @@ export default {
     pickFromGallery: "Galeriden Seç",
     memberEmail: "Üye e-postası (opsiyonel)",
     receiptLinked: "Fiş eklendi",
+    dueIn: "Vade (gün)",
+    duePresets: { week: "1 hafta", twoWeeks: "2 hafta", month: "1 ay" },
   },
   budget: {
     title: "Bütçe Limitleri",

@@ -108,10 +108,15 @@ export const api = {
     return request<any>("/ocr/scan", { method: "POST", body: form });
   },
   getReceipts: () => request<any[]>("/ocr/"),
-  verifyReceipt: (receiptAmount: number, transactionAmount: number) =>
-    request<{ verified: boolean }>(
-      `/ocr/verify?receipt_amount=${receiptAmount}&transaction_amount=${transactionAmount}`,
-      { method: "POST" },
+  verifyReceipt: (receiptAmount: number, transactionAmount: number, receiptId?: string) => {
+    let url = `/ocr/verify?receipt_amount=${receiptAmount}&transaction_amount=${transactionAmount}`;
+    if (receiptId) url += `&receipt_id=${receiptId}`;
+    return request<{ verified: boolean }>(url, { method: "POST" });
+  },
+
+  getNearbyMarkets: (lat: number, lng: number, radiusKm = 2) =>
+    request<{ markets: { id: string; name: string; chain: string; lat: number; lng: number; distance_km: number }[]; count: number }>(
+      `/geofence/markets?lat=${lat}&lng=${lng}&radius_km=${radiusKm}`,
     ),
 
   // Budgets

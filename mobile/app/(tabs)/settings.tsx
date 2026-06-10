@@ -23,9 +23,16 @@ export default function SettingsScreen() {
   };
 
   const toggleGeofence = async (val: boolean) => {
+    if (val) {
+      const ok = await setupGeofencing();
+      if (!ok) {
+        Alert.alert(t.settings.geofence, t.common.error);
+        return;
+      }
+    } else {
+      await stopGeofencing();
+    }
     setGeofence(val);
-    if (val) await setupGeofencing();
-    else await stopGeofencing();
   };
 
   const handleExport = async (type: "pdf" | "excel") => {
