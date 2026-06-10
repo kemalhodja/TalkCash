@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "TalkCash",
+    "slug": "talkcash",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "talkcash",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0A0E17"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.talkcash.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Sesli komutlar için mikrofon erişimi gerekli.",
+        "NSCameraUsageDescription": "Fiş tarama için kamera erişimi gerekli.",
+        "NSLocationWhenInUseUsageDescription": "Market yakınında hatırlatma için konum erişimi gerekli."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0E17"
+      },
+      "package": "io.talkcash.app",
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-local-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Market yakınında hatırlatma için konum erişimi gerekli."
+        }
+      ]
+    ]
+  }
+}

@@ -1,51 +1,82 @@
 # TalkCash
 
-Blockchain tabanlı sosyal ödeme platformu. Konuşarak para gönder, mesajlaşırken ödeme yap.
+Sesli komut (NLP), akıllı klavye ve yapay zeka destekli ajanda/alışveriş listesi özelliklerini barındıran kişisel finans ve yaşam yönetimi uygulaması.
 
-## Proje Yapısı
+## Mimari
 
 ```
 talkcash/
-├── index.html      # Ana sayfa (landing page)
-├── sale.html       # TALK token ön satış sayfası
-├── css/
-│   └── style.css   # Ortak stiller
-├── js/
-│   └── wallet.js   # MetaMask / Web3 entegrasyonu
-└── README.md
+├── backend/          # FastAPI — API, NLP, OCR, AI analiz
+├── mobile/           # React Native (Expo) — iOS & Android
+└── docker-compose.yml
 ```
 
-## Özellikler
+## Modüller (PRD)
 
-- Modern, responsive landing page
-- BSC üzerinde TALK token ön satışı
-- MetaMask cüzdan entegrasyonu
-- Tokenomics ve yol haritası
+| Modül | Açıklama | Backend | Mobile |
+|-------|----------|---------|--------|
+| 1. Veri Girişi | Sesli komut, slash command, OCR | `services/nlp`, `routers/input`, `routers/ocr` | `input.tsx`, `VoiceInput` |
+| 2. Kasa Yönetimi | Çoklu cüzdan, transfer, net varlık | `services/wallet` | `index.tsx`, `WalletCard` |
+| 3. Ajanda | Fatura/taksit takibi, bildirimler | `services/agenda` | `agenda.tsx` |
+| 4. Alışveriş Listesi | Kategorizasyon, buy-to-spend | `services/shopping` | `shopping.tsx` |
+| 5. AI Mentor | Bütçe uyarıları, tahmin, fiyat takibi | `services/ai_mentor` | Dashboard entegrasyonu |
+| 6. Sosyal | Borç defteri, hesap bölme | `services/social` | API hazır |
 
-## Kurulum
+## Hızlı Başlangıç
 
-Statik bir web sitesidir, ek kurulum gerekmez. Dosyaları bir web sunucusunda barındırın veya doğrudan tarayıcıda açın:
+### Backend
 
 ```bash
-# Basit yerel sunucu
-python3 -m http.server 8080
+cd backend
+cp .env.example .env
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
-Ardından `http://localhost:8080` adresine gidin.
+API dokümantasyonu: http://localhost:8000/docs
 
-## Token Bilgileri
+### Docker ile
 
-| Özellik        | Değer              |
-|----------------|--------------------|
-| Token Adı      | TalkCash (TALK)    |
-| Standard       | BEP-20             |
-| Ağ             | Binance Smart Chain|
-| Toplam Arz     | 10.000.000         |
-| Ön Satış Oranı | 1 BNB = 10.000 TALK|
+```bash
+docker compose up -d
+```
 
-## Akıllı Sözleşme
+### Mobile
 
-Ön satış sözleşme adresi `js/wallet.js` dosyasındaki `SALE_CONTRACT` değişkeninde tanımlanır. Mainnet lansmanından önce gerçek adres ile güncellenmelidir.
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+## Teknoloji Seti
+
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Redis
+- **AI/NLP:** OpenAI Whisper + GPT-4o-mini (yerel Türkçe parser fallback)
+- **OCR:** Tesseract (Türkçe dil paketi)
+- **Mobile:** React Native, Expo Router
+
+## API Örnekleri
+
+```bash
+# Metin parse
+curl -X POST "http://localhost:8000/api/v1/input/parse?text=150%20TL%20kahve%20Starbucks"
+
+# Slash command
+curl -X POST "http://localhost:8000/api/v1/input/slash?command=/150%20kahve%20banka"
+
+# Net varlık
+curl "http://localhost:8000/api/v1/wallets/net-worth?user_id=UUID"
+```
+
+## Ortam Değişkenleri
+
+| Değişken | Açıklama |
+|----------|----------|
+| `DATABASE_URL` | PostgreSQL bağlantı dizesi |
+| `REDIS_URL` | Redis bağlantı dizesi |
+| `OPENAI_API_KEY` | Whisper + GPT için (opsiyonel, yerel parser fallback var) |
+| `SECRET_KEY` | JWT imzalama anahtarı |
 
 ## Lisans
 
