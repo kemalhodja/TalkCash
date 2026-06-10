@@ -52,11 +52,25 @@ export function AssistantSetup() {
         </View>
       ) : (
         <View style={styles.steps}>
+          <Text style={styles.step}>{t.assistant.googleNativeStep}</Text>
           <Text style={styles.step}>{t.assistant.googleStep1}</Text>
           <Text style={styles.step}>{t.assistant.googleStep2}</Text>
           <Text style={styles.step}>{t.assistant.googleStep3}</Text>
+          <Text style={styles.stepMuted}>{t.assistant.googlePlayNote}</Text>
         </View>
       )}
+
+      {Platform.OS === "android" ? (
+        <>
+          <Text style={styles.subTitle}>{t.assistant.googleVoiceExamples}</Text>
+          {phrases.map((p) => (
+            <View key={`voice-${p.text}`} style={styles.voiceCard}>
+              <Text style={styles.phraseLabel}>{p.label}</Text>
+              <Text style={styles.voiceText}>{p.voiceExample}</Text>
+            </View>
+          ))}
+        </>
+      ) : null}
 
       <Text style={styles.subTitle}>{t.assistant.quickPhrases}</Text>
       {phrases.map((p) => (
@@ -96,4 +110,13 @@ const styles = StyleSheet.create({
   copyHint: { color: Colors.textMuted, fontSize: 11, marginTop: 4 },
   siriRow: { marginTop: Spacing.sm, alignItems: "flex-start" },
   siriBtn: { height: 44, width: "100%" },
+  voiceCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  voiceText: { color: Colors.textSecondary, fontSize: 13, fontStyle: "italic", lineHeight: 18 },
 });

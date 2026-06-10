@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import * as Linking from "expo-linking";
+import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { auth } from "@/services/auth";
 import { parseAssistantUrl, storePendingAssistant, type AssistantParams } from "@/services/assistant";
@@ -35,7 +36,9 @@ export function useAssistantLinking(enabled: boolean) {
     if (!enabled) return;
 
     const handleUrl = async (url: string) => {
-      const params = parseAssistantUrl(url);
+      const savedLocale = await SecureStore.getItemAsync("talkcash_locale");
+      const locale = savedLocale === "en" ? "en" : "tr";
+      const params = parseAssistantUrl(url, locale);
       if (!params) return;
       await routeAssistantCommand(params);
     };

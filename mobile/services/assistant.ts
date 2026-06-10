@@ -1,5 +1,6 @@
 import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
+import { googleActionParamsToText, type GoogleActionParams } from "./googleAssistant";
 
 const PENDING_KEY = "talkcash_pending_assistant";
 
@@ -25,20 +26,37 @@ export function buildAssistantUrl(text: string, options?: { confirm?: boolean; s
   return `talkcash://command?${params.toString()}`;
 }
 
-export function parseAssistantUrl(url: string): AssistantParams | null {
+function queryValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return typeof value === "string" ? value : "";
+}
+
+export function parseAssistantUrl(url: string, locale: "tr" | "en" = "tr"): AssistantParams | null {
   try {
     const parsed = Linking.parse(url);
     const segment = (parsed.hostname || parsed.path || "").replace(/^\//, "");
     if (segment && segment !== "command") return null;
 
-    const text = typeof parsed.queryParams?.text === "string" ? parsed.queryParams.text : "";
+    const qp = parsed.queryParams ?? {};
+    const googleParams: GoogleActionParams = {
+      action: queryValue(qp.action),
+      amount: queryValue(qp.amount),
+      currency: queryValue(qp.currency),
+      description: queryValue(qp.description),
+      item: queryValue(qp.item),
+      feature: queryValue(qp.feature),
+      text: queryValue(qp.text),
+      source: queryValue(qp.source),
+    };
+
+    const text = googleParams.text?.trim() || googleActionParamsToText(googleParams, locale) || "";
     if (!text.trim()) return null;
 
-    const confirm = parsed.queryParams?.confirm === "true";
-    const rawSource = typeof parsed.queryParams?.source === "string" ? parsed.queryParams.source : "unknown";
+    const confirm = queryValue(qp.confirm) === "true";
+    const rawSource = googleParams.source || "unknown";
     const source = (["siri", "google", "shortcut"].includes(rawSource) ? rawSource : "unknown") as AssistantParams["source"];
 
-    return { text: text.trim(), confirm, source };
+    return { text: text.trim(), confirm, source: source === "unknown" && googleParams.action ? "google" : source };
   } catch {
     return null;
   }
@@ -66,6 +84,7 @@ export const ASSISTANT_PHRASES_TR = [
     url: buildAssistantUrl("150 TL kahve banka", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.ADD_EXPENSE,
     suggestedPhrase: "TalkCash harcama ekle",
+    voiceExample: "Hey Google, TalkCash'te 150 lira kahve harcaması ekle",
   },
   {
     label: "Gelir ekle",
@@ -73,6 +92,7 @@ export const ASSISTANT_PHRASES_TR = [
     url: buildAssistantUrl("maaşım yattı 45000 banka", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.ADD_INCOME,
     suggestedPhrase: "TalkCash gelir ekle",
+    voiceExample: "Hey Google, TalkCash'te gelir ekle",
   },
   {
     label: "Listeye ekle",
@@ -80,6 +100,7 @@ export const ASSISTANT_PHRASES_TR = [
     url: buildAssistantUrl("listeye süt ekmek ekle", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.ADD_SHOPPING,
     suggestedPhrase: "TalkCash listeye ekle",
+    voiceExample: "Hey Google, TalkCash listesine süt ekle",
   },
   {
     label: "Fatura ödedim",
@@ -87,6 +108,7 @@ export const ASSISTANT_PHRASES_TR = [
     url: buildAssistantUrl("elektrik faturasını ödedim", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.MARK_PAID,
     suggestedPhrase: "TalkCash fatura ödedim",
+    voiceExample: "Hey Google, TalkCash'te elektrik faturasını ödedim de",
   },
 ];
 
@@ -97,6 +119,7 @@ export const ASSISTANT_PHRASES_EN = [
     url: buildAssistantUrl("150 coffee bank", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.ADD_EXPENSE,
     suggestedPhrase: "TalkCash add expense",
+    voiceExample: "Hey Google, add 150 coffee expense in TalkCash",
   },
   {
     label: "Add income",
@@ -104,6 +127,7 @@ export const ASSISTANT_PHRASES_EN = [
     url: buildAssistantUrl("salary deposited 5000 bank", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.ADD_INCOME,
     suggestedPhrase: "TalkCash add income",
+    voiceExample: "Hey Google, add income in TalkCash",
   },
   {
     label: "Add to list",
@@ -111,6 +135,7 @@ export const ASSISTANT_PHRASES_EN = [
     url: buildAssistantUrl("add milk eggs to list", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.ADD_SHOPPING,
     suggestedPhrase: "TalkCash add to list",
+    voiceExample: "Hey Google, add milk to TalkCash list",
   },
   {
     label: "Mark bill paid",
@@ -118,5 +143,6 @@ export const ASSISTANT_PHRASES_EN = [
     url: buildAssistantUrl("paid electricity bill", { source: "shortcut" }),
     activityType: SIRI_ACTIVITY_TYPES.MARK_PAID,
     suggestedPhrase: "TalkCash mark bill paid",
+    voiceExample: "Hey Google, mark electricity bill paid in TalkCash",
   },
 ];

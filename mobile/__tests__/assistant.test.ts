@@ -22,4 +22,10 @@ describe("assistant deep links", () => {
     const result = parseAssistantUrl("talkcash://command?text=test&confirm=true");
     expect(result?.confirm).toBe(true);
   });
+
+  it("infers google source from app action params", () => {
+    const result = parseAssistantUrl("talkcash://command?action=add_income&amount=5000");
+    expect(result?.source).toBe("google");
+    expect(result?.text).toContain("5000");
+  });
 });

@@ -70,8 +70,7 @@
           "locationAlwaysAndWhenInUsePermission": "Arka planda market yakını hatırlatması için konum erişimi gerekli."
         }
       ],
-      "@react-native-community/datetimepicker",
-      "@config-plugins/react-native-siri-shortcut"
+      "@react-native-community/datetimepicker"
     ]
   }
 }
