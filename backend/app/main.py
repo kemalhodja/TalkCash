@@ -1,15 +1,19 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
 from app.routers import agenda, ai, auth, budgets, execute, export, geofence, input, notifications, ocr, shopping, social, sync, transactions, wallets, ws
 from app.services.social.ws_bridge import start_redis_ws_bridge, stop_redis_ws_bridge
 from app.tasks.scheduler import start_scheduler
+from app.utils.redis_client import get_redis
 
 logging.basicConfig(level=logging.INFO)
 
@@ -77,9 +81,31 @@ app.include_router(ws.router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health(request: Request):
+async def health(request: Request, db: AsyncSession = Depends(get_db)):
     lang = locale_from_request(request)
-    return {"status": "ok", "app": settings.app_name, "message": t("health.ok", lang), "locales": SUPPORTED_LOCALES}
+    checks: dict[str, bool] = {"database": False, "redis": False}
+
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["database"] = True
+    except Exception:
+        pass
+
+    try:
+        redis = await get_redis()
+        await redis.ping()
+        checks["redis"] = True
+    except Exception:
+        pass
+
+    healthy = all(checks.values())
+    return {
+        "status": "ok" if healthy else "degraded",
+        "app": settings.app_name,
+        "message": t("health.ok", lang),
+        "locales": SUPPORTED_LOCALES,
+        "checks": checks,
+    }
 
 
 @app.get("/api/v1/i18n/{lang}")
