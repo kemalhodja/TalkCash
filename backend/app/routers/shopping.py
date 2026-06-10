@@ -66,7 +66,7 @@ async def set_routine(
     from app.models.shopping import ShoppingItem
     item = await db.get(ShoppingItem, item_id)
     if not item or item.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+        raise HTTPException(status_code=404, detail="shopping.item_not_found")
     item.is_routine = data.is_routine
     item.routine_type = data.routine_type
     await db.commit()

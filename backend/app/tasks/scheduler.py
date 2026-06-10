@@ -33,6 +33,11 @@ async def sync_exchange_rates():
 
 
 def start_scheduler():
+    from app.config import settings
+
+    if not settings.scheduler_enabled:
+        logger.info("Scheduler disabled (SCHEDULER_ENABLED=false)")
+        return
     scheduler.add_job(daily_shopping_reset, "cron", hour=0, minute=0, id="daily_reset")
     scheduler.add_job(agenda_reminders, "cron", hour=8, minute=0, id="morning_reminders")
     scheduler.add_job(agenda_reminders, "cron", hour=20, minute=0, id="evening_reminders")

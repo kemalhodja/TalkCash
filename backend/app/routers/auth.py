@@ -53,7 +53,7 @@ async def me(user: User = Depends(get_current_user)):
 @router.post("/pin")
 async def set_pin(data: PinRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if len(data.pin) < 4:
-        raise HTTPException(status_code=400, detail="PIN en az 4 haneli olmalı")
+        raise HTTPException(status_code=400, detail="auth.pin_too_short")
     await auth_service.set_pin(db, user.id, data.pin)
     return {"status": "ok"}
 
@@ -62,7 +62,7 @@ async def set_pin(data: PinRequest, user: User = Depends(get_current_user), db: 
 async def verify_pin(data: PinRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     valid = await auth_service.verify_pin(db, user.id, data.pin)
     if not valid:
-        raise HTTPException(status_code=401, detail="PIN hatalı")
+        raise HTTPException(status_code=401, detail="auth.pin_invalid")
     return {"status": "ok"}
 
 

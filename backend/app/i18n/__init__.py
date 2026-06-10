@@ -26,3 +26,17 @@ def t(key: str, lang: str = "tr", **kwargs) -> str:
 
 
 SUPPORTED_LOCALES = ["tr", "en"]
+
+
+def locale_from_request(request) -> str:
+    lang = request.headers.get("Accept-Language", "tr")[:2]
+    return lang if lang in SUPPORTED_LOCALES else "tr"
+
+
+def maybe_translate(text: str, lang: str) -> str:
+    if not isinstance(text, str):
+        return text
+    messages = _load_locale(lang)
+    if text in messages:
+        return messages[text]
+    return text

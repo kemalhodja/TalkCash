@@ -1,4 +1,4 @@
-from app.i18n import SUPPORTED_LOCALES, t
+from app.i18n import SUPPORTED_LOCALES, maybe_translate, t
 
 
 def test_supported_locales():
@@ -17,3 +17,8 @@ def test_translate_english():
 def test_translate_with_params():
     msg = t("agenda.duplicate_bill", "tr", title="İnternet")
     assert "İnternet" in msg
+
+
+def test_maybe_translate_key():
+    assert maybe_translate("auth.pin_invalid", "en") == "Wrong PIN"
+    assert maybe_translate("random error", "en") == "random error"

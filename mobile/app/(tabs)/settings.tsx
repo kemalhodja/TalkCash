@@ -18,7 +18,8 @@ export default function SettingsScreen() {
 
   const toggleBiometric = async (val: boolean) => {
     setBiometric(val);
-    try { await api.toggleBiometric(val); } catch { /* */ }
+    try { await api.toggleBiometric(val); await auth.updateUser({ biometricEnabled: val }); }
+    catch { setBiometric(!val); }
   };
 
   const toggleGeofence = async (val: boolean) => {
@@ -80,6 +81,14 @@ export default function SettingsScreen() {
 
       <TouchableOpacity style={styles.btn} onPress={() => registerForPushNotifications()}>
         <Text style={styles.btnText}>{t.settings.push}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.btn} onPress={() => router.push("/notifications")}>
+        <Text style={styles.btnText}>{t.settings.viewNotifications}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.btn} onPress={() => router.push("/receipts")}>
+        <Text style={styles.btnText}>{t.settings.viewReceipts}</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{t.settings.export}</Text>

@@ -29,5 +29,7 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_public_url: str = ""
 
+    scheduler_enabled: bool = True
+
 
 settings = Settings()

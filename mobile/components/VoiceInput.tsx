@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function VoiceInput({ onResult, whisperMode = false }: Props) {
+  const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -25,7 +27,7 @@ export function VoiceInput({ onResult, whisperMode = false }: Props) {
       recordingRef.current = rec;
       setRecording(true);
     } catch {
-      alert("Mikrofon izni gerekli");
+      Alert.alert(t.input.micPermission);
     }
   };
 
@@ -42,7 +44,7 @@ export function VoiceInput({ onResult, whisperMode = false }: Props) {
         onResult(result.parsed?.raw_text || result.message, result);
       }
     } catch {
-      onResult("Ses işlenemedi. Lütfen tekrar deneyin.");
+      onResult(t.input.voiceFailed);
     } finally {
       setProcessing(false);
     }
@@ -52,6 +54,14 @@ export function VoiceInput({ onResult, whisperMode = false }: Props) {
     if (recording) stopRecording();
     else startRecording();
   };
+
+  const hint = processing
+    ? t.input.processing
+    : recording
+      ? t.input.listeningStop
+      : whisperMode
+        ? t.input.whisperMode
+        : t.input.voiceCommand;
 
   return (
     <View style={styles.container}>
@@ -66,9 +76,7 @@ export function VoiceInput({ onResult, whisperMode = false }: Props) {
           <Ionicons name={recording ? "stop" : "mic"} size={28} color={Colors.bg} />
         )}
       </TouchableOpacity>
-      <Text style={styles.hint}>
-        {processing ? "İşleniyor..." : recording ? "Dinleniyor — durdurmak için dokunun" : whisperMode ? "Fısıltı Modu" : "Sesli Komut"}
-      </Text>
+      <Text style={styles.hint}>{hint}</Text>
     </View>
   );
 }

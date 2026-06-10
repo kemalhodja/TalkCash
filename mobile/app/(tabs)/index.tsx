@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { TransferModal } from "@/components/TransferModal";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
@@ -16,7 +18,9 @@ export default function DashboardScreen() {
   const [priceReport, setPriceReport] = useState<any>(null);
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [transferVisible, setTransferVisible] = useState(false);
 
   const loadData = async () => {
     const user = await auth.getUser();
@@ -31,13 +35,15 @@ export default function DashboardScreen() {
       setAlerts(await api.getBudgetAlerts());
       setPriceReport(await api.getPriceTracker("süt"));
     } catch (e: any) {
-      setError(e.message || "Veriler yüklenemedi");
+      setError(e.message || t.home.loadError);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => { loadData(); registerForPushNotifications(); }, []);
+  useRefreshOnFocus(loadData);
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>;
@@ -45,7 +51,10 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={loadData} tintColor={Colors.accent} />}>
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }}
+          tintColor={Colors.accent} />
+      }>
       <Text style={styles.greeting}>{t.home.greeting}, {userName || "User"}</Text>
 
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
@@ -56,6 +65,10 @@ export default function DashboardScreen() {
           {Number(netWorth).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
         </Text>
       </View>
+
+      <TouchableOpacity style={styles.transferBtn} onPress={() => setTransferVisible(true)}>
+        <Text style={styles.transferText}>{t.home.transfer}</Text>
+      </TouchableOpacity>
 
       {forecast?.warning && (
         <View style={styles.alertCard}><Text style={styles.alertText}>⚠️ {forecast.message}</Text></View>
@@ -75,6 +88,8 @@ export default function DashboardScreen() {
       {wallets.map((w) => (
         <WalletCard key={w.id} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
       ))}
+
+      <TransferModal visible={transferVisible} onClose={() => setTransferVisible(false)} onSuccess={loadData} />
     </ScrollView>
   );
 }
@@ -86,10 +101,15 @@ const styles = StyleSheet.create({
   greeting: { color: Colors.textSecondary, fontSize: 16, marginBottom: Spacing.sm },
   netWorthCard: {
     backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg,
-    alignItems: "center", marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.border,
+    alignItems: "center", marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border,
   },
   label: { color: Colors.textSecondary, fontSize: 14 },
   netWorth: { color: Colors.accent, fontSize: 36, fontWeight: "800", marginTop: 4 },
+  transferBtn: {
+    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    alignItems: "center", marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.accent,
+  },
+  transferText: { color: Colors.accent, fontWeight: "700" },
   sectionTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
   alertCard: {
     backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 10, padding: Spacing.md,

@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 export default function BudgetsScreen() {
+  const { t } = useI18n();
   const [budgets, setBudgets] = useState<any[]>([]);
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
@@ -12,11 +15,15 @@ export default function BudgetsScreen() {
   const load = async () => {
     try {
       setBudgets(await api.getBudgets());
-    } catch { /* empty */ }
-    finally { setLoading(false); }
+    } catch {
+      setBudgets([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
+  useRefreshOnFocus(load);
 
   const handleAdd = async () => {
     if (!category || !limit) return;
@@ -29,15 +36,15 @@ export default function BudgetsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Bütçe Limitleri</Text>
+      <Text style={styles.title}>{t.budget.title}</Text>
 
       <View style={styles.form}>
-        <TextInput style={styles.input} placeholder="Kategori (ör: Restoran)" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.budget.category} placeholderTextColor={Colors.textMuted}
           value={category} onChangeText={setCategory} />
-        <TextInput style={styles.input} placeholder="Aylık limit (TL)" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.budget.limit} placeholderTextColor={Colors.textMuted}
           keyboardType="decimal-pad" value={limit} onChangeText={setLimit} />
         <TouchableOpacity style={styles.btn} onPress={handleAdd}>
-          <Text style={styles.btnText}>Limit Ekle</Text>
+          <Text style={styles.btnText}>{t.budget.add}</Text>
         </TouchableOpacity>
       </View>
 
@@ -45,15 +52,15 @@ export default function BudgetsScreen() {
         <View key={b.id} style={styles.card}>
           <View>
             <Text style={styles.catName}>{b.category}</Text>
-            <Text style={styles.limit}>{Number(b.monthly_limit).toLocaleString("tr-TR")} ₺/ay</Text>
+            <Text style={styles.limit}>{Number(b.monthly_limit).toLocaleString("tr-TR")} {t.budget.perMonth}</Text>
           </View>
           <TouchableOpacity onPress={async () => { await api.deleteBudget(b.id); load(); }}>
-            <Text style={styles.delete}>Sil</Text>
+            <Text style={styles.delete}>{t.common.delete}</Text>
           </TouchableOpacity>
         </View>
       ))}
 
-      {budgets.length === 0 && <Text style={styles.empty}>Henüz bütçe limiti yok</Text>}
+      {budgets.length === 0 && <Text style={styles.empty}>{t.budget.empty}</Text>}
     </ScrollView>
   );
 }

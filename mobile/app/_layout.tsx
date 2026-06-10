@@ -34,6 +34,8 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="lock" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="receipts" />
       </Stack>
     </I18nProvider>
   );

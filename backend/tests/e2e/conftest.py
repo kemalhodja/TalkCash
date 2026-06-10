@@ -1,10 +1,13 @@
 import asyncio
+import os
 import uuid
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+os.environ.setdefault("SCHEDULER_ENABLED", "false")
 
 from app.database import Base, get_db
 from app.main import app

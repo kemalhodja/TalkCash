@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { Colors, Spacing } from "@/constants/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useI18n } from "@/i18n";
 import { ApiError, api } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
 
 export default function AgendaScreen() {
+  const { t } = useI18n();
   const [items, setItems] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState("");
@@ -20,6 +23,7 @@ export default function AgendaScreen() {
   };
 
   useEffect(() => { loadAgenda(); }, []);
+  useRefreshOnFocus(loadAgenda);
 
   const handleAddBill = async (force = false) => {
     if (!title || !amount) return;
@@ -43,20 +47,20 @@ export default function AgendaScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>Ajanda & Faturalar</Text>
+        <Text style={styles.title}>{t.agenda.title}</Text>
         <TouchableOpacity onPress={() => setShowAdd(!showAdd)}>
-          <Text style={styles.addBtn}>{showAdd ? "İptal" : "+ Fatura"}</Text>
+          <Text style={styles.addBtn}>{showAdd ? t.agenda.cancel : t.agenda.addBill}</Text>
         </TouchableOpacity>
       </View>
 
       {showAdd && (
         <View style={styles.addForm}>
-          <TextInput style={styles.input} placeholder="Fatura adı" placeholderTextColor={Colors.textMuted}
+          <TextInput style={styles.input} placeholder={t.agenda.billName} placeholderTextColor={Colors.textMuted}
             value={title} onChangeText={setTitle} />
-          <TextInput style={styles.input} placeholder="Tutar (TL)" placeholderTextColor={Colors.textMuted}
+          <TextInput style={styles.input} placeholder={t.agenda.amount} placeholderTextColor={Colors.textMuted}
             keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
           <TouchableOpacity style={styles.submitBtn} onPress={() => handleAddBill(false)}>
-            <Text style={styles.submitText}>Ekle</Text>
+            <Text style={styles.submitText}>{t.agenda.add}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -67,14 +71,14 @@ export default function AgendaScreen() {
             <Text style={styles.cardTitle}>{item.title}</Text>
             {item.status === "pending" && (
               <TouchableOpacity onPress={async () => { await api.markPaid(item.title); loadAgenda(); }}>
-                <Text style={styles.payBtn}>Ödedim</Text>
+                <Text style={styles.payBtn}>{t.agenda.paid}</Text>
               </TouchableOpacity>
             )}
           </View>
           <Text style={styles.amount}>{item.amount?.toLocaleString("tr-TR")} ₺</Text>
           <Text style={styles.date}>
-            Son: {new Date(item.due_date).toLocaleDateString("tr-TR")}
-            {item.installment && ` · Taksit ${item.installment}`}
+            {t.agenda.due}: {new Date(item.due_date).toLocaleDateString("tr-TR")}
+            {item.installment && ` · ${t.agenda.installment} ${item.installment}`}
           </Text>
         </View>
       ))}

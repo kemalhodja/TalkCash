@@ -1,5 +1,6 @@
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 
 interface Props {
   visible: boolean;
@@ -9,19 +10,21 @@ interface Props {
 }
 
 export function DuplicateBillDialog({ visible, message, onConfirm, onCancel }: Props) {
+  const { t } = useI18n();
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.icon}>⚠️</Text>
-          <Text style={styles.title}>Mükerrer Kayıt</Text>
+          <Text style={styles.title}>{t.duplicate.title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-              <Text style={styles.cancelText}>İptal</Text>
+              <Text style={styles.cancelText}>{t.common.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBtn} onPress={onConfirm}>
-              <Text style={styles.confirmText}>Yine de Ekle</Text>
+              <Text style={styles.confirmText}>{t.duplicate.confirmAnyway}</Text>
             </TouchableOpacity>
           </View>
         </View>

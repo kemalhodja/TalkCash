@@ -1,34 +1,46 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 export default function TransactionsScreen() {
+  const { t } = useI18n();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api.getTransactions().then(setTransactions).catch(() => setTransactions([])).finally(() => setLoading(false));
-  }, []);
+  const load = async () => {
+    try {
+      setTransactions(await api.getTransactions());
+    } catch {
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+  useRefreshOnFocus(load);
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>İşlem Geçmişi</Text>
-      {transactions.map((t) => (
-        <View key={t.id} style={styles.card}>
+      <Text style={styles.title}>{t.transactions.title}</Text>
+      {transactions.map((tx) => (
+        <View key={tx.id} style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.category}>{t.category}</Text>
-            <Text style={[styles.amount, t.type === "income" && styles.income]}>
-              {t.type === "income" ? "+" : "-"}{t.amount.toLocaleString("tr-TR")} ₺
+            <Text style={styles.category}>{tx.category}</Text>
+            <Text style={[styles.amount, tx.type === "income" && styles.income]}>
+              {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString("tr-TR")} ₺
             </Text>
           </View>
-          <Text style={styles.desc}>{t.description || t.place || "—"}</Text>
-          <Text style={styles.date}>{new Date(t.date).toLocaleDateString("tr-TR")} · {t.input_method}</Text>
+          <Text style={styles.desc}>{tx.description || tx.place || "—"}</Text>
+          <Text style={styles.date}>{new Date(tx.date).toLocaleDateString("tr-TR")} · {tx.input_method}</Text>
         </View>
       ))}
-      {transactions.length === 0 && <Text style={styles.empty}>Henüz işlem yok</Text>}
+      {transactions.length === 0 && <Text style={styles.empty}>{t.transactions.empty}</Text>}
     </ScrollView>
   );
 }

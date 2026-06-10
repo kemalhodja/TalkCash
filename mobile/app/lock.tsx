@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 
 export default function LockScreen() {
+  const { t } = useI18n();
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -15,36 +17,37 @@ export default function LockScreen() {
       if (!u) { router.replace("/login"); return; }
       setUser(u);
       if (u.biometricEnabled) {
-        const ok = await auth.authenticateBiometric();
+        const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
         if (ok) router.replace("/(tabs)");
       }
     });
-  }, []);
+  }, [t.lock.biometricPrompt]);
 
   const verifyPin = async () => {
     try {
       await api.verifyPin(pin);
       router.replace("/(tabs)");
     } catch {
-      setError("PIN hatalı");
+      setError(t.lock.wrongPin);
       setPin("");
     }
   };
 
   const setupPin = async () => {
-    if (pin.length < 4) { setError("PIN en az 4 haneli"); return; }
+    if (pin.length < 4) { setError(t.lock.pinTooShort); return; }
     try {
       await api.setPin(pin);
+      await auth.updateUser({ hasPin: true });
       router.replace("/(tabs)");
     } catch {
-      setError("PIN ayarlanamadı");
+      setError(t.lock.pinFailed);
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🔒 TalkCash</Text>
-      <Text style={styles.subtitle}>{user?.hasPin ? "PIN girin" : "Güvenlik PIN'i oluşturun"}</Text>
+      <Text style={styles.subtitle}>{user?.hasPin ? t.lock.enterPin : t.lock.createPin}</Text>
 
       <TextInput
         style={styles.input}
@@ -60,15 +63,15 @@ export default function LockScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <TouchableOpacity style={styles.btn} onPress={user?.hasPin ? verifyPin : setupPin}>
-        <Text style={styles.btnText}>{user?.hasPin ? "Kilidi Aç" : "PIN Oluştur"}</Text>
+        <Text style={styles.btnText}>{user?.hasPin ? t.lock.unlock : t.lock.create}</Text>
       </TouchableOpacity>
 
       {user?.biometricEnabled && (
         <TouchableOpacity style={styles.bioBtn} onPress={async () => {
-          const ok = await auth.authenticateBiometric();
+          const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
           if (ok) router.replace("/(tabs)");
         }}>
-          <Text style={styles.bioText}>Face ID / Touch ID</Text>
+          <Text style={styles.bioText}>{t.lock.biometric}</Text>
         </TouchableOpacity>
       )}
     </View>

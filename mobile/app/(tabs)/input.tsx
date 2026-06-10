@@ -5,9 +5,11 @@ import { NumericKeypad } from "@/components/NumericKeypad";
 import { ReceiptScanner } from "@/components/ReceiptScanner";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 export default function InputScreen() {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [showKeypad, setShowKeypad] = useState(false);
   const [keypadValue, setKeypadValue] = useState("");
@@ -32,13 +34,13 @@ export default function InputScreen() {
       const result = await api.parseText(text, whisperMode);
       showConfirmation(result.message, result.parsed);
     } catch (e: any) {
-      setError(e.message || "Parse hatası");
+      setError(e.message || t.input.parseError);
     }
   };
 
   const handleVoiceResult = (voiceText: string, result?: any) => {
     if (result?.message) showConfirmation(result.message, result.parsed);
-    else showConfirmation(`${voiceText} kaydedilsin mi?`, { intent: "add_expense", raw_text: voiceText });
+    else showConfirmation(t.input.saveConfirm.replace("{text}", voiceText), { intent: "add_expense", raw_text: voiceText });
   };
 
   const handleConfirm = async () => {
@@ -64,13 +66,13 @@ export default function InputScreen() {
     <View style={styles.container}>
       <View style={styles.modeToggle}>
         <TouchableOpacity style={[styles.modeBtn, !whisperMode && styles.modeActive]} onPress={() => setWhisperMode(false)}>
-          <Text style={styles.modeText}>Normal</Text>
+          <Text style={styles.modeText}>{t.input.normal}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.modeBtn, whisperMode && styles.modeActive]} onPress={() => setWhisperMode(true)}>
-          <Text style={styles.modeText}>Fısıltı</Text>
+          <Text style={styles.modeText}>{t.input.whisper}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.scanBtn} onPress={() => setShowScanner(true)}>
-          <Text style={styles.modeText}>📷 Fiş</Text>
+          <Text style={styles.modeText}>📷 {t.input.receipt}</Text>
         </TouchableOpacity>
       </View>
 
@@ -78,10 +80,10 @@ export default function InputScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.divider}>
-        <View style={styles.line} /><Text style={styles.dividerText}>veya yazın</Text><View style={styles.line} />
+        <View style={styles.line} /><Text style={styles.dividerText}>{t.input.orType}</Text><View style={styles.line} />
       </View>
 
-      <TextInput style={styles.input} placeholder="/150 kahve banka"
+      <TextInput style={styles.input} placeholder={t.input.placeholder}
         placeholderTextColor={Colors.textMuted} value={text} onChangeText={handleTextChange}
         onSubmitEditing={handleTextSubmit} returnKeyType="done" />
 
@@ -96,14 +98,14 @@ export default function InputScreen() {
       )}
 
       <TouchableOpacity style={styles.keypadToggle} onPress={() => setShowKeypad(!showKeypad)}>
-        <Text style={styles.keypadToggleText}>{showKeypad ? "Gizle" : "Sayısal Klavye"}</Text>
+        <Text style={styles.keypadToggleText}>{showKeypad ? t.input.hideKeypad : t.input.numericKeypad}</Text>
       </TouchableOpacity>
 
       {showKeypad && <NumericKeypad value={keypadValue} onChange={setKeypadValue}
         onSubmit={() => { setText(keypadValue); setShowKeypad(false); }} />}
 
       <TouchableOpacity style={styles.submitBtn} onPress={handleTextSubmit}>
-        <Text style={styles.submitText}>Gönder</Text>
+        <Text style={styles.submitText}>{t.input.send}</Text>
       </TouchableOpacity>
 
       <ConfirmationCard visible={confirmVisible} message={confirmMessage}
@@ -114,7 +116,9 @@ export default function InputScreen() {
           onResult={(data) => {
             setShowScanner(false);
             showConfirmation(
-              `${data.total_amount || "?"} TL - ${data.merchant || "Fiş"} kaydedilsin mi?`,
+              t.input.receiptConfirm
+                .replace("{amount}", String(data.total_amount || "?"))
+                .replace("{merchant}", data.merchant || t.input.receipt),
               { intent: "add_expense", amount: data.total_amount, description: data.merchant, receipt_id: data.receipt_id },
             );
           }}

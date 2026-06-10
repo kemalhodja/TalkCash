@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
 import { Colors, Spacing } from "@/constants/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  sarkuteri: "🥩 Şarküteri", manav: "🥬 Manav", sut_urunleri: "🥛 Süt Ürünleri",
-  temizlik: "🧹 Temizlik", firin: "🍞 Fırın", icecek: "🥤 İçecek", diger: "📦 Diğer",
-};
-
 export default function ShoppingScreen() {
+  const { t } = useI18n();
   const [grouped, setGrouped] = useState<Record<string, any[]>>({});
   const [buyModal, setBuyModal] = useState<{ id: string; name: string } | null>(null);
   const [newItem, setNewItem] = useState("");
@@ -28,6 +26,7 @@ export default function ShoppingScreen() {
   };
 
   useEffect(() => { loadList(); }, []);
+  useRefreshOnFocus(loadList);
 
   const handleAdd = async () => {
     if (!newItem.trim()) return;
@@ -36,14 +35,17 @@ export default function ShoppingScreen() {
     loadList();
   };
 
+  const categoryLabel = (key: string) =>
+    (t.shopping.categories as Record<string, string>)[key] || key;
+
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Alışveriş Listesi</Text>
+      <Text style={styles.title}>{t.shopping.title}</Text>
 
       <View style={styles.addRow}>
-        <TextInput style={styles.input} placeholder="Ürün ekle..." placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.shopping.addPlaceholder} placeholderTextColor={Colors.textMuted}
           value={newItem} onChangeText={setNewItem} onSubmitEditing={handleAdd} />
         <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
           <Text style={styles.addBtnText}>+</Text>
@@ -54,7 +56,7 @@ export default function ShoppingScreen() {
 
       {Object.entries(grouped).map(([category, items]) => (
         <View key={category} style={styles.category}>
-          <Text style={styles.categoryTitle}>{CATEGORY_LABELS[category] || category}</Text>
+          <Text style={styles.categoryTitle}>{categoryLabel(category)}</Text>
           {items.map((item) => (
             <TouchableOpacity key={item.id} style={styles.item}
               onPress={() => setBuyModal({ id: item.id, name: item.name })}
@@ -69,7 +71,7 @@ export default function ShoppingScreen() {
       ))}
 
       {Object.keys(grouped).length === 0 && !error && (
-        <Text style={styles.empty}>Liste boş. Sesle veya yazarak ürün ekleyin.</Text>
+        <Text style={styles.empty}>{t.shopping.empty}</Text>
       )}
 
       {buyModal && (

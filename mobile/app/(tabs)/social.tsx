@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
-import { auth } from "@/services/auth";
 import { SharedWalletWS } from "@/services/websocket";
 
 export default function SocialScreen() {
+  const { t } = useI18n();
   const [total, setTotal] = useState("");
   const [personCount, setPersonCount] = useState("3");
   const [splitResult, setSplitResult] = useState<any>(null);
@@ -25,11 +27,16 @@ export default function SocialScreen() {
         const ws = new SharedWalletWS(wallets[0].id, () => load());
         ws.connect();
       }
-    } catch { /* */ }
-    finally { setLoading(false); }
+    } catch {
+      setSharedWallets([]);
+      setDebts([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
+  useRefreshOnFocus(load);
 
   const handleSplit = async () => {
     if (!total) return;
@@ -47,59 +54,62 @@ export default function SocialScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Sosyal</Text>
+      <Text style={styles.title}>{t.social.title}</Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Hesap Bölüştür</Text>
-        <TextInput style={styles.input} placeholder="Toplam (TL)" placeholderTextColor={Colors.textMuted}
+        <Text style={styles.sectionTitle}>{t.social.split}</Text>
+        <TextInput style={styles.input} placeholder={t.social.splitTotal} placeholderTextColor={Colors.textMuted}
           keyboardType="decimal-pad" value={total} onChangeText={setTotal} />
-        <TextInput style={styles.input} placeholder="Kişi sayısı" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.social.personCount} placeholderTextColor={Colors.textMuted}
           keyboardType="number-pad" value={personCount} onChangeText={setPersonCount} />
-        <TouchableOpacity style={styles.btn} onPress={handleSplit}><Text style={styles.btnText}>Böl</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.btn} onPress={handleSplit}><Text style={styles.btnText}>{t.social.splitBtn}</Text></TouchableOpacity>
         {splitResult && (
           <View style={styles.result}>
-            <Text style={styles.resultText}>Kişi başı: {splitResult.per_person} TL</Text>
+            <Text style={styles.resultText}>{t.social.perPerson}: {splitResult.per_person} TL</Text>
             <TouchableOpacity style={styles.whatsappBtn} onPress={shareWhatsApp}>
-              <Text style={styles.whatsappText}>WhatsApp ile Paylaş</Text>
+              <Text style={styles.whatsappText}>{t.social.whatsapp}</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Borç Defteri</Text>
+        <Text style={styles.sectionTitle}>{t.social.debtBook}</Text>
         {debts.map((d) => (
           <View key={d.id} style={styles.debtCard}>
-            <Text style={styles.debtText}>{d.is_lent ? "Verilen" : "Alınan"}: {d.person} — {d.amount} ₺</Text>
+            <Text style={styles.debtText}>{d.is_lent ? t.social.lent : t.social.borrowed}: {d.person} — {d.amount} ₺</Text>
             <TouchableOpacity onPress={async () => { await api.settleDebt(d.id); load(); }}>
-              <Text style={styles.settle}>Kapat</Text>
+              <Text style={styles.settle}>{t.social.settle}</Text>
             </TouchableOpacity>
           </View>
         ))}
-        <TextInput style={styles.input} placeholder="Kişi adı" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.social.personName} placeholderTextColor={Colors.textMuted}
           value={debtPerson} onChangeText={setDebtPerson} />
-        <TextInput style={styles.input} placeholder="Tutar" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.social.amount} placeholderTextColor={Colors.textMuted}
           keyboardType="decimal-pad" value={debtAmount} onChangeText={setDebtAmount} />
         <TouchableOpacity style={styles.btn} onPress={async () => {
           await api.addDebt(debtPerson, parseFloat(debtAmount));
           setDebtPerson(""); setDebtAmount(""); load();
-        }}><Text style={styles.btnText}>Borç Kaydet</Text></TouchableOpacity>
+        }}><Text style={styles.btnText}>{t.social.saveDebt}</Text></TouchableOpacity>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Ortak Kasalar</Text>
+        <Text style={styles.sectionTitle}>{t.social.sharedWallets}</Text>
+        {sharedWallets.length === 0 && (
+          <Text style={styles.emptyHint}>{t.social.noSharedWallets}</Text>
+        )}
         {sharedWallets.map((w) => (
           <View key={w.id} style={styles.walletCard}>
             <Text style={styles.walletName}>{w.name}</Text>
             <Text style={styles.walletBalance}>{w.balance?.toLocaleString("tr-TR")} ₺</Text>
           </View>
         ))}
-        <TextInput style={styles.input} placeholder="Yeni ortak kasa adı" placeholderTextColor={Colors.textMuted}
+        <TextInput style={styles.input} placeholder={t.social.walletName} placeholderTextColor={Colors.textMuted}
           value={walletName} onChangeText={setWalletName} />
         <TouchableOpacity style={styles.btn} onPress={async () => {
           await api.createSharedWallet(walletName);
           setWalletName(""); load();
-        }}><Text style={styles.btnText}>Ortak Kasa Oluştur</Text></TouchableOpacity>
+        }}><Text style={styles.btnText}>{t.social.createWallet}</Text></TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -125,4 +135,5 @@ const styles = StyleSheet.create({
   walletCard: { flexDirection: "row", justifyContent: "space-between", backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
   walletName: { color: Colors.text },
   walletBalance: { color: Colors.accent, fontWeight: "700" },
+  emptyHint: { color: Colors.textMuted, marginBottom: Spacing.sm },
 });

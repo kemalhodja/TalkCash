@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCancel }: Props) {
+  const { t } = useI18n();
   const [price, setPrice] = useState("");
   const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
   }, [visible]);
 
   const handleConfirm = async () => {
-    if (!price) { setError("Fiyat girin"); return; }
+    if (!price) { setError(t.shopping.priceRequired); return; }
     try {
       await api.completeShoppingItem(itemId, parseFloat(price), selectedWallet || undefined);
       setPrice("");
@@ -41,10 +43,10 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.title}>{itemName} alındı</Text>
-          <Text style={styles.subtitle}>Fiyatı ne kadar? Kasadan düşelim mi?</Text>
+          <Text style={styles.title}>{itemName} {t.shopping.buyTitle}</Text>
+          <Text style={styles.subtitle}>{t.shopping.buySubtitle}</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <TextInput style={styles.input} placeholder="Fiyat (TL)" placeholderTextColor={Colors.textMuted}
+          <TextInput style={styles.input} placeholder={t.shopping.pricePlaceholder} placeholderTextColor={Colors.textMuted}
             keyboardType="decimal-pad" value={price} onChangeText={setPrice} />
           <View style={styles.walletList}>
             {wallets.map((w) => (
@@ -57,10 +59,10 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
           </View>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-              <Text style={styles.cancelText}>İptal</Text>
+              <Text style={styles.cancelText}>{t.common.cancel}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-              <Text style={styles.confirmText}>Kasadan Düş</Text>
+              <Text style={styles.confirmText}>{t.shopping.deduct}</Text>
             </TouchableOpacity>
           </View>
         </View>

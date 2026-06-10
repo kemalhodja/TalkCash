@@ -32,14 +32,20 @@ export const auth = {
     await SecureStore.deleteItemAsync(USER_KEY);
   },
 
-  async authenticateBiometric(): Promise<boolean> {
+  async updateUser(partial: Partial<AuthUser>) {
+    const user = await this.getUser();
+    if (!user) return;
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify({ ...user, ...partial }));
+  },
+
+  async authenticateBiometric(promptMessage = "TalkCash'e giriş yap"): Promise<boolean> {
     const compatible = await LocalAuthentication.hasHardwareAsync();
     if (!compatible) return false;
     const enrolled = await LocalAuthentication.isEnrolledAsync();
     if (!enrolled) return false;
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "TalkCash'e giriş yap",
-      fallbackLabel: "PIN kullan",
+      promptMessage,
+      fallbackLabel: "PIN",
     });
     return result.success;
   },
