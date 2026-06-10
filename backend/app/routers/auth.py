@@ -5,7 +5,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, resolve_error, t
-from app.schemas.auth import LocaleRequest, LoginRequest, PinRequest, RegisterRequest, TokenResponse, UserProfile
+from app.schemas.auth import LocaleRequest, LoginRequest, PinRequest, RegisterRequest, TimezoneRequest, TokenResponse, UserProfile
 from app.services.auth.service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -20,6 +20,7 @@ def _token_response(user: User, token: str) -> TokenResponse:
         biometric_enabled=user.biometric_enabled,
         has_pin=bool(user.pin_code),
         locale=user.locale or "tr",
+        timezone=user.timezone or "Europe/Istanbul",
     )
 
 
@@ -49,6 +50,7 @@ async def me(user: User = Depends(get_current_user)):
         id=user.id, email=user.email, full_name=user.full_name,
         biometric_enabled=user.biometric_enabled, has_pin=bool(user.pin_code),
         locale=user.locale or "tr",
+        timezone=user.timezone or "Europe/Istanbul",
     )
 
 
@@ -80,3 +82,15 @@ async def set_locale(data: LocaleRequest, user: User = Depends(get_current_user)
         raise HTTPException(status_code=400, detail=f"Supported: {SUPPORTED_LOCALES}")
     await auth_service.set_locale(db, user.id, data.locale)
     return {"locale": data.locale}
+
+
+@router.put("/timezone")
+async def set_timezone(data: TimezoneRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    try:
+        ZoneInfo(data.timezone)
+    except ZoneInfoNotFoundError:
+        raise HTTPException(status_code=400, detail="Invalid timezone")
+    await auth_service.set_timezone(db, user.id, data.timezone)
+    return {"timezone": data.timezone}

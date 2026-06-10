@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { IncomeModal } from "@/components/IncomeModal";
 import { TransferModal } from "@/components/TransferModal";
@@ -10,9 +10,10 @@ import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { registerForPushNotifications } from "@/services/notifications";
+import { speakBudgetAlert } from "@/services/speech";
 
 export default function DashboardScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [netWorth, setNetWorth] = useState(0);
   const [wallets, setWallets] = useState<any[]>([]);
   const [forecast, setForecast] = useState<any>(null);
@@ -26,28 +27,40 @@ export default function DashboardScreen() {
   const [incomeVisible, setIncomeVisible] = useState(false);
   const [walletCreateVisible, setWalletCreateVisible] = useState(false);
   const [trackProduct, setTrackProduct] = useState("süt");
+  const trackProductRef = useRef(trackProduct);
+  const lastSpokenAlert = useRef("");
+  trackProductRef.current = trackProduct;
 
-  const loadData = async () => {
+  const loadData = useCallback(async (product?: string) => {
     const user = await auth.getUser();
     if (!user) return;
     setUserName(user.fullName);
+    const productQuery = product ?? trackProductRef.current;
     try {
       setError("");
       const nw = await api.getNetWorth();
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
       setForecast(await api.getForecast(nw.total_try));
-      setAlerts(await api.getBudgetAlerts());
-      setPriceReport(await api.getPriceTracker(trackProduct));
+      const budgetAlerts = await api.getBudgetAlerts();
+      setAlerts(budgetAlerts);
+      if (budgetAlerts.length > 0) {
+        const msg = budgetAlerts[0].message;
+        if (msg && msg !== lastSpokenAlert.current) {
+          lastSpokenAlert.current = msg;
+          speakBudgetAlert(msg, locale);
+        }
+      }
+      setPriceReport(await api.getPriceTracker(productQuery));
     } catch (e: any) {
       setError(e.message || t.home.loadError);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [locale, t.home.loadError]);
 
-  useEffect(() => { loadData(); registerForPushNotifications(); }, []);
+  useEffect(() => { loadData(); registerForPushNotifications(); }, [loadData]);
   useRefreshOnFocus(loadData);
 
   if (loading) {
@@ -98,7 +111,7 @@ export default function DashboardScreen() {
         <View style={styles.priceRow}>
           <TextInput style={styles.priceInput} placeholder={t.home.pricePlaceholder}
             placeholderTextColor={Colors.textMuted} value={trackProduct} onChangeText={setTrackProduct} />
-          <TouchableOpacity style={styles.priceBtn} onPress={() => { setRefreshing(true); loadData(); }}>
+          <TouchableOpacity style={styles.priceBtn} onPress={() => { setRefreshing(true); loadData(trackProduct); }}>
             <Text style={styles.priceBtnText}>{t.home.trackPrice}</Text>
           </TouchableOpacity>
         </View>

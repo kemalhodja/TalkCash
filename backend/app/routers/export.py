@@ -21,9 +21,13 @@ wallet_service = WalletService()
 
 
 @router.get("/pdf")
-async def export_pdf(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def export_pdf(
+    limit: int = 500,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     locale = user_locale(user)
-    data = await _gather_data(db, user)
+    data = await _gather_data(db, user, limit=limit)
     content = pdf_service.generate_report(
         user.full_name or user.email, data["net_worth"],
         data["wallets"], data["transactions"], data["agenda"], locale,
@@ -35,9 +39,13 @@ async def export_pdf(user: User = Depends(get_current_user), db: AsyncSession = 
 
 
 @router.get("/excel")
-async def export_excel(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def export_excel(
+    limit: int = 500,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     locale = user_locale(user)
-    data = await _gather_data(db, user)
+    data = await _gather_data(db, user, limit=limit)
     content = excel_service.generate_report(
         user.full_name or user.email,
         data["wallets"], data["transactions"], data["agenda"], locale,
@@ -48,12 +56,12 @@ async def export_excel(user: User = Depends(get_current_user), db: AsyncSession 
     })
 
 
-async def _gather_data(db: AsyncSession, user: User) -> dict:
+async def _gather_data(db: AsyncSession, user: User, limit: int = 500) -> dict:
     nw = await wallet_service.get_net_worth(db, user.id)
     wallets = [{"name": w.name, "balance": float(w.balance), "currency": w.currency, "type": w.wallet_type.value} for w in nw.wallets]
 
     tx_result = await db.execute(
-        select(Transaction).where(Transaction.user_id == user.id).order_by(Transaction.created_at.desc()).limit(100)
+        select(Transaction).where(Transaction.user_id == user.id).order_by(Transaction.created_at.desc()).limit(min(limit, 2000))
     )
     transactions = [
         {"date": t.created_at.strftime("%d.%m.%Y"), "category": t.category,

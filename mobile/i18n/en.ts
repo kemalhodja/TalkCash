@@ -37,6 +37,7 @@ export default {
     priceTracker: "Price Tracker",
     pricePlaceholder: "Product name (e.g. milk)",
     trackPrice: "Track",
+    debt: "Debt",
   },
   login: {
     title: "TalkCash",
@@ -74,6 +75,8 @@ export default {
     noNotifications: "No notifications",
     viewNotifications: "View Notifications",
     viewReceipts: "Receipt Archive",
+    timezone: "Timezone",
+    ttsBudget: "Voice Budget Alerts",
   },
   duplicate: {
     title: "Duplicate Entry",
@@ -209,6 +212,7 @@ export default {
     parseError: "Could not parse command",
     receiptConfirm: "Save {amount} - {merchant}?",
     saveConfirm: "Save {text}?",
+    slashMode: "Slash command mode — quick entry",
   },
   transfer: {
     title: "Wallet Transfer",

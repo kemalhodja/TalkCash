@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -9,17 +9,42 @@ import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
+import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
 export default function SettingsScreen() {
   const { t, locale, setLocale } = useI18n();
   const [biometric, setBiometric] = useState(false);
   const [geofence, setGeofence] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [ttsBudget, setTtsBudget] = useState(true);
+  const [timezone, setTimezone] = useState("Europe/Istanbul");
+
+  const TIMEZONES = [
+    { id: "Europe/Istanbul", label: "🇹🇷 Istanbul" },
+    { id: "Europe/London", label: "🇬🇧 London" },
+    { id: "America/New_York", label: "🇺🇸 New York" },
+    { id: "Asia/Tokyo", label: "🇯🇵 Tokyo" },
+  ];
+
+  useEffect(() => {
+    isBudgetTtsEnabled().then(setTtsBudget);
+    api.getMe().then((u) => { if (u.timezone) setTimezone(u.timezone); }).catch(() => {});
+  }, []);
 
   const toggleBiometric = async (val: boolean) => {
     setBiometric(val);
     try { await api.toggleBiometric(val); await auth.updateUser({ biometricEnabled: val }); }
     catch { setBiometric(!val); }
+  };
+
+  const toggleTtsBudget = async (val: boolean) => {
+    setTtsBudget(val);
+    await setBudgetTtsEnabled(val);
+  };
+
+  const selectTimezone = async (tz: string) => {
+    setTimezone(tz);
+    try { await api.setTimezone(tz); } catch { /* keep local selection */ }
   };
 
   const toggleGeofence = async (val: boolean) => {
@@ -76,6 +101,21 @@ export default function SettingsScreen() {
         ))}
       </View>
 
+      <Text style={styles.sectionTitle}>{t.settings.timezone}</Text>
+      <View style={styles.langRow}>
+        {TIMEZONES.map((tz) => (
+          <TouchableOpacity key={tz.id} style={[styles.langBtn, timezone === tz.id && styles.langActive]}
+            onPress={() => selectTimezone(tz.id)}>
+            <Text style={[styles.langText, timezone === tz.id && styles.langTextActive]}>{tz.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.row}>
+        <Text style={styles.label}>{t.settings.ttsBudget}</Text>
+        <Switch value={ttsBudget} onValueChange={toggleTtsBudget} trackColor={{ true: Colors.accent }} />
+      </View>
+
       <View style={styles.row}>
         <Text style={styles.label}>{t.settings.biometric}</Text>
         <Switch value={biometric} onValueChange={toggleBiometric} trackColor={{ true: Colors.accent }} />
@@ -118,7 +158,7 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.md },
   title: { color: Colors.text, fontSize: 22, fontWeight: "700", marginBottom: Spacing.lg },
   sectionTitle: { color: Colors.text, fontSize: 16, fontWeight: "600", marginTop: Spacing.lg, marginBottom: Spacing.sm },
-  langRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
+  langRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md },
   langBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
   langActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
   langText: { color: Colors.textSecondary },

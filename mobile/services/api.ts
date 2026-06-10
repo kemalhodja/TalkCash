@@ -46,11 +46,14 @@ export const api = {
   verifyPin: (pin: string) => request("/auth/pin/verify", { method: "POST", body: JSON.stringify({ pin }) }),
   toggleBiometric: (enabled: boolean) => request(`/auth/biometric?enabled=${enabled}`, { method: "POST" }),
   setLocale: (locale: string) => request("/auth/locale", { method: "PUT", body: JSON.stringify({ locale }) }),
+  setTimezone: (timezone: string) => request("/auth/timezone", { method: "PUT", body: JSON.stringify({ timezone }) }),
   getMe: () => request<any>("/auth/me"),
 
   // Input
   parseText: (text: string, whisperMode = false) =>
     request<any>(`/input/parse?text=${encodeURIComponent(text)}&whisper_mode=${whisperMode}`, { method: "POST" }),
+  parseSlash: (command: string) =>
+    request<any>(`/input/slash?command=${encodeURIComponent(command)}`, { method: "POST" }),
   parseVoice: async (uri: string, whisperMode = false) => {
     const form = new FormData();
     form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);

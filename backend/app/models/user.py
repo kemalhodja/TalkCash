@@ -19,6 +19,7 @@ class User(Base):
     biometric_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     push_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
     locale: Mapped[str] = mapped_column(String(5), default="tr")
+    timezone: Mapped[str] = mapped_column(String(50), default="Europe/Istanbul")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     wallets = relationship("Wallet", back_populates="user", cascade="all, delete-orphan")

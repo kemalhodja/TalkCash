@@ -26,6 +26,7 @@ class TokenResponse(BaseModel):
     biometric_enabled: bool
     has_pin: bool
     locale: str = "tr"
+    timezone: str = "Europe/Istanbul"
 
 
 class UserProfile(BaseModel):
@@ -35,7 +36,12 @@ class UserProfile(BaseModel):
     biometric_enabled: bool
     has_pin: bool
     locale: str = "tr"
+    timezone: str = "Europe/Istanbul"
 
 
 class LocaleRequest(BaseModel):
     locale: str
+
+
+class TimezoneRequest(BaseModel):
+    timezone: str

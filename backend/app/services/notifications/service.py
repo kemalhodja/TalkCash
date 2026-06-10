@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy import select
@@ -38,10 +39,6 @@ class NotificationService:
 
     async def check_agenda_reminders(self, db: AsyncSession, when: str = "today") -> int:
         """when: 'today' for due-date morning reminders, 'tomorrow' for day-before evening reminders."""
-        now = datetime.utcnow()
-        today = now.date()
-        target = today if when == "today" else today + timedelta(days=1)
-
         result = await db.execute(
             select(AgendaItem, User).join(User, AgendaItem.user_id == User.id).where(
                 AgendaItem.status == AgendaStatus.PENDING,
@@ -49,6 +46,9 @@ class NotificationService:
         )
         sent = 0
         for item, user in result.all():
+            tz = ZoneInfo(user.timezone or "Europe/Istanbul")
+            now_local = datetime.now(tz)
+            target = now_local.date() if when == "today" else now_local.date() + timedelta(days=1)
             due = item.due_date.replace(tzinfo=None) if item.due_date.tzinfo else item.due_date
             if due.date() != target:
                 continue

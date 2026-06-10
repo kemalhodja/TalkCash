@@ -60,6 +60,13 @@ class AuthService:
         user.locale = locale
         await db.commit()
 
+    async def set_timezone(self, db: AsyncSession, user_id: UUID, timezone: str) -> None:
+        user = await db.get(User, user_id)
+        if not user:
+            raise I18nError("auth.user_not_found")
+        user.timezone = timezone
+        await db.commit()
+
     async def set_push_token(self, db: AsyncSession, user_id: UUID, token: str) -> None:
         user = await db.get(User, user_id)
         if not user:

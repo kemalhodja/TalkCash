@@ -20,6 +20,26 @@ DEFAULT_WALLETS = [
 ]
 
 
+def _is_credit_card(wallet: Wallet) -> bool:
+    return wallet.wallet_type == WalletType.CREDIT_CARD
+
+
+def _apply_outflow(wallet: Wallet, amount: Decimal) -> None:
+    """Expense or transfer out: credit card balance rises (more debt)."""
+    if _is_credit_card(wallet):
+        wallet.balance += amount
+    else:
+        wallet.balance -= amount
+
+
+def _apply_inflow(wallet: Wallet, amount: Decimal) -> None:
+    """Income or transfer in: credit card payment reduces debt."""
+    if _is_credit_card(wallet):
+        wallet.balance = max(Decimal("0"), wallet.balance - amount)
+    else:
+        wallet.balance += amount
+
+
 class WalletService:
     def __init__(self):
         self.exchange = ExchangeService()
@@ -51,7 +71,10 @@ class WalletService:
         wallet_responses = []
         for w in raw_wallets:
             try_value = await self.exchange.convert_to_try(db, w.balance, w.currency, w.wallet_type.value)
-            total += try_value
+            if _is_credit_card(w):
+                total -= try_value
+            else:
+                total += try_value
             resp = WalletResponse.model_validate(w)
             wallet_responses.append(resp)
         return NetWorthResponse(total_try=total, wallets=wallet_responses)
@@ -64,8 +87,8 @@ class WalletService:
         if not from_wallet or not to_wallet:
             raise I18nError("wallet.not_found")
 
-        from_wallet.balance -= amount
-        to_wallet.balance += amount
+        _apply_outflow(from_wallet, amount)
+        _apply_inflow(to_wallet, amount)
 
         db.add(Transaction(
             user_id=user_id, wallet_id=from_id, target_wallet_id=to_id,
@@ -82,7 +105,7 @@ class WalletService:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
             raise I18nError("wallet.not_found")
-        wallet.balance += amount
+        _apply_inflow(wallet, amount)
         tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,
             transaction_type=TransactionType.INCOME, amount=amount,
@@ -101,7 +124,7 @@ class WalletService:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
             raise I18nError("wallet.not_found")
-        wallet.balance -= amount
+        _apply_outflow(wallet, amount)
         tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,
             transaction_type=TransactionType.EXPENSE, amount=amount,

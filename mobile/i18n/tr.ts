@@ -37,6 +37,7 @@ export default {
     priceTracker: "Fiyat Takibi",
     pricePlaceholder: "Ürün adı (ör: süt)",
     trackPrice: "Takip Et",
+    debt: "Borç",
   },
   login: {
     title: "TalkCash",
@@ -74,6 +75,8 @@ export default {
     noNotifications: "Bildirim yok",
     viewNotifications: "Bildirimleri Görüntüle",
     viewReceipts: "Fiş Arşivi",
+    timezone: "Saat Dilimi",
+    ttsBudget: "Sesli Bütçe Uyarıları",
   },
   duplicate: {
     title: "Mükerrer Kayıt",
@@ -209,6 +212,7 @@ export default {
     parseError: "Komut anlaşılamadı",
     receiptConfirm: "{amount} TL - {merchant} kaydedilsin mi?",
     saveConfirm: "{text} kaydedilsin mi?",
+    slashMode: "Slash komut modu — hızlı giriş",
   },
   transfer: {
     title: "Kasalar Arası Transfer",

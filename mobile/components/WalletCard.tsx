@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 
 interface Props {
   name: string;
@@ -14,12 +15,15 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export function WalletCard({ name, balance, currency = "TRY", type = "cash" }: Props) {
+  const { t } = useI18n();
+  const isDebt = type === "credit_card";
   return (
     <View style={styles.card}>
       <Text style={styles.icon}>{TYPE_ICONS[type] || "💰"}</Text>
       <View style={styles.info}>
         <Text style={styles.name}>{name}</Text>
-        <Text style={styles.balance}>
+        <Text style={[styles.balance, isDebt && styles.debt]}>
+          {isDebt ? `${t.home.debt}: ` : ""}
           {balance.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} {currency}
         </Text>
       </View>
@@ -38,4 +42,5 @@ const styles = StyleSheet.create({
   info: { flex: 1 },
   name: { color: Colors.textSecondary, fontSize: 14 },
   balance: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 2 },
+  debt: { color: Colors.danger },
 });

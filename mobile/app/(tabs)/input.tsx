@@ -23,6 +23,11 @@ export default function InputScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [error, setError] = useState("");
   const [payModal, setPayModal] = useState<{ title: string } | null>(null);
+  const [slashMode, setSlashMode] = useState(false);
+
+  const slashHints = locale === "en"
+    ? ["/150 coffee bank", "/500 transfer bank cash", "/bill electricity 200"]
+    : ["/150 kahve banka", "/500 transfer banka nakit", "/fatura elektrik 200"];
 
   const showConfirmation = (message: string, parsed: any) => {
     setConfirmMessage(message);
@@ -34,7 +39,10 @@ export default function InputScreen() {
   const handleTextSubmit = async () => {
     if (!text.trim()) return;
     try {
-      const result = await api.parseText(text, whisperMode);
+      const isSlash = text.trim().startsWith("/");
+      const result = isSlash
+        ? await api.parseSlash(text.trim())
+        : await api.parseText(text, whisperMode);
       showConfirmation(result.message, result.parsed);
     } catch (e: any) {
       setError(e.message || t.input.parseError);
@@ -81,6 +89,7 @@ export default function InputScreen() {
 
   const handleTextChange = async (val: string) => {
     setText(val);
+    setSlashMode(val.startsWith("/"));
     if (val.length >= 1) {
       try {
         const res = await api.autocomplete(val);
@@ -110,9 +119,22 @@ export default function InputScreen() {
         <View style={styles.line} /><Text style={styles.dividerText}>{t.input.orType}</Text><View style={styles.line} />
       </View>
 
-      <TextInput style={styles.input} placeholder={t.input.placeholder}
+      <TextInput style={[styles.input, slashMode && styles.slashInput]} placeholder={t.input.placeholder}
         placeholderTextColor={Colors.textMuted} value={text} onChangeText={handleTextChange}
         onSubmitEditing={handleTextSubmit} returnKeyType="done" />
+
+      {slashMode && (
+        <View style={styles.slashSection}>
+          <Text style={styles.slashLabel}>{t.input.slashMode}</Text>
+          <View style={styles.suggestions}>
+            {slashHints.map((hint) => (
+              <TouchableOpacity key={hint} style={styles.slashChip} onPress={() => { setText(hint); setSlashMode(true); }}>
+                <Text style={styles.slashChipText}>{hint}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       {suggestions.length > 0 && (
         <View style={styles.suggestions}>
@@ -184,6 +206,11 @@ const styles = StyleSheet.create({
   line: { flex: 1, height: 1, backgroundColor: Colors.border },
   dividerText: { color: Colors.textMuted, marginHorizontal: Spacing.sm, fontSize: 13 },
   input: { backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md, color: Colors.text, fontSize: 16, borderWidth: 1, borderColor: Colors.border },
+  slashInput: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.05)" },
+  slashSection: { marginTop: Spacing.sm },
+  slashLabel: { color: Colors.accent, fontSize: 12, fontWeight: "600", marginBottom: 6 },
+  slashChip: { backgroundColor: "rgba(0,212,170,0.12)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.accent },
+  slashChipText: { color: Colors.accent, fontSize: 12, fontFamily: "monospace" },
   suggestions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.sm },
   chip: { backgroundColor: Colors.card, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
   chipText: { color: Colors.accent, fontSize: 13 },

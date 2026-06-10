@@ -143,6 +143,7 @@ class AgendaService:
             select(AgendaItem).where(
                 AgendaItem.user_id == user_id,
                 AgendaItem.status == AgendaStatus.PENDING,
+                AgendaItem.due_date <= cutoff,
             ).order_by(AgendaItem.due_date)
         )
         return list(result.scalars().all())
