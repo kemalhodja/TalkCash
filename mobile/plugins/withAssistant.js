@@ -81,6 +81,7 @@ function withIosAssistantActivities(config) {
         ...(config.ios?.infoPlist || {}),
         NSUserActivityTypes: [
           "io.talkcash.app.add-expense",
+          "io.talkcash.app.add-income",
           "io.talkcash.app.add-shopping",
           "io.talkcash.app.mark-paid",
         ],

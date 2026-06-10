@@ -33,15 +33,33 @@
           "action": "VIEW",
           "autoVerify": false,
           "data": [
-            { "scheme": "talkcash", "host": "command" },
-            { "scheme": "talkcash", "pathPrefix": "/command" }
+            {
+              "scheme": "talkcash",
+              "host": "command"
+            },
+            {
+              "scheme": "talkcash",
+              "pathPrefix": "/command"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
     "plugins": [
       "./plugins/withAssistant.js",
+      [
+        "@config-plugins/react-native-siri-shortcut",
+        [
+          "io.talkcash.app.add-expense",
+          "io.talkcash.app.add-income",
+          "io.talkcash.app.add-shopping",
+          "io.talkcash.app.mark-paid"
+        ]
+      ],
       "expo-router",
       "expo-local-authentication",
       "expo-secure-store",
@@ -52,7 +70,8 @@
           "locationAlwaysAndWhenInUsePermission": "Arka planda market yakını hatırlatması için konum erişimi gerekli."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@config-plugins/react-native-siri-shortcut"
     ]
   }
 }
