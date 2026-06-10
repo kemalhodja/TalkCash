@@ -23,6 +23,7 @@ async def list_agenda(days: int = 30, user: User = Depends(get_current_user), db
             "id": str(i.id), "title": i.title, "amount": float(i.amount),
             "due_date": i.due_date.isoformat(), "status": i.status.value,
             "installment": f"{i.installment_current}/{i.installment_total}" if i.installment_total else None,
+            "is_recurring": i.is_recurring,
         }
         for i in items
     ]

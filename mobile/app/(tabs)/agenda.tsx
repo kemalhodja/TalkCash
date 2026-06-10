@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { AgendaCalendar } from "@/components/AgendaCalendar";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
+import { PayBillModal } from "@/components/PayBillModal";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
@@ -8,16 +10,20 @@ import { ApiError, api } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
 
 type AddMode = "bill" | "installment" | null;
+type ViewMode = "list" | "calendar";
 
 export default function AgendaScreen() {
   const { t, locale } = useI18n();
   const [items, setItems] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [addMode, setAddMode] = useState<AddMode>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
   const [installmentCount, setInstallmentCount] = useState("6");
   const [duplicateMsg, setDuplicateMsg] = useState("");
   const [pendingBill, setPendingBill] = useState<any>(null);
+  const [payModal, setPayModal] = useState<{ title: string; amount: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const dateLocale = locale === "en" ? "en-US" : "tr-TR";
@@ -31,7 +37,7 @@ export default function AgendaScreen() {
   useRefreshOnFocus(loadAgenda);
 
   const resetForm = () => {
-    setTitle(""); setAmount(""); setInstallmentCount("6"); setAddMode(null);
+    setTitle(""); setAmount(""); setInstallmentCount("6"); setIsRecurring(false); setAddMode(null);
   };
 
   const handleAddBill = async (force = false) => {
@@ -39,14 +45,14 @@ export default function AgendaScreen() {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 7);
     try {
-      await api.addBill(title, parseFloat(amount), dueDate.toISOString(), force);
+      await api.addBill(title, parseFloat(amount), dueDate.toISOString(), force, isRecurring);
       await scheduleAgendaReminder(title, parseFloat(amount), dueDate, locale);
       resetForm();
       loadAgenda();
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         setDuplicateMsg(e.message);
-        setPendingBill({ title, amount, dueDate: dueDate.toISOString() });
+        setPendingBill({ title, amount, dueDate: dueDate.toISOString(), isRecurring });
       }
     }
   };
@@ -55,6 +61,13 @@ export default function AgendaScreen() {
     if (!title || !amount || !installmentCount) return;
     await api.createInstallments(title, parseFloat(amount), parseInt(installmentCount) || 6);
     resetForm();
+    loadAgenda();
+  };
+
+  const handleMarkPaid = async (walletId: string) => {
+    if (!payModal) return;
+    await api.markPaid(payModal.title, walletId);
+    setPayModal(null);
     loadAgenda();
   };
 
@@ -74,12 +87,33 @@ export default function AgendaScreen() {
         </View>
       </View>
 
+      <View style={styles.viewToggle}>
+        <TouchableOpacity style={[styles.viewBtn, viewMode === "calendar" && styles.viewBtnActive]}
+          onPress={() => setViewMode("calendar")}>
+          <Text style={styles.viewBtnText}>{t.agenda.calendar}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.viewBtn, viewMode === "list" && styles.viewBtnActive]}
+          onPress={() => setViewMode("list")}>
+          <Text style={styles.viewBtnText}>{t.agenda.list}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {viewMode === "calendar" && (
+        <AgendaCalendar items={items} onSelectItem={(item) => {
+          if (item.status === "pending") setPayModal({ title: item.title, amount: item.amount });
+        }} />
+      )}
+
       {addMode === "bill" && (
         <View style={styles.addForm}>
           <TextInput style={styles.input} placeholder={t.agenda.billName} placeholderTextColor={Colors.textMuted}
             value={title} onChangeText={setTitle} />
           <TextInput style={styles.input} placeholder={t.agenda.amount} placeholderTextColor={Colors.textMuted}
             keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+          <View style={styles.recurringRow}>
+            <Text style={styles.recurringLabel}>{t.agenda.recurring}</Text>
+            <Switch value={isRecurring} onValueChange={setIsRecurring} trackColor={{ true: Colors.accent }} />
+          </View>
           <TouchableOpacity style={styles.submitBtn} onPress={() => handleAddBill(false)}>
             <Text style={styles.submitText}>{t.agenda.add}</Text>
           </TouchableOpacity>
@@ -100,12 +134,14 @@ export default function AgendaScreen() {
         </View>
       )}
 
-      {items.map((item) => (
+      {viewMode === "list" && items.map((item) => (
         <View key={item.id} style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardTitle}>
+              {item.title}{item.is_recurring ? " 🔄" : ""}
+            </Text>
             {item.status === "pending" && (
-              <TouchableOpacity onPress={async () => { await api.markPaid(item.title); loadAgenda(); }}>
+              <TouchableOpacity onPress={() => setPayModal({ title: item.title, amount: item.amount })}>
                 <Text style={styles.payBtn}>{t.agenda.paid}</Text>
               </TouchableOpacity>
             )}
@@ -118,11 +154,21 @@ export default function AgendaScreen() {
         </View>
       ))}
 
+      <PayBillModal
+        visible={!!payModal}
+        billTitle={payModal?.title || ""}
+        amount={payModal?.amount || 0}
+        onConfirm={handleMarkPaid}
+        onCancel={() => setPayModal(null)}
+      />
+
       <DuplicateBillDialog visible={!!duplicateMsg} message={duplicateMsg}
         onConfirm={async () => {
           setDuplicateMsg("");
           if (pendingBill) {
-            await api.addBill(pendingBill.title, parseFloat(pendingBill.amount), pendingBill.dueDate, true);
+            await api.addBill(
+              pendingBill.title, parseFloat(pendingBill.amount), pendingBill.dueDate, true, pendingBill.isRecurring,
+            );
             setPendingBill(null); loadAgenda();
           }
         }}
@@ -135,15 +181,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   content: { padding: Spacing.md },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
   headerActions: { flexDirection: "row", gap: 12 },
   title: { color: Colors.text, fontSize: 22, fontWeight: "700", flex: 1 },
   addBtn: { color: Colors.accent, fontWeight: "600", fontSize: 13 },
+  viewToggle: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
+  viewBtn: { flex: 1, padding: Spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
+  viewBtnActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
+  viewBtnText: { color: Colors.textSecondary, fontWeight: "600" },
   addForm: { marginBottom: Spacing.lg },
   input: {
     backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
     color: Colors.text, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
   },
+  recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
+  recurringLabel: { color: Colors.textSecondary },
   submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
   submitText: { color: Colors.bg, fontWeight: "700" },
   card: {

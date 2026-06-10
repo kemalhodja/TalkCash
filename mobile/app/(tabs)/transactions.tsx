@@ -36,7 +36,10 @@ export default function TransactionsScreen() {
               {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString("tr-TR")} ₺
             </Text>
           </View>
-          <Text style={styles.desc}>{tx.description || tx.place || "—"}</Text>
+          <Text style={styles.desc}>
+            {tx.description || tx.place || "—"}
+            {tx.receipt_url ? ` · 📷 ${t.agenda.receiptLinked}` : ""}
+          </Text>
           <Text style={styles.date}>{new Date(tx.date).toLocaleDateString("tr-TR")} · {tx.input_method}</Text>
         </View>
       ))}

@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 TURKISH_NUMBER_MAP = {
@@ -15,6 +16,12 @@ SLANG_AMOUNT_MAP = {
     "onluk": 10, "yirmilik": 20, "ellilik": 50, "gömdük": 100, "gomduk": 100,
 }
 
+MONTH_MAP = {
+    "ocak": 1, "şubat": 2, "subat": 2, "mart": 3, "nisan": 4, "mayıs": 5, "mayis": 5,
+    "haziran": 6, "temmuz": 7, "ağustos": 8, "agustos": 8, "eylül": 9, "eylul": 9,
+    "ekim": 10, "kasım": 11, "kasim": 11, "aralık": 12, "aralik": 12,
+}
+
 
 def parse_turkish_amount(text: str) -> Decimal | None:
     text_lower = text.lower()
@@ -23,7 +30,6 @@ def parse_turkish_amount(text: str) -> Decimal | None:
         if slang in text_lower:
             return Decimal(str(value))
 
-    # "elli lira", "yüz tl"
     word_match = re.search(
         r"(bir|iki|üç|uc|dört|dort|beş|bes|altı|alti|yedi|sekiz|dokuz|on|yirmi|otuz|kırk|kirk|elli|altmış|altmis|yetmiş|yetmis|seksen|doksan|yüz|yuz|bin)\s*(lira|tl|₺)?",
         text_lower,
@@ -34,6 +40,35 @@ def parse_turkish_amount(text: str) -> Decimal | None:
     num_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(tl|lira|₺)?", text_lower)
     if num_match:
         return Decimal(num_match.group(1).replace(",", "."))
+
+    return None
+
+
+def extract_date(text: str) -> datetime | None:
+    text_lower = text.lower()
+    now = datetime.utcnow()
+
+    if "yarın" in text_lower or "yarin" in text_lower:
+        return now + timedelta(days=1)
+    if "gelecek hafta" in text_lower:
+        return now + timedelta(days=7)
+    if "ay sonu" in text_lower:
+        next_month = now.replace(day=28) + timedelta(days=4)
+        last_day = next_month - timedelta(days=next_month.day)
+        return last_day.replace(hour=12, minute=0, second=0, microsecond=0)
+
+    day_month = re.search(r"(\d{1,2})\s*(ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|eylül|eylul|ekim|kasım|kasim|aralık|aralik)", text_lower)
+    if day_month:
+        day = int(day_month.group(1))
+        month = MONTH_MAP.get(day_month.group(2), now.month)
+        year = now.year
+        if month < now.month:
+            year += 1
+        return datetime(year, month, min(day, 28), 12, 0, 0)
+
+    in_days = re.search(r"(\d+)\s*gün\s*sonra", text_lower)
+    if in_days:
+        return now + timedelta(days=int(in_days.group(1)))
 
     return None
 

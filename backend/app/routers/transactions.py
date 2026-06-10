@@ -6,10 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.models.receipt import Receipt
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.services.storage.service import StorageService
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
+storage_service = StorageService()
 
 
 @router.get("/")
@@ -23,8 +26,14 @@ async def list_transactions(
     if category:
         query = query.where(Transaction.category == category)
     result = await db.execute(query)
-    return [
-        {
+    rows = []
+    for t in result.scalars().all():
+        receipt_url = None
+        if t.receipt_id:
+            receipt = await db.get(Receipt, t.receipt_id)
+            if receipt and receipt.image_url:
+                receipt_url = await storage_service.get_url(receipt.image_url)
+        rows.append({
             "id": str(t.id),
             "amount": float(t.amount),
             "currency": t.currency,
@@ -35,6 +44,6 @@ async def list_transactions(
             "input_method": t.input_method,
             "date": t.created_at.isoformat(),
             "receipt_id": str(t.receipt_id) if t.receipt_id else None,
-        }
-        for t in result.scalars().all()
-    ]
+            "receipt_url": receipt_url,
+        })
+    return rows

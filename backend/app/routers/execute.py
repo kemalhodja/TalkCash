@@ -94,9 +94,9 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession, locale
         due = parsed.date or (datetime.utcnow() + timedelta(days=7))
         item = await agenda_service.add_bill(
             db, user_id, parsed.description or parsed.category or "Fatura",
-            parsed.amount, due, force=parsed.force,
+            parsed.amount, due, is_recurring=parsed.is_recurring, force=parsed.force,
         )
-        return {"id": str(item.id), "title": item.title}
+        return {"id": str(item.id), "title": item.title, "due_date": item.due_date.isoformat()}
 
     if intent == "add_installment":
         if not parsed.amount:

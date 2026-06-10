@@ -2,9 +2,11 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.user import User
 from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error
 from app.models.user import User
@@ -61,10 +63,15 @@ async def split_bill(
 
 @router.post("/shared-wallet")
 async def create_shared_wallet(
-    name: str, member_ids: list[str] | None = None,
+    name: str, member_email: str | None = None, member_ids: list[str] | None = None,
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    members = [UUID(m) for m in (member_ids or [])]
+    members: list[UUID] = [UUID(m) for m in (member_ids or [])]
+    if member_email:
+        result = await db.execute(select(User).where(User.email == member_email.strip().lower()))
+        found = result.scalars().first()
+        if found and found.id != user.id:
+            members.append(found.id)
     wallet = await shared_service.create(db, user.id, name, members)
     return {"id": str(wallet.id), "name": wallet.name, "balance": float(wallet.balance)}
 

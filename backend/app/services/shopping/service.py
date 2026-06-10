@@ -87,10 +87,13 @@ class ShoppingService:
         )
         existing_routine_names = {item.name for item in routines.scalars().all()}
 
+        is_monday = datetime.utcnow().weekday() == 0
         all_routines = await db.execute(
             select(ShoppingItem).where(ShoppingItem.is_routine == True)
         )
         for routine in all_routines.scalars().all():
+            if routine.routine_type == "weekly" and not is_monday:
+                continue
             if routine.name not in existing_routine_names:
                 db.add(ShoppingItem(
                     user_id=routine.user_id, name=routine.name,

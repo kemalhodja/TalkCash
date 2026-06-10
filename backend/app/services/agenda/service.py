@@ -61,6 +61,16 @@ class AgendaService:
         await db.commit()
         return items
 
+    async def _resolve_wallet(self, db: AsyncSession, user_id: UUID, wallet_id: UUID | None) -> UUID | None:
+        if wallet_id:
+            return wallet_id
+        wallet = await self.wallet_service.find_by_name(db, user_id, "Banka")
+        if not wallet:
+            wallets = await self.wallet_service.list_wallets(db, user_id)
+            if wallets:
+                return wallets[0].id
+        return wallet.id if wallet else None
+
     async def mark_paid(self, db: AsyncSession, user_id: UUID, title: str, wallet_id: UUID | None = None) -> AgendaItem:
         result = await db.execute(
             select(AgendaItem).where(
@@ -73,14 +83,56 @@ class AgendaService:
         if not item:
             raise I18nError("agenda.not_found_title", title=title)
 
+        resolved_wallet = await self._resolve_wallet(db, user_id, wallet_id)
         item.status = AgendaStatus.PAID
-        if wallet_id:
+        if resolved_wallet:
             await self.wallet_service.add_expense(
-                db, user_id, wallet_id, item.amount,
+                db, user_id, resolved_wallet, item.amount,
                 category="Fatura", description=item.title, input_method="voice",
             )
+
+        if item.is_recurring:
+            next_due = item.due_date + relativedelta(months=1)
+            db.add(AgendaItem(
+                user_id=user_id, title=item.title, amount=item.amount,
+                due_date=next_due, is_recurring=True,
+            ))
+
         await db.commit()
         return item
+
+    async def spawn_recurring_bills(self, db: AsyncSession) -> int:
+        """Create next month's recurring bills for paid recurring items missing a future entry."""
+        now = datetime.utcnow()
+        result = await db.execute(
+            select(AgendaItem).where(
+                AgendaItem.is_recurring == True,
+                AgendaItem.status == AgendaStatus.PAID,
+            )
+        )
+        created = 0
+        for paid in result.scalars().all():
+            next_due = paid.due_date + relativedelta(months=1)
+            if next_due <= now:
+                next_due = now + relativedelta(months=1)
+            existing = await db.execute(
+                select(AgendaItem).where(
+                    AgendaItem.user_id == paid.user_id,
+                    AgendaItem.title == paid.title,
+                    AgendaItem.status == AgendaStatus.PENDING,
+                    extract("month", AgendaItem.due_date) == next_due.month,
+                    extract("year", AgendaItem.due_date) == next_due.year,
+                )
+            )
+            if not existing.scalars().first():
+                db.add(AgendaItem(
+                    user_id=paid.user_id, title=paid.title, amount=paid.amount,
+                    due_date=next_due, is_recurring=True,
+                ))
+                created += 1
+        if created:
+            await db.commit()
+        return created
 
     async def list_upcoming(self, db: AsyncSession, user_id: UUID, days: int = 30) -> list[AgendaItem]:
         cutoff = datetime.utcnow() + timedelta(days=days)
@@ -88,7 +140,6 @@ class AgendaService:
             select(AgendaItem).where(
                 AgendaItem.user_id == user_id,
                 AgendaItem.status == AgendaStatus.PENDING,
-                AgendaItem.due_date <= cutoff,
             ).order_by(AgendaItem.due_date)
         )
         return list(result.scalars().all())

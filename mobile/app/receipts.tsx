@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
@@ -33,6 +33,9 @@ export default function ReceiptsScreen() {
       <Stack.Screen options={{ title: t.receipts.title }} />
       {receipts.map((r) => (
         <View key={r.id} style={styles.card}>
+          {r.image_url ? (
+            <Image source={{ uri: r.image_url }} style={styles.image} resizeMode="cover" />
+          ) : null}
           <Text style={styles.merchant}>{r.merchant || "—"}</Text>
           <Text style={styles.amount}>
             {r.total_amount != null ? `${Number(r.total_amount).toLocaleString()} ₺` : "—"}
@@ -56,8 +59,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
   card: {
     backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
   },
+  image: { width: "100%", height: 160, borderRadius: 8, marginBottom: Spacing.sm },
   merchant: { color: Colors.text, fontWeight: "600", fontSize: 16 },
   amount: { color: Colors.accent, fontSize: 18, fontWeight: "700", marginTop: 4 },
   meta: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },

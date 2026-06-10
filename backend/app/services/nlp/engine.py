@@ -11,6 +11,7 @@ from app.schemas.common import ParsedInput
 from app.services.nlp.turkish_parser import (
     detect_intent,
     extract_category,
+    extract_date,
     extract_shopping_items,
     extract_wallet_name,
     parse_turkish_amount,
@@ -38,6 +39,7 @@ JSON formatı:
   "items": ["string"],
   "person_name": "string|null",
   "installment_count": number|null,
+  "date": "ISO-8601 datetime string|null",
   "confidence": 0.0-1.0
 }"""
 
@@ -61,6 +63,7 @@ JSON format:
   "items": ["string"],
   "person_name": "string|null",
   "installment_count": number|null,
+  "date": "ISO-8601 datetime string|null",
   "confidence": 0.0-1.0
 }"""
 
@@ -72,29 +75,36 @@ class NLPEngine:
     async def parse_text(self, text: str, whisper_mode: bool = False, locale: str = "tr") -> ParsedInput:
         if self.client:
             try:
-                return await self._parse_with_llm(text, locale)
+                return await self._parse_with_llm(text, locale, whisper_mode=whisper_mode)
             except Exception:
                 pass
         if locale == "en":
             return self._parse_locally_en(text)
-        return self._parse_locally(text)
+        return self._parse_locally(text, whisper_mode=whisper_mode)
 
     async def transcribe_audio(self, audio_bytes: bytes, whisper_mode: bool = False, locale: str = "tr") -> str:
         if not self.client:
             raise I18nError("nlp.openai_required")
         lang = "en" if locale == "en" else "tr"
-        response = await self.client.audio.transcriptions.create(
-            model=settings.whisper_model,
-            file=("audio.webm", audio_bytes),
-            language=lang,
-        )
+        kwargs: dict = {
+            "model": settings.whisper_model,
+            "file": ("audio.webm", audio_bytes),
+            "language": lang,
+        }
+        if whisper_mode:
+            kwargs["prompt"] = "quiet whisper speech, Turkish financial terms" if locale == "tr" else "quiet whisper speech"
+            kwargs["temperature"] = 0.2
+        response = await self.client.audio.transcriptions.create(**kwargs)
         return response.text
 
-    async def _parse_with_llm(self, text: str, locale: str = "tr") -> ParsedInput:
+    async def _parse_with_llm(self, text: str, locale: str = "tr", whisper_mode: bool = False) -> ParsedInput:
         prompt = SYSTEM_PROMPT_EN if locale == "en" else SYSTEM_PROMPT_TR
+        if whisper_mode:
+            prompt += "\n\nNote: Input may be quiet/whispered speech with unclear words. Infer intent generously."
         response = await self.client.chat.completions.create(
             model=settings.openai_model,
             response_format={"type": "json_object"},
+            temperature=0.2 if whisper_mode else 0.5,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": text},
@@ -103,7 +113,7 @@ class NLPEngine:
         data = json.loads(response.choices[0].message.content)
         return ParsedInput(raw_text=text, **data)
 
-    def _parse_locally(self, text: str) -> ParsedInput:
+    def _parse_locally(self, text: str, whisper_mode: bool = False) -> ParsedInput:
         intent = detect_intent(text)
         if text.startswith("/"):
             text = text[1:].strip()
@@ -125,6 +135,9 @@ class NLPEngine:
         if count_match:
             person_count = int(count_match.group(1))
 
+        text_lower = text.lower()
+        is_recurring = any(w in text_lower for w in ["her ay", "aylık", "aylik", "tekrarlayan"])
+
         return ParsedInput(
             intent=intent,
             amount=parse_turkish_amount(text),
@@ -133,7 +146,10 @@ class NLPEngine:
             items=extract_shopping_items(text),
             description=text,
             person_count=person_count,
+            date=extract_date(text),
+            is_recurring=is_recurring,
             raw_text=text,
+            confidence=0.85 if whisper_mode else 1.0,
         )
 
     def _parse_locally_en(self, text: str) -> ParsedInput:

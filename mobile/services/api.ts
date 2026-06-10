@@ -73,8 +73,11 @@ export const api = {
 
   // Agenda
   getAgenda: (days = 30) => request<any[]>(`/agenda/?days=${days}`),
-  addBill: (title: string, amount: number, dueDate: string, force = false) =>
-    request<any>(`/agenda/bill?title=${encodeURIComponent(title)}&amount=${amount}&due_date=${dueDate}&force=${force}`, { method: "POST" }),
+  addBill: (title: string, amount: number, dueDate: string, force = false, isRecurring = false) =>
+    request<any>(
+      `/agenda/bill?title=${encodeURIComponent(title)}&amount=${amount}&due_date=${dueDate}&force=${force}&is_recurring=${isRecurring}`,
+      { method: "POST" },
+    ),
   markPaid: (title: string, walletId?: string) =>
     request(`/agenda/pay?title=${encodeURIComponent(title)}${walletId ? `&wallet_id=${walletId}` : ""}`, { method: "POST" }),
   createInstallments: (title: string, total: number, count: number) =>
@@ -92,8 +95,11 @@ export const api = {
     const qs = params.toString();
     return request(`${url}${qs ? `?${qs}` : ""}`, { method: "POST" });
   },
-  setRoutine: (itemId: string, isRoutine: boolean) =>
-    request(`/shopping/${itemId}/routine`, { method: "PATCH", body: JSON.stringify({ is_routine: isRoutine, routine_type: "daily" }) }),
+  setRoutine: (itemId: string, isRoutine: boolean, routineType: "daily" | "weekly" = "daily") =>
+    request(`/shopping/${itemId}/routine`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_routine: isRoutine, routine_type: routineType }),
+    }),
 
   // OCR
   scanReceipt: async (uri: string) => {
@@ -102,6 +108,11 @@ export const api = {
     return request<any>("/ocr/scan", { method: "POST", body: form });
   },
   getReceipts: () => request<any[]>("/ocr/"),
+  verifyReceipt: (receiptAmount: number, transactionAmount: number) =>
+    request<{ verified: boolean }>(
+      `/ocr/verify?receipt_amount=${receiptAmount}&transaction_amount=${transactionAmount}`,
+      { method: "POST" },
+    ),
 
   // Budgets
   getBudgets: () => request<any[]>("/budgets/"),
@@ -124,8 +135,11 @@ export const api = {
   getDebts: () => request<any[]>("/social/debts"),
   settleDebt: (id: string) => request(`/social/debts/${id}/settle`, { method: "POST" }),
   getSharedWallets: () => request<any[]>("/social/shared-wallet"),
-  createSharedWallet: (name: string) =>
-    request(`/social/shared-wallet?name=${encodeURIComponent(name)}`, { method: "POST" }),
+  createSharedWallet: (name: string, memberEmail?: string) => {
+    let url = `/social/shared-wallet?name=${encodeURIComponent(name)}`;
+    if (memberEmail) url += `&member_email=${encodeURIComponent(memberEmail)}`;
+    return request(url, { method: "POST" });
+  },
   addSharedWalletExpense: (walletId: string, amount: number, description = "") =>
     request(`/social/shared-wallet/${walletId}/expense?amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
 

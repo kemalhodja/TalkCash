@@ -17,6 +17,7 @@ export default function SocialScreen() {
   const [debtPerson, setDebtPerson] = useState("");
   const [debtAmount, setDebtAmount] = useState("");
   const [walletName, setWalletName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
   const [expenseWalletId, setExpenseWalletId] = useState<string | null>(null);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDesc, setExpenseDesc] = useState("");
@@ -161,9 +162,11 @@ export default function SocialScreen() {
         ))}
         <TextInput style={styles.input} placeholder={t.social.walletName} placeholderTextColor={Colors.textMuted}
           value={walletName} onChangeText={setWalletName} />
+        <TextInput style={styles.input} placeholder={t.agenda.memberEmail} placeholderTextColor={Colors.textMuted}
+          keyboardType="email-address" autoCapitalize="none" value={memberEmail} onChangeText={setMemberEmail} />
         <TouchableOpacity style={styles.btn} onPress={async () => {
-          await api.createSharedWallet(walletName);
-          setWalletName(""); load();
+          await api.createSharedWallet(walletName, memberEmail || undefined);
+          setWalletName(""); setMemberEmail(""); load();
         }}><Text style={styles.btnText}>{t.social.createWallet}</Text></TouchableOpacity>
       </View>
     </ScrollView>

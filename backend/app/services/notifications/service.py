@@ -36,11 +36,11 @@ class NotificationService:
         await db.refresh(notif)
         return notif
 
-    async def check_agenda_reminders(self, db: AsyncSession) -> int:
+    async def check_agenda_reminders(self, db: AsyncSession, when: str = "today") -> int:
+        """when: 'today' for due-date morning reminders, 'tomorrow' for day-before evening reminders."""
         now = datetime.utcnow()
-        tomorrow = now + timedelta(days=1)
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = today_start + timedelta(days=1)
+        today = now.date()
+        target = today if when == "today" else today + timedelta(days=1)
 
         result = await db.execute(
             select(AgendaItem, User).join(User, AgendaItem.user_id == User.id).where(
@@ -49,22 +49,21 @@ class NotificationService:
         )
         sent = 0
         for item, user in result.all():
-            locale = user.locale or "tr"
             due = item.due_date.replace(tzinfo=None) if item.due_date.tzinfo else item.due_date
-            title, body = None, None
-
-            if tomorrow.replace(hour=0) <= due < tomorrow.replace(hour=23, minute=59):
+            if due.date() != target:
+                continue
+            locale = user.locale or "tr"
+            if when == "tomorrow":
                 title = t("notif.agenda_tomorrow_title", locale, title=item.title)
                 body = t("notif.agenda_tomorrow_body", locale, amount=item.amount)
-            elif today_start <= due < today_end:
+            else:
                 title = t("notif.agenda_today_title", locale, title=item.title)
                 body = t("notif.agenda_today_body", locale, amount=item.amount)
 
-            if title and body:
-                await self.create_in_app(db, user.id, title, body, "agenda_reminder")
-                if user.push_token:
-                    await self.send_push(user.push_token, title, body)
-                sent += 1
+            await self.create_in_app(db, user.id, title, body, "agenda_reminder")
+            if user.push_token:
+                await self.send_push(user.push_token, title, body)
+            sent += 1
         return sent
 
     async def list_notifications(self, db: AsyncSession, user_id: UUID) -> list[Notification]:

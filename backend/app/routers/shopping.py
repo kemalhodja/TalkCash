@@ -33,6 +33,7 @@ async def list_items(user: User = Depends(get_current_user), db: AsyncSession = 
         grouped.setdefault(cat, []).append({
             "id": str(item.id), "name": item.name,
             "is_routine": item.is_routine,
+            "routine_type": item.routine_type or "daily",
         })
     return grouped
 

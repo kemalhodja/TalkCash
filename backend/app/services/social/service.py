@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -13,11 +14,19 @@ class SocialService:
         self, db: AsyncSession, user_id: UUID, person_name: str,
         amount: Decimal, is_lent: bool = True,
     ) -> DebtRecord:
+        due = datetime.utcnow() + timedelta(days=30)
         record = DebtRecord(
             user_id=user_id, person_name=person_name,
-            amount=amount, is_lent=is_lent,
+            amount=amount, is_lent=is_lent, due_date=due,
         )
         db.add(record)
+        await db.flush()
+
+        from app.services.agenda.service import AgendaService
+        agenda = AgendaService()
+        title = f"{person_name} — {'alacak' if is_lent else 'borç'}"
+        await agenda.add_bill(db, user_id, title, amount, due, force=True)
+
         await db.commit()
         await db.refresh(record)
         return record

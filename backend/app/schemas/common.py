@@ -29,6 +29,7 @@ class ParsedInput(BaseModel):
     person_count: int | None = None
     receipt_id: str | None = None
     force: bool = False
+    is_recurring: bool = False
     raw_text: str = ""
     confidence: float = 1.0
 

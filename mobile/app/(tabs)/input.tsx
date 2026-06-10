@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
 import { NumericKeypad } from "@/components/NumericKeypad";
 import { ReceiptScanner } from "@/components/ReceiptScanner";
@@ -46,8 +46,17 @@ export default function InputScreen() {
   const handleConfirm = async () => {
     setConfirmVisible(false);
     if (parsedData) {
-      try { await api.executeAction(parsedData, true); setText(""); }
-      catch (e: any) { setError(e.message); }
+      try {
+        await api.executeAction(parsedData, true);
+        if (parsedData.receipt_id && parsedData.amount) {
+          const { verified } = await api.verifyReceipt(parsedData.amount, parsedData.amount);
+          Alert.alert(
+            verified ? t.scanner.verified : t.scanner.mismatch,
+            verified ? t.agenda.receiptLinked : undefined,
+          );
+        }
+        setText("");
+      } catch (e: any) { setError(e.message); }
     }
     setParsedData(null);
   };

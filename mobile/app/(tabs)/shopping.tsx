@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -60,10 +60,27 @@ export default function ShoppingScreen() {
           {items.map((item) => (
             <TouchableOpacity key={item.id} style={styles.item}
               onPress={() => setBuyModal({ id: item.id, name: item.name })}
-              onLongPress={async () => { await api.setRoutine(item.id, !item.is_routine); loadList(); }}>
+              onLongPress={() => {
+                if (item.is_routine) {
+                  Alert.alert(t.shopping.title, t.agenda.cancel, [
+                    { text: t.common.cancel, style: "cancel" },
+                    { text: t.common.delete, onPress: async () => { await api.setRoutine(item.id, false); loadList(); } },
+                  ]);
+                } else {
+                  Alert.alert(t.shopping.title, "", [
+                    { text: t.agenda.routineDaily, onPress: async () => { await api.setRoutine(item.id, true, "daily"); loadList(); } },
+                    { text: t.agenda.routineWeekly, onPress: async () => { await api.setRoutine(item.id, true, "weekly"); loadList(); } },
+                    { text: t.common.cancel, style: "cancel" },
+                  ]);
+                }
+              }}>
               <View style={styles.checkbox} />
               <Text style={styles.itemName}>
-                {item.name}{item.is_routine && <Text style={styles.routine}> 🔄</Text>}
+                {item.name}{item.is_routine && (
+                  <Text style={styles.routine}>
+                    {item.routine_type === "weekly" ? " 📅" : " 🔄"}
+                  </Text>
+                )}
               </Text>
             </TouchableOpacity>
           ))}
