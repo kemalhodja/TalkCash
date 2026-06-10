@@ -27,9 +27,21 @@
         "RECORD_AUDIO",
         "CAMERA",
         "ACCESS_FINE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            { "scheme": "talkcash", "host": "command" },
+            { "scheme": "talkcash", "pathPrefix": "/command" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "plugins": [
+      "./plugins/withAssistant.js",
       "expo-router",
       "expo-local-authentication",
       "expo-secure-store",

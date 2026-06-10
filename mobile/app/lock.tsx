@@ -5,6 +5,17 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
+import { consumePendingAssistant } from "@/services/assistant";
+
+async function goAfterUnlock() {
+  const pending = await consumePendingAssistant();
+  if (pending) {
+    const qs = new URLSearchParams({ text: pending.text, confirm: String(pending.confirm), source: pending.source });
+    router.replace(`/command?${qs.toString()}`);
+  } else {
+    router.replace("/(tabs)");
+  }
+}
 
 export default function LockScreen() {
   const { t } = useI18n();
@@ -18,7 +29,7 @@ export default function LockScreen() {
       setUser(u);
       if (u.biometricEnabled) {
         const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
-        if (ok) { auth.setUnlocked(true); router.replace("/(tabs)"); }
+        if (ok) { auth.setUnlocked(true); await goAfterUnlock(); }
       }
     });
   }, [t.lock.biometricPrompt]);
@@ -27,7 +38,7 @@ export default function LockScreen() {
     try {
       await api.verifyPin(pin);
       auth.setUnlocked(true);
-      router.replace("/(tabs)");
+      await goAfterUnlock();
     } catch {
       setError(t.lock.wrongPin);
       setPin("");
@@ -40,7 +51,7 @@ export default function LockScreen() {
       await api.setPin(pin);
       await auth.updateUser({ hasPin: true });
       auth.setUnlocked(true);
-      router.replace("/(tabs)");
+      await goAfterUnlock();
     } catch {
       setError(t.lock.pinFailed);
     }
@@ -71,7 +82,7 @@ export default function LockScreen() {
       {user?.biometricEnabled && (
         <TouchableOpacity style={styles.bioBtn} onPress={async () => {
           const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
-          if (ok) { auth.setUnlocked(true); router.replace("/(tabs)"); }
+          if (ok) { auth.setUnlocked(true); await goAfterUnlock(); }
         }}>
           <Text style={styles.bioText}>{t.lock.biometric}</Text>
         </TouchableOpacity>

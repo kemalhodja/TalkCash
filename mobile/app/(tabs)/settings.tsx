@@ -10,6 +10,7 @@ import { auth } from "@/services/auth";
 import { setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
 import { flushQueue, getPendingCount } from "@/services/offlineQueue";
+import { AssistantSetup } from "@/components/AssistantSetup";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
 export default function SettingsScreen() {
@@ -154,6 +155,8 @@ export default function SettingsScreen() {
         <Text style={styles.label}>{t.settings.geofence}</Text>
         <Switch value={geofence} onValueChange={toggleGeofence} trackColor={{ true: Colors.accent }} />
       </View>
+
+      <AssistantSetup />
 
       <Text style={styles.sectionTitle}>{t.settings.sync}</Text>
       <TouchableOpacity style={styles.btn} onPress={handleSync} disabled={syncing}>
