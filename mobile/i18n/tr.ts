@@ -116,6 +116,8 @@ export default {
     receiptLinked: "Fiş eklendi",
     dueIn: "Vade (gün)",
     duePresets: { week: "1 hafta", twoWeeks: "2 hafta", month: "1 ay" },
+    selectDueDate: "Vade tarihi",
+    pickDate: "Tarih seç",
   },
   budget: {
     title: "Bütçe Limitleri",

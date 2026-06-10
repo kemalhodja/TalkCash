@@ -107,6 +107,7 @@ async def test_geofence_markets(client: AsyncClient, auth_headers: dict):
     assert data["count"] >= 1
     assert "name" in data["markets"][0]
     assert "distance_km" in data["markets"][0]
+    assert "source" in data
 
 
 @pytest.mark.asyncio

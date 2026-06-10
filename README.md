@@ -20,7 +20,7 @@ talkcash/
 - Çoklu cüzdan + döviz kuru sync
 - Bütçe, ajanda, alışveriş, AI mentor
 - Sosyal (borç, split, ortak kasa WS)
-- Push bildirim + geofencing
+- Push bildirim + süpermarket POI geofencing (91 statik POI + OSM Overpass)
 - PDF/Excel export
 - **Çoklu dil**: Türkçe + English
 
@@ -66,6 +66,11 @@ S3_ACCESS_KEY=talkcash
 S3_SECRET_KEY=talkcash123
 S3_BUCKET=talkcash
 S3_PUBLIC_URL=http://localhost:9000/talkcash
+
+# Geofencing (OSM Overpass)
+OVERPASS_ENABLED=true
+OVERPASS_URL=https://overpass-api.de/api/interpreter
+GEOFENCE_CACHE_TTL=3600
 ```
 
 TalkCash © 2025

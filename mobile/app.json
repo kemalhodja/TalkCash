@@ -39,7 +39,8 @@
           "locationWhenInUsePermission": "Market yakınında hatırlatma için konum erişimi gerekli.",
           "locationAlwaysAndWhenInUsePermission": "Arka planda market yakını hatırlatması için konum erişimi gerekli."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

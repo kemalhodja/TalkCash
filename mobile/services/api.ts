@@ -114,10 +114,12 @@ export const api = {
     return request<{ verified: boolean }>(url, { method: "POST" });
   },
 
-  getNearbyMarkets: (lat: number, lng: number, radiusKm = 2) =>
-    request<{ markets: { id: string; name: string; chain: string; lat: number; lng: number; distance_km: number }[]; count: number }>(
-      `/geofence/markets?lat=${lat}&lng=${lng}&radius_km=${radiusKm}`,
-    ),
+  getNearbyMarkets: (lat: number, lng: number, radiusKm = 2, useOsm = true) =>
+    request<{
+      markets: { id: string; name: string; chain: string; lat: number; lng: number; distance_km: number; source?: string }[];
+      count: number;
+      source: string;
+    }>(`/geofence/markets?lat=${lat}&lng=${lng}&radius_km=${radiusKm}&use_osm=${useOsm}`),
 
   // Budgets
   getBudgets: () => request<any[]>("/budgets/"),

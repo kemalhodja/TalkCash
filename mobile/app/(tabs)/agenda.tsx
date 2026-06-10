@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AgendaCalendar } from "@/components/AgendaCalendar";
+import { DueDatePicker } from "@/components/DueDatePicker";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { PayBillModal } from "@/components/PayBillModal";
 import { Colors, Spacing } from "@/constants/theme";
@@ -12,6 +13,13 @@ import { scheduleAgendaReminder } from "@/services/notifications";
 type AddMode = "bill" | "installment" | null;
 type ViewMode = "list" | "calendar";
 
+function defaultDueDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
 export default function AgendaScreen() {
   const { t, locale } = useI18n();
   const [items, setItems] = useState<any[]>([]);
@@ -20,7 +28,7 @@ export default function AgendaScreen() {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
-  const [dueDays, setDueDays] = useState("7");
+  const [dueDate, setDueDate] = useState(defaultDueDate);
   const [installmentCount, setInstallmentCount] = useState("6");
   const [duplicateMsg, setDuplicateMsg] = useState("");
   const [pendingBill, setPendingBill] = useState<any>(null);
@@ -38,18 +46,19 @@ export default function AgendaScreen() {
   useRefreshOnFocus(loadAgenda);
 
   const resetForm = () => {
-    setTitle(""); setAmount(""); setInstallmentCount("6"); setIsRecurring(false); setDueDays("7"); setAddMode(null);
+    setTitle(""); setAmount(""); setInstallmentCount("6");
+    setIsRecurring(false); setDueDate(defaultDueDate()); setAddMode(null);
   };
 
-  const buildDueDate = () => {
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + (parseInt(dueDays) || 7));
-    return dueDate;
+  const applyPresetDays = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    d.setHours(12, 0, 0, 0);
+    setDueDate(d);
   };
 
   const handleAddBill = async (force = false) => {
     if (!title || !amount) return;
-    const dueDate = buildDueDate();
     try {
       await api.addBill(title, parseFloat(amount), dueDate.toISOString(), force, isRecurring);
       await scheduleAgendaReminder(title, parseFloat(amount), dueDate, locale);
@@ -75,6 +84,12 @@ export default function AgendaScreen() {
     await api.markPaid(payModal.title, walletId);
     setPayModal(null);
     loadAgenda();
+  };
+
+  const isPresetActive = (days: number) => {
+    const expected = new Date();
+    expected.setDate(expected.getDate() + days);
+    return dueDate.toDateString() === expected.toDateString();
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
@@ -116,17 +131,22 @@ export default function AgendaScreen() {
             value={title} onChangeText={setTitle} />
           <TextInput style={styles.input} placeholder={t.agenda.amount} placeholderTextColor={Colors.textMuted}
             keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-          <Text style={styles.dueLabel}>{t.agenda.dueIn}</Text>
+
           <View style={styles.presetRow}>
-            {([["7", t.agenda.duePresets.week], ["14", t.agenda.duePresets.twoWeeks], ["30", t.agenda.duePresets.month]] as const).map(([days, label]) => (
-              <TouchableOpacity key={days} style={[styles.presetChip, dueDays === days && styles.presetActive]}
-                onPress={() => setDueDays(days)}>
+            {([
+              [7, t.agenda.duePresets.week],
+              [14, t.agenda.duePresets.twoWeeks],
+              [30, t.agenda.duePresets.month],
+            ] as const).map(([days, label]) => (
+              <TouchableOpacity key={days} style={[styles.presetChip, isPresetActive(days) && styles.presetActive]}
+                onPress={() => applyPresetDays(days)}>
                 <Text style={styles.presetText}>{label}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <TextInput style={styles.input} placeholder={t.agenda.dueIn} placeholderTextColor={Colors.textMuted}
-            keyboardType="number-pad" value={dueDays} onChangeText={setDueDays} />
+
+          <DueDatePicker value={dueDate} onChange={setDueDate} />
+
           <View style={styles.recurringRow}>
             <Text style={styles.recurringLabel}>{t.agenda.recurring}</Text>
             <Switch value={isRecurring} onValueChange={setIsRecurring} trackColor={{ true: Colors.accent }} />
@@ -213,7 +233,6 @@ const styles = StyleSheet.create({
   },
   recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
   recurringLabel: { color: Colors.textSecondary },
-  dueLabel: { color: Colors.textSecondary, marginBottom: Spacing.sm },
   presetRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm, flexWrap: "wrap" },
   presetChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
   presetActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },

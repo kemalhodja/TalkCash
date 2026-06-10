@@ -31,5 +31,9 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = True
 
+    overpass_enabled: bool = True
+    overpass_url: str = "https://overpass-api.de/api/interpreter"
+    geofence_cache_ttl: int = 3600
+
 
 settings = Settings()

@@ -13,7 +13,8 @@ async def nearby_markets(
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
     radius_km: float = Query(2.0, ge=0.5, le=15),
+    use_osm: bool = Query(True, description="Merge OpenStreetMap Overpass results"),
     user: User = Depends(get_current_user),
 ):
-    markets = geofence_service.nearby_markets(lat, lng, radius_km)
-    return {"markets": markets, "count": len(markets)}
+    markets, source = await geofence_service.nearby_markets(lat, lng, radius_km, use_osm=use_osm)
+    return {"markets": markets, "count": len(markets), "source": source}
