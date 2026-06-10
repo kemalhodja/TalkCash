@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 os.environ.setdefault("SCHEDULER_ENABLED", "false")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 from app.database import Base, get_db
 from app.main import app
