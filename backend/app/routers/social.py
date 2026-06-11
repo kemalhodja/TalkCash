@@ -1,12 +1,13 @@
 from decimal import Decimal
 from uuid import UUID
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
 from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error
 from app.models.user import User
@@ -57,7 +58,7 @@ async def split_bill(
     return {
         "per_person": float(bill.per_person),
         "share_message": bill.share_message,
-        "whatsapp_url": f"https://wa.me/?text={bill.share_message.replace(' ', '%20').replace(chr(10), '%0A')}",
+        "whatsapp_url": f"https://wa.me/?text={quote(bill.share_message)}",
     }
 
 

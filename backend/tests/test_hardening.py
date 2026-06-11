@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from app.i18n import I18nError
@@ -49,3 +50,22 @@ def test_ocr_max_upload_setting():
     assert settings.ocr_max_upload_bytes == 10 * 1024 * 1024
     assert settings.voice_rate_limit == 20
     assert settings.ocr_rate_limit == 15
+
+
+@pytest.mark.asyncio
+async def test_wallet_alias_resolves_english_cash():
+    from uuid import uuid4
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from app.models.wallet import Wallet, WalletType
+    from app.services.wallet.service import WalletService
+
+    service = WalletService()
+    user_id = uuid4()
+    wallet = Wallet(user_id=user_id, name="Nakit", wallet_type=WalletType.CASH, balance=Decimal("100"))
+    db = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.first.return_value = wallet
+    db.execute = AsyncMock(return_value=result)
+
+    found = await service.find_by_name(db, user_id, "Cash")
+    assert found is wallet

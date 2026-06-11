@@ -19,6 +19,20 @@ DEFAULT_WALLETS = [
     ("Döviz", WalletType.INVESTMENT_FOREX),
 ]
 
+WALLET_ALIASES: dict[str, str] = {
+    "cash": "Nakit",
+    "nakit": "Nakit",
+    "bank": "Banka",
+    "banka": "Banka",
+    "credit card": "Kredi Kartı",
+    "credit": "Kredi Kartı",
+    "card": "Kredi Kartı",
+    "gold": "Altın",
+    "forex": "Döviz",
+    "döviz": "Döviz",
+    "doviz": "Döviz",
+}
+
 
 def _is_credit_card(wallet: Wallet) -> bool:
     return wallet.wallet_type == WalletType.CREDIT_CARD
@@ -149,6 +163,14 @@ class WalletService:
         return tx
 
     async def find_by_name(self, db: AsyncSession, user_id: UUID, name: str) -> Wallet | None:
+        key = name.lower().strip()
+        resolved = WALLET_ALIASES.get(key, name)
+        result = await db.execute(
+            select(Wallet).where(Wallet.user_id == user_id, Wallet.name.ilike(f"%{resolved}%"))
+        )
+        wallet = result.scalars().first()
+        if wallet or resolved == name:
+            return wallet
         result = await db.execute(
             select(Wallet).where(Wallet.user_id == user_id, Wallet.name.ilike(f"%{name}%"))
         )

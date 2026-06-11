@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AuthImage } from "@/components/AuthImage";
 import { Stack } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
@@ -34,7 +35,7 @@ export default function ReceiptsScreen() {
       {receipts.map((r) => (
         <View key={r.id} style={styles.card}>
           {r.image_url ? (
-            <Image source={{ uri: r.image_url }} style={styles.image} resizeMode="cover" />
+            <AuthImage path={r.image_url} style={styles.image} />
           ) : null}
           <Text style={styles.merchant}>{r.merchant || "—"}</Text>
           <Text style={styles.amount}>

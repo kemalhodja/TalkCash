@@ -11,6 +11,8 @@ primary_region = "fra"
 [env]
   SCHEDULER_ENABLED = "true"
   S3_ENABLED = "false"
+  DEBUG = "false"
+  RATE_LIMIT_ENABLED = "true"
 
 [http_service]
   internal_port = 8000

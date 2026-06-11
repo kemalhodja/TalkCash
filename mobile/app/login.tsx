@@ -7,7 +7,7 @@ import { api } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
 
 export default function LoginScreen() {
-  const { t } = useI18n();
+  const { t, setLocale } = useI18n();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +31,9 @@ export default function LoginScreen() {
         hasPin: result.has_pin,
       };
       await auth.save(user);
+      if (result.locale === "en" || result.locale === "tr") {
+        await setLocale(result.locale);
+      }
       auth.setUnlocked(false);
       router.replace("/lock");
     } catch (e: any) {

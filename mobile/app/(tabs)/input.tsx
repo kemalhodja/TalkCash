@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
+import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { PayBillModal } from "@/components/PayBillModal";
 import { NumericKeypad } from "@/components/NumericKeypad";
 import { ReceiptScanner } from "@/components/ReceiptScanner";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
-import { api } from "@/services/api";
+import { api, ApiError } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
 
@@ -27,6 +28,7 @@ export default function InputScreen() {
   const [slashMode, setSlashMode] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [duplicateMsg, setDuplicateMsg] = useState("");
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -61,8 +63,8 @@ export default function InputScreen() {
   };
 
   const handleVoiceResult = (voiceText: string, result?: any) => {
-    if (result?.message) showConfirmation(result.message, result.parsed);
-    else showConfirmation(t.input.saveConfirm.replace("{text}", voiceText), { intent: "add_expense", raw_text: voiceText });
+    if (result?.parsed) showConfirmation(result.message, result.parsed);
+    else if (result?.message) showConfirmation(result.message, result.parsed);
   };
 
   const handleConfirm = async () => {
@@ -109,8 +111,13 @@ export default function InputScreen() {
           );
         }
         setText("");
-      } catch (e: any) { setError(e.message); }
-      finally { setIsSubmitting(false); }
+      } catch (e: any) {
+        if (e instanceof ApiError && e.status === 409 && parsedData?.intent === "add_bill") {
+          setDuplicateMsg(e.message);
+          return;
+        }
+        setError(e.message);
+      } finally { setIsSubmitting(false); }
     }
     setParsedData(null);
   };
@@ -215,6 +222,34 @@ export default function InputScreen() {
           setParsedData(null);
         }}
         onCancel={() => { setPayModal(null); setParsedData(null); }}
+      />
+
+      <DuplicateBillDialog
+        visible={!!duplicateMsg}
+        message={duplicateMsg}
+        onConfirm={async () => {
+          setDuplicateMsg("");
+          if (!parsedData) return;
+          setIsSubmitting(true);
+          try {
+            const res: any = await api.executeAction({ ...parsedData, force: true }, true);
+            if (res?.status === "success" && res?.result?.due_date) {
+              await scheduleAgendaReminder(
+                res.result.title || parsedData.description || "Fatura",
+                res.result.amount || parsedData.amount || 0,
+                new Date(res.result.due_date),
+                locale,
+              );
+            }
+            setText("");
+            setParsedData(null);
+          } catch (e: any) {
+            setError(e.message);
+          } finally {
+            setIsSubmitting(false);
+          }
+        }}
+        onCancel={() => { setDuplicateMsg(""); setParsedData(null); }}
       />
 
       <Modal visible={showScanner} animationType="slide">

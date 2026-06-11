@@ -1,7 +1,9 @@
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,12 +14,16 @@ from app.i18n import t
 from app.models.receipt import Receipt
 from app.models.user import User
 from app.services.ocr.service import OCRService
-from app.services.storage.service import StorageService
+from app.services.storage.service import StorageService, UPLOAD_DIR
 from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/ocr", tags=["OCR"])
 ocr_service = OCRService()
 storage_service = StorageService()
+
+
+def _public_image_path(receipt_id: UUID) -> str:
+    return f"ocr/{receipt_id}/image"
 
 
 @router.post("/scan")
@@ -54,7 +60,7 @@ async def scan_receipt(
         "date": data["receipt_date"].isoformat() if data["receipt_date"] else None,
         "merchant": data["merchant"],
         "verified": receipt.is_verified,
-        "image_url": image_url,
+        "image_url": _public_image_path(receipt.id),
         "line_items": data.get("line_items", []),
     }
 
@@ -67,6 +73,8 @@ async def list_receipts(user: User = Depends(get_current_user), db: AsyncSession
     items = []
     for r in result.scalars().all():
         url = await storage_service.get_url(r.image_url)
+        if not url.startswith("http"):
+            url = _public_image_path(r.id)
         items.append({
             "id": str(r.id),
             "total_amount": float(r.total_amount) if r.total_amount else None,
@@ -78,6 +86,33 @@ async def list_receipts(user: User = Depends(get_current_user), db: AsyncSession
     return items
 
 
+@router.get("/{receipt_id}/image")
+async def get_receipt_image(
+    receipt_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lang = user_locale(user)
+    receipt = await db.get(Receipt, receipt_id)
+    if not receipt or receipt.user_id != user.id:
+        raise HTTPException(status_code=404, detail=t("ocr.receipt_not_found", lang))
+
+    stored = receipt.image_url
+    if stored.startswith("http"):
+        raise HTTPException(status_code=400, detail=t("ocr.external_image", lang))
+
+    path = Path(stored)
+    if not path.is_absolute():
+        path = UPLOAD_DIR / stored if not stored.startswith("uploads/") else Path(stored)
+    if not path.exists():
+        path = Path(stored)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=t("ocr.receipt_not_found", lang))
+
+    media_type = "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
+    return FileResponse(path, media_type=media_type)
+
+
 @router.post("/verify")
 async def verify_receipt(
     transaction_amount: float,
@@ -86,11 +121,12 @@ async def verify_receipt(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = user_locale(user)
     ocr_total = Decimal(str(receipt_amount)) if receipt_amount is not None else None
     if receipt_id:
         receipt = await db.get(Receipt, receipt_id)
         if not receipt or receipt.user_id != user.id:
-            raise HTTPException(status_code=404, detail="Receipt not found")
+            raise HTTPException(status_code=404, detail=t("ocr.receipt_not_found", lang))
         if ocr_total is None and receipt.total_amount is not None:
             ocr_total = receipt.total_amount
         verified = ocr_service.verify_transaction(

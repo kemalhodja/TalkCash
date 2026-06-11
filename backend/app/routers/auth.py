@@ -5,7 +5,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.config import settings
-from app.i18n import SUPPORTED_LOCALES, locale_from_request, resolve_error, t
+from app.i18n import SUPPORTED_LOCALES, I18nError, locale_from_request, resolve_error, t
 from app.schemas.auth import LocaleRequest, LoginRequest, PinRequest, RegisterRequest, TimezoneRequest, TokenResponse, UserProfile
 from app.services.auth.service import AuthService
 from app.utils.rate_limit import check_rate_limit
@@ -33,7 +33,7 @@ async def register(data: RegisterRequest, request: Request, db: AsyncSession = D
     try:
         user, token = await auth_service.register(db, data.email, data.password, data.full_name)
         return _token_response(user, token)
-    except Exception as e:
+    except I18nError as e:
         raise HTTPException(status_code=400, detail=resolve_error(e, lang))
 
 
@@ -44,7 +44,7 @@ async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends
     try:
         user, token = await auth_service.login(db, data.email, data.password)
         return _token_response(user, token)
-    except Exception as e:
+    except I18nError as e:
         raise HTTPException(status_code=401, detail=resolve_error(e, lang))
 
 
@@ -89,7 +89,7 @@ async def toggle_biometric(enabled: bool, user: User = Depends(get_current_user)
 @router.put("/locale")
 async def set_locale(data: LocaleRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if data.locale not in SUPPORTED_LOCALES:
-        raise HTTPException(status_code=400, detail=f"Supported: {SUPPORTED_LOCALES}")
+        raise HTTPException(status_code=400, detail=t("auth.unsupported_locale", user.locale or "tr"))
     await auth_service.set_locale(db, user.id, data.locale)
     return {"locale": data.locale}
 
@@ -101,6 +101,6 @@ async def set_timezone(data: TimezoneRequest, user: User = Depends(get_current_u
     try:
         ZoneInfo(data.timezone)
     except ZoneInfoNotFoundError:
-        raise HTTPException(status_code=400, detail="Invalid timezone")
+        raise HTTPException(status_code=400, detail=t("auth.invalid_timezone", user.locale or "tr"))
     await auth_service.set_timezone(db, user.id, data.timezone)
     return {"timezone": data.timezone}

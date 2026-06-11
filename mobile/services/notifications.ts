@@ -57,7 +57,7 @@ export async function scheduleAgendaReminder(
         title: t.tomorrowTitle.replace("{title}", title),
         body: t.tomorrowBody.replace("{amount}", String(amount)),
       },
-      trigger: { date: dayBefore },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: dayBefore },
     });
   }
 
@@ -69,7 +69,7 @@ export async function scheduleAgendaReminder(
         title: t.todayTitle.replace("{title}", title),
         body: t.todayBody.replace("{amount}", String(amount)),
       },
-      trigger: { date: dueMorning },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: dueMorning },
     });
   }
 }
