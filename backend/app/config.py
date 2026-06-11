@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     allowed_origins: str = "*"
     rate_limit_enabled: bool = True
     auth_rate_limit: int = 30
+    input_rate_limit: int = 60
+    voice_rate_limit: int = 20
+    ocr_rate_limit: int = 15
+    ocr_max_upload_bytes: int = 10 * 1024 * 1024
 
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"

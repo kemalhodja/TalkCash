@@ -1,16 +1,19 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, user_locale
+from app.i18n import t
 from app.models.receipt import Receipt
 from app.models.user import User
 from app.services.ocr.service import OCRService
 from app.services.storage.service import StorageService
+from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/ocr", tags=["OCR"])
 ocr_service = OCRService()
@@ -19,12 +22,17 @@ storage_service = StorageService()
 
 @router.post("/scan")
 async def scan_receipt(
+    request: Request,
     image: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    lang = user_locale(user)
+    await check_rate_limit(request, "ocr", settings.ocr_rate_limit, identifier=str(user.id))
     image_bytes = await image.read()
-    data = await ocr_service.extract_receipt_data(image_bytes, locale=user_locale(user))
+    if len(image_bytes) > settings.ocr_max_upload_bytes:
+        raise HTTPException(status_code=413, detail=t("ocr.file_too_large", lang))
+    data = await ocr_service.extract_receipt_data(image_bytes, locale=lang)
     image_url = await storage_service.upload(str(user.id), image_bytes)
 
     receipt = Receipt(

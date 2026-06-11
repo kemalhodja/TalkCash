@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 os.environ.setdefault("SCHEDULER_ENABLED", "false")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 from app.database import Base, get_db
@@ -60,4 +61,16 @@ async def auth_headers(client: AsyncClient):
     })
     assert resp.status_code == 200, resp.text
     token = resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}"}
+
+    wallets = await client.get("/api/v1/wallets/", headers=headers)
+    assert wallets.status_code == 200, wallets.text
+    for wallet in wallets.json():
+        if wallet["wallet_type"] in ("credit_card",):
+            continue
+        fund = await client.post(
+            f"/api/v1/wallets/income?wallet_id={wallet['id']}&amount=100000&description=test_seed",
+            headers=headers,
+        )
+        assert fund.status_code == 200, fund.text
+    return headers
