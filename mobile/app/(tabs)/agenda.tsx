@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, Tou
 import { AgendaCalendar } from "@/components/AgendaCalendar";
 import { DueDatePicker } from "@/components/DueDatePicker";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
+import { ErrorState } from "@/components/ErrorState";
 import { PayBillModal } from "@/components/PayBillModal";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -34,12 +35,20 @@ export default function AgendaScreen() {
   const [pendingBill, setPendingBill] = useState<any>(null);
   const [payModal, setPayModal] = useState<{ title: string; amount: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const loadAgenda = async () => {
-    try { setItems(await api.getAgenda()); } catch { setItems([]); }
-    finally { setLoading(false); }
+    setError("");
+    try {
+      setItems(await api.getAgenda());
+    } catch (e: any) {
+      setItems([]);
+      setError(e.message || t.common.error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadAgenda(); }, []);
@@ -93,6 +102,7 @@ export default function AgendaScreen() {
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
+  if (error && items.length === 0) return <ErrorState message={error} onRetry={loadAgenda} />;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

@@ -1,25 +1,38 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
 from app.routers import agenda, ai, auth, budgets, execute, export, geofence, input, notifications, ocr, shopping, social, sync, transactions, wallets, ws
 from app.services.social.ws_bridge import start_redis_ws_bridge, stop_redis_ws_bridge
 from app.tasks.scheduler import start_scheduler
+from app.utils.redis_client import get_redis
 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not settings.debug and settings.secret_key in ("change-me-in-production", "dev-secret-key-local"):
+        logging.warning("SECRET_KEY is using a default value — set a strong secret in production")
     start_scheduler()
     start_redis_ws_bridge()
     yield
     await stop_redis_ws_bridge()
+
+
+def _cors_origins() -> list[str]:
+    raw = settings.allowed_origins.strip()
+    if raw == "*":
+        return ["*"]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
 app = FastAPI(
@@ -31,8 +44,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins(),
+    allow_credentials=settings.allowed_origins.strip() != "*",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -58,6 +71,13 @@ async def value_error_handler(request: Request, exc: ValueError):
     return JSONResponse(status_code=400, content={"detail": resolve_error(exc, lang)})
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logging.exception("Unhandled error on %s", request.url.path)
+    lang = locale_from_request(request)
+    return JSONResponse(status_code=500, content={"detail": t("error.internal", lang)})
+
+
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(input.router, prefix="/api/v1")
 app.include_router(wallets.router, prefix="/api/v1")
@@ -77,9 +97,34 @@ app.include_router(ws.router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health(request: Request):
+async def health(request: Request, db: AsyncSession = Depends(get_db)):
     lang = locale_from_request(request)
-    return {"status": "ok", "app": settings.app_name, "message": t("health.ok", lang), "locales": SUPPORTED_LOCALES}
+    checks: dict[str, bool] = {"database": False, "redis": False}
+
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["database"] = True
+    except Exception:
+        pass
+
+    try:
+        redis = await get_redis()
+        await redis.ping()
+        checks["redis"] = True
+    except Exception:
+        pass
+
+    healthy = all(checks.values())
+    return JSONResponse(
+        status_code=200 if healthy else 503,
+        content={
+            "status": "ok" if healthy else "degraded",
+            "app": settings.app_name,
+            "message": t("health.ok", lang),
+            "locales": SUPPORTED_LOCALES,
+            "checks": checks,
+        },
+    )
 
 
 @app.get("/api/v1/i18n/{lang}")

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ErrorState } from "@/components/ErrorState";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
@@ -9,13 +10,16 @@ export default function TransactionsScreen() {
   const { t } = useI18n();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const load = async () => {
+    setError("");
     try {
       setTransactions(await api.getTransactions());
-    } catch {
+    } catch (e: any) {
       setTransactions([]);
+      setError(e.message || "Error");
     } finally {
       setLoading(false);
     }
@@ -25,6 +29,7 @@ export default function TransactionsScreen() {
   useRefreshOnFocus(load);
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
+  if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

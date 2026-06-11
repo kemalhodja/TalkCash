@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7
 
+    allowed_origins: str = "*"
+    rate_limit_enabled: bool = True
+    auth_rate_limit: int = 30
+
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     whisper_model: str = "whisper-1"

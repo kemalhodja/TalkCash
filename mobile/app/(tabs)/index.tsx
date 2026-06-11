@@ -38,11 +38,14 @@ export default function DashboardScreen() {
     const productQuery = product ?? trackProductRef.current;
     try {
       setError("");
-      const nw = await api.getNetWorth();
+      const [nw, budgetAlerts, priceReportData] = await Promise.all([
+        api.getNetWorth(),
+        api.getBudgetAlerts(),
+        api.getPriceTracker(productQuery),
+      ]);
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
       setForecast(await api.getForecast(nw.total_try));
-      const budgetAlerts = await api.getBudgetAlerts();
       setAlerts(budgetAlerts);
       if (budgetAlerts.length > 0) {
         const msg = budgetAlerts[0].message;
@@ -51,7 +54,7 @@ export default function DashboardScreen() {
           speakBudgetAlert(msg, locale);
         }
       }
-      setPriceReport(await api.getPriceTracker(productQuery));
+      setPriceReport(priceReportData);
     } catch (e: any) {
       setError(e.message || t.home.loadError);
     } finally {

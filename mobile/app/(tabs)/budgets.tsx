@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ErrorState } from "@/components/ErrorState";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
@@ -13,14 +14,17 @@ export default function BudgetsScreen() {
   const [editing, setEditing] = useState<any>(null);
   const [editLimit, setEditLimit] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const load = async () => {
+    setError("");
     try {
       setBudgets(await api.getBudgets());
-    } catch {
+    } catch (e: any) {
       setBudgets([]);
+      setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
@@ -50,6 +54,7 @@ export default function BudgetsScreen() {
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
+  if (error && budgets.length === 0) return <ErrorState message={error} onRetry={load} />;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
