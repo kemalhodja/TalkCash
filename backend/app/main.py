@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -66,6 +67,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": detail})
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    lang = locale_from_request(request)
+    detail = []
+    for err in exc.errors():
+        if isinstance(err, dict) and "msg" in err:
+            detail.append({**err, "msg": maybe_translate(str(err["msg"]), lang)})
+        else:
+            detail.append(err)
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     lang = locale_from_request(request)
@@ -101,6 +114,8 @@ app.include_router(ws.router, prefix="/api/v1")
 async def health(request: Request, db: AsyncSession = Depends(get_db)):
     lang = locale_from_request(request)
     checks: dict[str, bool] = {"database": False, "redis": False}
+    if settings.s3_enabled:
+        checks["storage"] = False
 
     try:
         await db.execute(text("SELECT 1"))
@@ -114,6 +129,17 @@ async def health(request: Request, db: AsyncSession = Depends(get_db)):
         checks["redis"] = True
     except Exception:
         pass
+
+    if settings.s3_enabled:
+        try:
+            from app.services.storage.service import StorageService
+            storage = StorageService()
+            if storage._s3:
+                import asyncio
+                await asyncio.to_thread(storage._s3.head_bucket, Bucket=settings.s3_bucket)
+                checks["storage"] = True
+        except Exception:
+            pass
 
     healthy = checks["database"]
     all_ok = all(checks.values())

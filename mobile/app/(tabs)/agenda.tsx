@@ -8,8 +8,9 @@ import { PayBillModal } from "@/components/PayBillModal";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
-import { ApiError, api } from "@/services/api";
+import { api, ApiError } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
+import { formatDate, formatMoney } from "@/utils/format";
 
 type AddMode = "bill" | "installment" | null;
 type ViewMode = "list" | "calendar";
@@ -36,8 +37,6 @@ export default function AgendaScreen() {
   const [payModal, setPayModal] = useState<{ title: string; amount: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const loadAgenda = async () => {
     setError("");
@@ -193,9 +192,9 @@ export default function AgendaScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.amount}>{item.amount?.toLocaleString(dateLocale)} ₺</Text>
+          <Text style={styles.amount}>{formatMoney(item.amount ?? 0, locale)}</Text>
           <Text style={styles.date}>
-            {t.agenda.due}: {new Date(item.due_date).toLocaleDateString(dateLocale)}
+            {t.agenda.due}: {formatDate(item.due_date, locale)}
             {item.installment && ` · ${t.agenda.installment} ${item.installment}`}
           </Text>
         </View>

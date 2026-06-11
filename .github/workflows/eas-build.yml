@@ -42,6 +42,14 @@ jobs:
         working-directory: mobile
         run: npm install
 
+      - name: Validate build env
+        if: github.event.inputs.profile != 'development'
+        run: |
+          if [ -z "${{ vars.EXPO_PUBLIC_API_URL }}" ]; then
+            echo "Set repository variable EXPO_PUBLIC_API_URL for preview/production builds"
+            exit 1
+          fi
+
       - name: EAS build
         working-directory: mobile
         env:

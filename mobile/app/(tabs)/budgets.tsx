@@ -5,6 +5,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { formatMoney } from "@/utils/format";
 
 export default function BudgetsScreen() {
   const { t, locale } = useI18n();
@@ -15,8 +16,6 @@ export default function BudgetsScreen() {
   const [editLimit, setEditLimit] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const load = async () => {
     setError("");
@@ -80,7 +79,7 @@ export default function BudgetsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.catName}>{b.category}</Text>
                 <Text style={styles.limit}>
-                  {Number(spent).toLocaleString(dateLocale)} / {Number(b.monthly_limit).toLocaleString(dateLocale)} {t.budget.perMonth}
+                  {formatMoney(Number(spent), locale)} / {formatMoney(Number(b.monthly_limit), locale)} {t.budget.perMonth}
                 </Text>
                 <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
               </View>

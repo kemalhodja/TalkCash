@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
+import { formatMoney } from "@/utils/format";
 import { api } from "@/services/api";
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export function PayBillModal({ visible, billTitle, amount, onConfirm, onCancel }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export function PayBillModal({ visible, billTitle, amount, onConfirm, onCancel }
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.title}>{t.agenda.paid}</Text>
-          <Text style={styles.subtitle}>{billTitle} — {amount.toLocaleString()} ₺</Text>
+          <Text style={styles.subtitle}>{billTitle} — {formatMoney(amount, locale)}</Text>
           <Text style={styles.label}>{t.agenda.selectWallet}</Text>
           <View style={styles.chips}>
             {wallets.map((w) => (
