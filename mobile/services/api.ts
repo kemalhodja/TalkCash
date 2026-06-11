@@ -249,3 +249,12 @@ export const api = {
     request<any>("/sync/push", { method: "POST", body: JSON.stringify({ operations }) }),
   syncPull: () => request<any>("/sync/pull"),
 };
+
+export async function resolveMediaUrl(path: string): Promise<{ uri: string; headers?: Record<string, string> }> {
+  if (!path) return { uri: "" };
+  if (path.startsWith("http")) return { uri: path };
+  const normalized = path.startsWith("/") ? path.slice(1) : path;
+  const uri = normalized.startsWith("api/v1/") ? `${API_BASE.replace(/\/api\/v1\/?$/, "")}/${normalized}` : `${API_BASE}/${normalized}`;
+  const token = await auth.getToken();
+  return token ? { uri, headers: { Authorization: `Bearer ${token}` } } : { uri };
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { AuthImage } from "@/components/AuthImage";
 import { ErrorState } from "@/components/ErrorState";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -45,7 +46,7 @@ export default function TransactionsScreen() {
           <Text style={styles.desc}>{tx.description || tx.place || "—"}</Text>
           {tx.receipt_url ? (
             <TouchableOpacity onPress={() => setPreviewUrl(tx.receipt_url)} style={styles.receiptRow}>
-              <Image source={{ uri: tx.receipt_url }} style={styles.receiptThumb} />
+              <AuthImage path={tx.receipt_url} style={styles.receiptThumb} />
               <Text style={styles.receiptLabel}>{t.transactions.viewReceipt}</Text>
             </TouchableOpacity>
           ) : null}
@@ -56,7 +57,7 @@ export default function TransactionsScreen() {
 
       <Modal visible={!!previewUrl} transparent animationType="fade" onRequestClose={() => setPreviewUrl(null)}>
         <TouchableOpacity style={styles.previewOverlay} activeOpacity={1} onPress={() => setPreviewUrl(null)}>
-          {previewUrl ? <Image source={{ uri: previewUrl }} style={styles.previewImage} resizeMode="contain" /> : null}
+          {previewUrl ? <AuthImage path={previewUrl} style={styles.previewImage} resizeMode="contain" /> : null}
         </TouchableOpacity>
       </Modal>
     </ScrollView>

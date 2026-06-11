@@ -114,11 +114,12 @@ async def health(request: Request, db: AsyncSession = Depends(get_db)):
     except Exception:
         pass
 
-    healthy = all(checks.values())
+    healthy = checks["database"]
+    all_ok = all(checks.values())
     return JSONResponse(
         status_code=200 if healthy else 503,
         content={
-            "status": "ok" if healthy else "degraded",
+            "status": "ok" if all_ok else ("degraded" if healthy else "down"),
             "app": settings.app_name,
             "message": t("health.ok", lang),
             "locales": SUPPORTED_LOCALES,

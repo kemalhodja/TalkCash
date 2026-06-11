@@ -5,7 +5,7 @@ import en from "./en";
 
 const LOCALES = { tr, en } as const;
 export type Locale = keyof typeof LOCALES;
-type Translations = typeof tr;
+export type Translations = (typeof LOCALES)[Locale];
 
 const LOCALE_KEY = "talkcash_locale";
 

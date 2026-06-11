@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.i18n import resolve_error, t
+from app.i18n import I18nError, resolve_error, t
 from app.models.user import User
 from app.schemas.common import ParsedInput
 from app.schemas.execute import ExecuteRequest
@@ -35,6 +35,9 @@ async def execute_confirmed_action(
     try:
         result = await _dispatch(user.id, body.parsed, db, locale)
         return {"status": "success", "result": result}
+    except I18nError as e:
+        status = 409 if e.key == "agenda.duplicate_bill" else 400
+        raise HTTPException(status_code=status, detail=resolve_error(e, locale))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=resolve_error(e, locale))
 
@@ -116,7 +119,10 @@ async def _dispatch(user_id: UUID, parsed: ParsedInput, db: AsyncSession, locale
     if intent == "add_debt":
         if not parsed.amount:
             raise ValueError(t("execute.amount_required", locale))
-        is_lent = "aldım" not in (parsed.raw_text or "").lower()
+        is_lent = not any(
+            phrase in (parsed.raw_text or "").lower()
+            for phrase in ("aldım", "borç aldım", "borrowed", "i owe", "i borrowed")
+        )
         record = await social_service.add_debt(db, user_id, parsed.person_name or "?", parsed.amount, is_lent)
         return {"person": record.person_name, "amount": float(record.amount)}
 

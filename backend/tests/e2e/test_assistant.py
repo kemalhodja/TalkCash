@@ -127,3 +127,13 @@ async def test_assistant_english_google_expense(client: AsyncClient, auth_header
 
     result = await _execute(client, auth_headers, card["parsed"])
     assert result["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_assistant_english_cash_expense(client: AsyncClient, auth_headers: dict):
+    """English 'cash' wallet alias must resolve to Nakit."""
+    await client.put("/api/v1/auth/locale", headers=auth_headers, json={"locale": "en"})
+    card = await _parse(client, auth_headers, "50 coffee cash")
+    assert card["parsed"]["intent"] == "add_expense"
+    result = await _execute(client, auth_headers, card["parsed"])
+    assert result["status"] == "success"

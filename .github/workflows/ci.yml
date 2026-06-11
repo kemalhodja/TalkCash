@@ -58,4 +58,5 @@ jobs:
         working-directory: mobile
         run: |
           npm install
-          npm test -- --passWithNoTests
+          npx tsc --noEmit
+          npm test

@@ -50,7 +50,7 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
         onResult(result.parsed?.raw_text || result.message, result);
       }
     } catch {
-      onResult(t.input.voiceFailed);
+      Alert.alert(t.common.error, t.input.voiceFailed);
     } finally {
       setProcessing(false);
     }
