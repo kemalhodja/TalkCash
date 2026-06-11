@@ -1,0 +1,57 @@
+name: EAS Submit
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Target platform"
+        required: true
+        default: "android"
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    if: github.repository == 'kemalhodja/eduai-sale'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Expo / EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install
+
+      - name: Validate submit env
+        run: |
+          if [ -z "${{ vars.EAS_PROJECT_ID }}" ]; then
+            echo "Set repository variable EAS_PROJECT_ID"
+            exit 1
+          fi
+
+      - name: EAS submit
+        working-directory: mobile
+        env:
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          PLATFORM="${{ github.event.inputs.platform }}"
+          if [ "$PLATFORM" = "all" ]; then
+            eas submit --profile production --platform all --latest --non-interactive
+          else
+            eas submit --profile production --platform "$PLATFORM" --latest --non-interactive
+          fi

@@ -20,10 +20,24 @@ GitHub Actions ile otomatik deploy için repository secret:
 
 ### Zorunlu Fly secrets
 
-- `SECRET_KEY`, `DATABASE_URL`
-- `REDIS_URL` (degraded moddan kaçınmak için)
-- `OPENAI_API_KEY` (sesli komut / NLP)
-- `S3_ENABLED=true` + R2/S3 credentials (fiş görselleri)
+| Secret | Açıklama |
+|--------|----------|
+| `FLY_API_TOKEN` | GitHub Actions deploy ( `fly tokens create deploy` ) |
+| `SECRET_KEY` | JWT imzalama |
+| `DATABASE_URL` | PostgreSQL (attach ile otomatik) |
+| `REDIS_URL` | Rate limit / cache |
+| `OPENAI_API_KEY` | NLP / ses |
+| `S3_ENABLED` + R2/S3 | Fiş görselleri |
+| `ALLOWED_ORIGINS` | Production CORS (virgülle ayrılmış) |
+
+### GitHub Actions workflows
+
+| Workflow | Açıklama |
+|----------|----------|
+| CI | Backend + mobile test |
+| Deploy Staging | Fly deploy + smoke test |
+| EAS Build | `preview` / `production` build |
+| EAS Submit | Mağaza submit (`production` profile) |
 
 ---
 
