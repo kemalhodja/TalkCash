@@ -3,17 +3,16 @@
 set -euo pipefail
 
 APP="${FLY_APP:-talkcash-api}"
+SCRIPT_DIR="$(dirname "$0")"
+
+echo "==> Preflight checks..."
+bash "$SCRIPT_DIR/preflight-staging.sh"
 
 echo "==> Deploying TalkCash API to Fly.io ($APP)"
 
-if ! command -v flyctl >/dev/null 2>&1; then
-  echo "Install flyctl: https://fly.io/docs/hands-on/install-flyctl/"
-  exit 1
-fi
+cd "$SCRIPT_DIR/../backend"
 
-cd "$(dirname "$0")/../backend"
-
-echo "==> Checking required secrets..."
+echo "==> Checking optional secrets..."
 for key in SECRET_KEY DATABASE_URL REDIS_URL; do
   if ! flyctl secrets list -a "$APP" 2>/dev/null | grep -q "$key"; then
     echo "WARNING: $key not set. Run: fly secrets set $key=... -a $APP"
@@ -29,7 +28,7 @@ echo "==> Deploying..."
 flyctl deploy --remote-only -a "$APP"
 
 echo "==> Smoke test..."
-API_URL="https://${APP}.fly.dev" python3 "$(dirname "$0")/smoke_test.py"
+API_URL="https://${APP}.fly.dev" python3 "$SCRIPT_DIR/smoke_test.py"
 
 echo "Done. Set mobile EXPO_PUBLIC_API_URL=https://${APP}.fly.dev/api/v1"
-echo "See docs/SMOKE_TEST.md for device checklist"
+echo "See docs/SMOKE_TEST.md and docs/PRODUCTION.md"

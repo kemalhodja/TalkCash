@@ -11,6 +11,7 @@ import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
+import { formatMoney } from "@/utils/format";
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
@@ -102,8 +103,8 @@ export default function InputScreen() {
           );
           const mismatchDetail = !verified && receipt_amount != null
             ? t.scanner.mismatchDetail
-                .replace("{receipt}", String(receipt_amount))
-                .replace("{tx}", String(transaction_amount ?? parsedData.amount))
+                .replace("{receipt}", formatMoney(Number(receipt_amount), locale))
+                .replace("{tx}", formatMoney(Number(transaction_amount ?? parsedData.amount), locale))
             : undefined;
           Alert.alert(
             verified ? t.scanner.verified : t.scanner.mismatch,
@@ -258,7 +259,7 @@ export default function InputScreen() {
             setShowScanner(false);
             showConfirmation(
               t.input.receiptConfirm
-                .replace("{amount}", String(data.total_amount || "?"))
+                .replace("{amount}", formatMoney(Number(data.total_amount) || 0, locale))
                 .replace("{merchant}", data.merchant || t.input.receipt),
               {
                 intent: "add_expense", amount: data.total_amount, description: data.merchant,

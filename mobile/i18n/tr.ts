@@ -194,7 +194,7 @@ export default {
     pickGallery: "Galeriden Seç",
     verified: "Fiş doğrulandı",
     mismatch: "Fiş tutarı uyuşmuyor",
-    mismatchDetail: "Fiş: {receipt} TL · İşlem: {tx} TL",
+    mismatchDetail: "Fiş: {receipt} · İşlem: {tx}",
     galleryPermission: "Galeri erişim izni gerekli",
   },
   transactions: {
@@ -206,9 +206,9 @@ export default {
   },
   notifications: {
     tomorrowTitle: "Yarın: {title}",
-    tomorrowBody: "{amount} TL ödeme yarın son gün!",
+    tomorrowBody: "{amount} ödeme yarın son gün!",
     todayTitle: "Bugün: {title}",
-    todayBody: "{amount} TL ödeme bugün son gün!",
+    todayBody: "{amount} ödeme bugün son gün!",
   },
   geofence: {
     title: "{name} yakınındasınız!",
@@ -257,7 +257,7 @@ export default {
     micPermission: "Mikrofon izni gerekli",
     parseError: "Komut anlaşılamadı",
     aiUnavailable: "Sesli komut için sunucuda OPENAI_API_KEY gerekli. Metin girişi kullanabilirsiniz.",
-    receiptConfirm: "{amount} TL - {merchant} kaydedilsin mi?",
+    receiptConfirm: "{amount} - {merchant} kaydedilsin mi?",
     saveConfirm: "{text} kaydedilsin mi?",
     slashMode: "Slash komut modu — hızlı giriş",
     submitting: "Kaydediliyor...",

@@ -2,9 +2,9 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import tr from "@/i18n/tr";
 import en from "@/i18n/en";
+import type { Locale } from "@/i18n";
+import { formatMoney } from "@/utils/format";
 import { api } from "./api";
-
-type Locale = "tr" | "en";
 const MESSAGES = { tr, en };
 
 Notifications.setNotificationHandler({
@@ -47,6 +47,7 @@ export async function scheduleAgendaReminder(
   title: string, amount: number, dueDate: Date, locale: Locale = "tr",
 ) {
   const t = msg(locale);
+  const formattedAmount = formatMoney(amount, locale);
   const dayBefore = new Date(dueDate);
   dayBefore.setDate(dayBefore.getDate() - 1);
   dayBefore.setHours(9, 0, 0, 0);
@@ -55,7 +56,7 @@ export async function scheduleAgendaReminder(
     await Notifications.scheduleNotificationAsync({
       content: {
         title: t.tomorrowTitle.replace("{title}", title),
-        body: t.tomorrowBody.replace("{amount}", String(amount)),
+        body: t.tomorrowBody.replace("{amount}", formattedAmount),
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: dayBefore },
     });
@@ -67,7 +68,7 @@ export async function scheduleAgendaReminder(
     await Notifications.scheduleNotificationAsync({
       content: {
         title: t.todayTitle.replace("{title}", title),
-        body: t.todayBody.replace("{amount}", String(amount)),
+        body: t.todayBody.replace("{amount}", formattedAmount),
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: dueMorning },
     });
