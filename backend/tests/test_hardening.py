@@ -41,3 +41,11 @@ def test_insufficient_funds_blocks_cash_wallet():
 def test_credit_card_allows_spend_without_balance_check():
     wallet = Wallet(user_id=uuid4(), name="Kredi", wallet_type=WalletType.CREDIT_CARD, balance=Decimal("0"))
     _ensure_can_spend(wallet, Decimal("500"))
+
+
+def test_ocr_max_upload_setting():
+    from app.config import settings
+
+    assert settings.ocr_max_upload_bytes == 10 * 1024 * 1024
+    assert settings.voice_rate_limit == 20
+    assert settings.ocr_rate_limit == 15

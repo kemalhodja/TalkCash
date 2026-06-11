@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, user_locale
-from app.i18n import resolve_error
+from app.i18n import resolve_error, t
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.common import ConfirmationCard
 from app.services.nlp import nlp_engine
+from app.utils.rate_limit import check_rate_limit
 from app.utils.redis_client import cache_get, cache_set
 
 router = APIRouter(prefix="/input", tags=["Data Input"])
@@ -16,7 +18,6 @@ router = APIRouter(prefix="/input", tags=["Data Input"])
 
 @router.get("/capabilities")
 async def input_capabilities():
-    from app.config import settings
     ai = bool(settings.openai_api_key)
     return {
         "voice_available": ai,
@@ -41,7 +42,13 @@ DEFAULT_SUGGESTIONS_EN = {
 
 
 @router.post("/parse", response_model=ConfirmationCard)
-async def parse_text(text: str, whisper_mode: bool = False, user: User = Depends(get_current_user)):
+async def parse_text(
+    text: str,
+    request: Request,
+    whisper_mode: bool = False,
+    user: User = Depends(get_current_user),
+):
+    await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id))
     lang = user_locale(user)
     parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang)
     message = nlp_engine.build_confirmation(parsed, lang)
@@ -50,23 +57,34 @@ async def parse_text(text: str, whisper_mode: bool = False, user: User = Depends
 
 @router.post("/voice", response_model=ConfirmationCard)
 async def parse_voice(
-    audio: UploadFile = File(...), whisper_mode: bool = False,
+    request: Request,
+    audio: UploadFile = File(...),
+    whisper_mode: bool = False,
     user: User = Depends(get_current_user),
 ):
+    await check_rate_limit(request, "voice", settings.voice_rate_limit, identifier=str(user.id))
     lang = user_locale(user)
     try:
         audio_bytes = await audio.read()
+        if len(audio_bytes) > settings.ocr_max_upload_bytes:
+            raise HTTPException(status_code=413, detail=t("input.file_too_large", lang))
         text = await nlp_engine.transcribe_audio(audio_bytes, whisper_mode=whisper_mode, locale=lang)
         parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang)
         message = nlp_engine.build_confirmation(parsed, lang)
         return ConfirmationCard(message=message, parsed=parsed)
+    except HTTPException:
+        raise
     except Exception as e:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=resolve_error(e, lang))
 
 
 @router.post("/slash", response_model=ConfirmationCard)
-async def parse_slash_command(command: str, user: User = Depends(get_current_user)):
+async def parse_slash_command(
+    command: str,
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id))
     lang = user_locale(user)
     parsed = await nlp_engine.parse_text(command, locale=lang)
     message = nlp_engine.build_confirmation(parsed, lang)
