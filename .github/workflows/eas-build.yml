@@ -49,6 +49,10 @@ jobs:
             echo "Set repository variable EXPO_PUBLIC_API_URL for preview/production builds"
             exit 1
           fi
+          if [ "${{ github.event.inputs.profile }}" = "production" ] && [ -z "${{ vars.EAS_PROJECT_ID }}" ]; then
+            echo "Set repository variable EAS_PROJECT_ID for production builds"
+            exit 1
+          fi
 
       - name: EAS build
         working-directory: mobile

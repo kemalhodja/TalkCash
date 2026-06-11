@@ -19,5 +19,7 @@ describe("i18n", () => {
     expect(tr.geofence.title).toContain("{name}");
     expect(en.geofence.title).toContain("{name}");
     expect(tr.notifications.tomorrowTitle).toContain("{title}");
+    expect(tr.notifications.tomorrowBody).toContain("{amount}");
+    expect(tr.notifications.tomorrowBody).not.toContain(" TL");
   });
 });

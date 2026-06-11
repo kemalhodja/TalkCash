@@ -93,7 +93,17 @@ Beklenen yanıt:
 
 Repository secret ekleyin: `FLY_API_TOKEN` ([fly tokens create deploy](https://fly.io/user/personal_access_tokens))
 
+İlk kurulum için:
+
+```bash
+./scripts/setup-fly-staging.sh
+./scripts/preflight-staging.sh
+./scripts/deploy-staging.sh
+```
+
 Actions → **Deploy Staging (Fly.io)** → Run workflow
+
+Mağaza yayını: [docs/PRODUCTION.md](PRODUCTION.md)
 
 ---
 
