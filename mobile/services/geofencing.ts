@@ -2,6 +2,8 @@ import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 import * as Notifications from "expo-notifications";
+import en from "@/i18n/en";
+import tr from "@/i18n/tr";
 import { api } from "./api";
 
 const GEOFENCE_TASK = "TALKCASH_GEOFENCE";
@@ -10,16 +12,7 @@ const MARKET_NAMES_KEY = "talkcash_geofence_markets";
 const MAX_REGIONS = 20;
 const GEOFENCE_RADIUS_M = 150;
 
-const GEO_MESSAGES = {
-  tr: {
-    title: (name: string) => `${name} yakınındasınız!`,
-    body: "Alışveriş listenizdeki eksikleri almayı unutmayın.",
-  },
-  en: {
-    title: (name: string) => `You're near ${name}!`,
-    body: "Don't forget items on your shopping list.",
-  },
-};
+const GEO_MESSAGES = { tr: tr.geofence, en: en.geofence };
 
 TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   if (error) return;
@@ -29,11 +22,14 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   const locale = (await SecureStore.getItemAsync(LOCALE_KEY)) || "tr";
   const namesJson = await SecureStore.getItemAsync(MARKET_NAMES_KEY);
   const names: Record<string, string> = namesJson ? JSON.parse(namesJson) : {};
-  const marketName = names[event.region.identifier] || (locale === "en" ? "a market" : "market");
+  const marketName = names[event.region.identifier] || (locale === "en" ? "market" : "market");
 
   const msg = GEO_MESSAGES[locale as keyof typeof GEO_MESSAGES] || GEO_MESSAGES.tr;
   await Notifications.scheduleNotificationAsync({
-    content: { title: msg.title(marketName), body: msg.body },
+    content: {
+      title: msg.title.replace("{name}", marketName),
+      body: msg.body,
+    },
     trigger: null,
   });
 });

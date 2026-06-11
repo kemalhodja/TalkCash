@@ -3,11 +3,11 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.database import Base, pg_enum
 
 
 class WalletType(str, enum.Enum):
@@ -25,7 +25,7 @@ class Wallet(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(100))
-    wallet_type: Mapped[WalletType] = mapped_column(Enum(WalletType), default=WalletType.CASH)
+    wallet_type: Mapped[WalletType] = mapped_column(pg_enum(WalletType), default=WalletType.CASH)
     balance: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
     currency: Mapped[str] = mapped_column(String(10), default="TRY")
     is_active: Mapped[bool] = mapped_column(default=True)

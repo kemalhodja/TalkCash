@@ -31,7 +31,10 @@ export default function ShoppingScreen() {
 
   const handleAdd = async () => {
     if (!newItem.trim()) return;
-    await api.addShoppingItems([newItem.trim()]);
+    const res: any = await api.addShoppingItems([newItem.trim()]);
+    if (res?.status === "queued") {
+      Alert.alert(t.common.confirm, t.common.offlineQueued);
+    }
     setNewItem("");
     loadList();
   };
@@ -50,13 +53,16 @@ export default function ShoppingScreen() {
           value={newItem} onChangeText={setNewItem} onSubmitEditing={handleAdd} />
         <View style={styles.voiceWrap}>
           <VoiceInput compact whisperMode={false} onResult={async (_text, result) => {
+            let res: any;
             if (result?.parsed?.intent === "add_shopping" && result.parsed.items?.length) {
-              await api.addShoppingItems(result.parsed.items);
-              loadList();
+              res = await api.addShoppingItems(result.parsed.items);
             } else if (result?.parsed?.description) {
-              await api.addShoppingItems([result.parsed.description]);
-              loadList();
+              res = await api.addShoppingItems([result.parsed.description]);
             }
+            if (res?.status === "queued") {
+              Alert.alert(t.common.confirm, t.common.offlineQueued);
+            }
+            loadList();
           }} />
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>

@@ -211,7 +211,7 @@ export default {
     todayBody: "{amount} TL ödeme bugün son gün!",
   },
   geofence: {
-    title: "Market yakınındasınız!",
+    title: "{name} yakınındasınız!",
     body: "Alışveriş listenizdeki eksikleri almayı unutmayın.",
   },
   social: {
