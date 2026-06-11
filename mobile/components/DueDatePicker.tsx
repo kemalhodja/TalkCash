@@ -3,6 +3,7 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
+import { getDateLocale } from "@/utils/format";
 
 interface Props {
   value: Date;
@@ -13,7 +14,7 @@ interface Props {
 export function DueDatePicker({ value, onChange, minimumDate }: Props) {
   const { t, locale } = useI18n();
   const [show, setShow] = useState(Platform.OS === "ios");
-  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
+  const dateLocale = getDateLocale(locale);
   const min = minimumDate || new Date();
 
   const onPickerChange = (_event: DateTimePickerEvent, date?: Date) => {

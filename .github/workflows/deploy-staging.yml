@@ -22,3 +22,6 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl deploy --remote-only
+
+      - name: Smoke test staging API
+        run: API_URL=https://talkcash-api.fly.dev python3 scripts/smoke_test.py
