@@ -3,11 +3,11 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.database import Base, pg_enum
 
 
 class TransactionType(str, enum.Enum):
@@ -23,7 +23,7 @@ class Transaction(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     wallet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("wallets.id"))
     target_wallet_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("wallets.id"), nullable=True)
-    transaction_type: Mapped[TransactionType] = mapped_column(Enum(TransactionType))
+    transaction_type: Mapped[TransactionType] = mapped_column(pg_enum(TransactionType))
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     currency: Mapped[str] = mapped_column(String(10), default="TRY")
     category: Mapped[str] = mapped_column(String(100), default="Genel")

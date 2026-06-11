@@ -3,11 +3,11 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.database import Base, pg_enum
 
 
 class ShoppingCategory(str, enum.Enum):
@@ -26,7 +26,7 @@ class ShoppingItem(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(255))
-    category: Mapped[ShoppingCategory] = mapped_column(Enum(ShoppingCategory), default=ShoppingCategory.OTHER)
+    category: Mapped[ShoppingCategory] = mapped_column(pg_enum(ShoppingCategory), default=ShoppingCategory.OTHER)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     is_routine: Mapped[bool] = mapped_column(Boolean, default=False)
     routine_type: Mapped[str | None] = mapped_column(String(20), nullable=True)

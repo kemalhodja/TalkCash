@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import * as Linking from "expo-linking";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
+import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { PayBillModal } from "@/components/PayBillModal";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
-import { api } from "@/services/api";
-import { auth } from "@/services/auth";
+import { api, ApiError } from "@/services/api";
 import { parseAssistantUrl, storePendingAssistant, type AssistantParams } from "@/services/assistant";
+import { auth } from "@/services/auth";
+import { scheduleAgendaReminder } from "@/services/notifications";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
-import * as Linking from "expo-linking";
 
 export default function AssistantCommandScreen() {
   const { t, locale } = useI18n();
@@ -19,6 +21,7 @@ export default function AssistantCommandScreen() {
   const [confirmMessage, setConfirmMessage] = useState("");
   const [parsedData, setParsedData] = useState<any>(null);
   const [payModal, setPayModal] = useState<{ title: string } | null>(null);
+  const [duplicateMsg, setDuplicateMsg] = useState("");
   const [error, setError] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
 
@@ -31,6 +34,46 @@ export default function AssistantCommandScreen() {
       };
     }
     return null;
+  };
+
+  const finishSuccess = (assistant?: AssistantParams) => {
+    Alert.alert(
+      t.assistant.success,
+      assistant?.source === "siri" || assistant?.source === "google"
+        ? t.assistant.savedViaAssistant.replace("{source}", sourceLabel || t.assistant.viaAssistant)
+        : t.assistant.commandDone,
+    );
+    router.replace("/(tabs)/input");
+  };
+
+  const executeParsed = async (parsed: any, assistant?: AssistantParams, force = false) => {
+    if (parsed?.intent === "mark_paid") {
+      setPayModal({ title: parsed.description || parsed.raw_text || "" });
+      return;
+    }
+    const payload = force ? { ...parsed, force: true } : parsed;
+    const res: any = await api.executeAction(payload, true);
+    if (res?.status === "queued") {
+      Alert.alert(t.common.confirm, t.input.queuedOffline);
+      router.replace("/(tabs)/input");
+      return;
+    }
+    if (parsed?.intent === "add_bill" && res?.result?.due_date) {
+      await scheduleAgendaReminder(
+        res.result.title || parsed.description || "Fatura",
+        res.result.amount || parsed.amount || 0,
+        new Date(res.result.due_date),
+        locale,
+      );
+    }
+    if (parsed?.intent === "add_expense") {
+      await speakBudgetAlertsAfterSpend(locale);
+    }
+    if (parsed?.receipt_id && parsed?.amount) {
+      const receiptTotal = parsed.receipt_total_amount ?? parsed.amount;
+      await api.verifyReceipt(parsed.amount, receiptTotal, parsed.receipt_id);
+    }
+    finishSuccess(assistant);
   };
 
   const runCommand = async (assistant: AssistantParams) => {
@@ -55,28 +98,6 @@ export default function AssistantCommandScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const executeParsed = async (parsed: any, assistant?: AssistantParams) => {
-    if (parsed?.intent === "mark_paid") {
-      setPayModal({ title: parsed.description || parsed.raw_text || "" });
-      return;
-    }
-    await api.executeAction(parsed, true);
-    if (parsed?.intent === "add_expense") {
-      await speakBudgetAlertsAfterSpend(locale);
-    }
-    if (parsed?.receipt_id && parsed?.amount) {
-      const receiptTotal = parsed.receipt_total_amount ?? parsed.amount;
-      await api.verifyReceipt(parsed.amount, receiptTotal, parsed.receipt_id);
-    }
-    Alert.alert(
-      t.assistant.success,
-      assistant?.source === "siri" || assistant?.source === "google"
-        ? t.assistant.savedViaAssistant.replace("{source}", sourceLabel || t.assistant.viaAssistant)
-        : t.assistant.commandDone,
-    );
-    router.replace("/(tabs)/input");
   };
 
   useEffect(() => {
@@ -113,6 +134,10 @@ export default function AssistantCommandScreen() {
     try {
       await executeParsed(parsedData);
     } catch (e: any) {
+      if (e instanceof ApiError && e.status === 409 && parsedData?.intent === "add_bill") {
+        setDuplicateMsg(e.message);
+        return;
+      }
       setError(e.message);
     }
   };
@@ -132,6 +157,20 @@ export default function AssistantCommandScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <ConfirmationCard visible={confirmVisible} message={confirmMessage}
         onConfirm={handleConfirm} onCancel={() => router.replace("/(tabs)")} />
+      <DuplicateBillDialog
+        visible={!!duplicateMsg}
+        message={duplicateMsg}
+        onConfirm={async () => {
+          setDuplicateMsg("");
+          if (!parsedData) return;
+          try {
+            await executeParsed(parsedData, undefined, true);
+          } catch (e: any) {
+            setError(e.message);
+          }
+        }}
+        onCancel={() => { setDuplicateMsg(""); router.replace("/(tabs)"); }}
+      />
       <PayBillModal
         visible={!!payModal}
         billTitle={payModal?.title || ""}

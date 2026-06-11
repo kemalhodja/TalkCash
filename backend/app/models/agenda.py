@@ -3,11 +3,11 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.database import Base, pg_enum
 
 
 class AgendaStatus(str, enum.Enum):
@@ -25,7 +25,7 @@ class AgendaItem(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     currency: Mapped[str] = mapped_column(String(10), default="TRY")
     due_date: Mapped[datetime] = mapped_column(DateTime)
-    status: Mapped[AgendaStatus] = mapped_column(Enum(AgendaStatus), default=AgendaStatus.PENDING)
+    status: Mapped[AgendaStatus] = mapped_column(pg_enum(AgendaStatus), default=AgendaStatus.PENDING)
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
     recurrence_months: Mapped[int] = mapped_column(Integer, default=1)
     installment_total: Mapped[int | None] = mapped_column(Integer, nullable=True)

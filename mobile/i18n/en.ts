@@ -211,7 +211,7 @@ export default {
     todayBody: "{amount} payment due today!",
   },
   geofence: {
-    title: "You're near a market!",
+    title: "You're near {name}!",
     body: "Don't forget items on your shopping list.",
   },
   social: {

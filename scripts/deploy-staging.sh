@@ -28,7 +28,8 @@ fi
 echo "==> Deploying..."
 flyctl deploy --remote-only -a "$APP"
 
-echo "==> Health check..."
-curl -sf "https://${APP}.fly.dev/health" | head -c 500
-echo ""
+echo "==> Smoke test..."
+API_URL="https://${APP}.fly.dev" python3 "$(dirname "$0")/smoke_test.py"
+
 echo "Done. Set mobile EXPO_PUBLIC_API_URL=https://${APP}.fly.dev/api/v1"
+echo "See docs/SMOKE_TEST.md for device checklist"

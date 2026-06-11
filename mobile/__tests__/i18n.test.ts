@@ -16,8 +16,8 @@ describe("i18n", () => {
   });
 
   it("has geofence and notification strings", () => {
-    expect(tr.geofence.title).toContain("Market");
-    expect(en.geofence.title).toContain("market");
+    expect(tr.geofence.title).toContain("{name}");
+    expect(en.geofence.title).toContain("{name}");
     expect(tr.notifications.tomorrowTitle).toContain("{title}");
   });
 });
