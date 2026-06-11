@@ -7,8 +7,9 @@ Sesli komut (NLP), akıllı klavye ve yapay zeka destekli kişisel finans ve ya�
 ```
 talkcash/
 ├── backend/          # FastAPI + PostgreSQL + Redis + MinIO (S3)
+│   └── alembic/      # DB migrations
 ├── mobile/           # React Native (Expo) — TR/EN i18n
-├── alembic/          # DB migrations
+├── scripts/          # deploy-staging.sh
 └── docker-compose.yml
 ```
 
@@ -90,7 +91,8 @@ CI: GitHub Actions `main` branch push'ta otomatik çalışır.
 Staging API (Fly.io):
 
 ```bash
-cd backend && fly deploy
+./scripts/deploy-staging.sh
+# veya: cd backend && fly deploy
 # Secret: FLY_API_TOKEN → GitHub Actions "Deploy Staging (Fly.io)"
 ```
 

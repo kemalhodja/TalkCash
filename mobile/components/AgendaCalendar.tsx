@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
+import { formatMoney, getDateLocale } from "@/utils/format";
 
 interface AgendaItem {
   id: string;
@@ -46,7 +47,7 @@ export function AgendaCalendar({ items, onSelectItem }: Props) {
     return { year: y, month: m, days: grid, itemsByDay: byDay };
   }, [items, monthOffset]);
 
-  const monthLabel = new Date(year, month).toLocaleDateString(locale === "en" ? "en-US" : "tr-TR", {
+  const monthLabel = new Date(year, month).toLocaleDateString(getDateLocale(locale), {
     month: "long", year: "numeric",
   });
 
@@ -93,7 +94,7 @@ export function AgendaCalendar({ items, onSelectItem }: Props) {
           {selectedItems.map((item) => (
             <TouchableOpacity key={item.id} style={styles.dayItem} onPress={() => onSelectItem?.(item)}>
               <Text style={styles.dayItemTitle}>{item.title}</Text>
-              <Text style={styles.dayItemAmount}>{item.amount?.toLocaleString()} ₺</Text>
+              <Text style={styles.dayItemAmount}>{formatMoney(item.amount ?? 0, locale)}</Text>
             </TouchableOpacity>
           ))}
         </View>

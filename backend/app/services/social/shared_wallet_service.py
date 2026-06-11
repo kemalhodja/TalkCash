@@ -46,14 +46,13 @@ class SharedWalletService:
         return await db.get(SharedWallet, wallet_id)
 
     async def list_for_user(self, db: AsyncSession, user_id: UUID) -> list[SharedWallet]:
-        result = await db.execute(select(SharedWallet))
-        wallets = []
         uid = str(user_id)
-        for w in result.scalars().all():
-            members = json.loads(w.member_ids or "[]")
-            if uid in members:
-                wallets.append(w)
-        return wallets
+        result = await db.execute(
+            select(SharedWallet).where(
+                (SharedWallet.owner_id == user_id) | SharedWallet.member_ids.contains(f'"{uid}"')
+            )
+        )
+        return list(result.scalars().all())
 
     async def is_member(self, db: AsyncSession, wallet_id: UUID, user_id: UUID) -> bool:
         wallet = await self.get(db, wallet_id)
