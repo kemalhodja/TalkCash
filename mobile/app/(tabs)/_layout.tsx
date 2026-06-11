@@ -3,10 +3,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { ConflictModal } from "@/components/ConflictModal";
 import { Colors } from "@/constants/theme";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { useI18n } from "@/i18n";
 
 export default function TabLayout() {
   const { t } = useI18n();
+  useRequireUnlock();
   const { conflict, resolveConflict } = useOfflineSync();
 
   return (

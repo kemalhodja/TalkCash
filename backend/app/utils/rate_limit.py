@@ -1,9 +1,24 @@
-"""Redis-backed sliding-window rate limiter."""
+"""Redis-backed sliding-window rate limiter with in-memory fallback."""
+
+import time
 
 from fastapi import HTTPException, Request
 
 from app.config import settings
 from app.utils.redis_client import get_redis
+
+_memory_windows: dict[str, tuple[int, float]] = {}
+
+
+def _memory_rate_limit(key: str, limit: int, window_seconds: int) -> None:
+    now = time.time()
+    count, window_start = _memory_windows.get(key, (0, now))
+    if now - window_start >= window_seconds:
+        count, window_start = 0, now
+    count += 1
+    _memory_windows[key] = (count, window_start)
+    if count > limit:
+        raise HTTPException(status_code=429, detail="error.rate_limited")
 
 
 async def check_rate_limit(
@@ -12,6 +27,8 @@ async def check_rate_limit(
     limit: int,
     window_seconds: int = 60,
     identifier: str | None = None,
+    *,
+    strict: bool = False,
 ) -> None:
     if not settings.rate_limit_enabled:
         return
@@ -30,5 +47,6 @@ async def check_rate_limit(
     except HTTPException:
         raise
     except Exception:
-        # Redis unavailable — allow request rather than blocking all traffic
+        if strict:
+            _memory_rate_limit(key, limit, window_seconds)
         return

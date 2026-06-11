@@ -78,3 +78,43 @@ async def test_wallet_alias_resolves_english_cash():
 
     found = await service.find_by_name(db, user_id, "Cash")
     assert found is wallet
+
+
+def test_production_settings_rejects_weak_secret(monkeypatch):
+    from app.config import settings
+    from app.startup import validate_production_settings
+
+    monkeypatch.setattr(settings, "debug", False)
+    monkeypatch.setattr(settings, "secret_key", "change-me-in-production")
+    monkeypatch.setattr(settings, "allowed_origins", "https://app.example.com")
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        validate_production_settings()
+
+
+def test_production_settings_rejects_wildcard_cors(monkeypatch):
+    from app.config import settings
+    from app.startup import validate_production_settings
+
+    monkeypatch.setattr(settings, "debug", False)
+    monkeypatch.setattr(settings, "secret_key", "x" * 32)
+    monkeypatch.setattr(settings, "allowed_origins", "*")
+    with pytest.raises(RuntimeError, match="ALLOWED_ORIGINS"):
+        validate_production_settings()
+
+
+@pytest.mark.asyncio
+async def test_auth_rate_limit_strict_uses_memory_when_redis_down():
+    from fastapi import HTTPException
+    from unittest.mock import patch
+    from app.utils.rate_limit import check_rate_limit
+
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
+    with patch("app.utils.rate_limit.get_redis", side_effect=ConnectionError("down")):
+        with patch("app.utils.rate_limit.settings.rate_limit_enabled", True):
+            for _ in range(3):
+                await check_rate_limit(request, "auth-test", 3, strict=True)
+            with pytest.raises(HTTPException) as exc:
+                await check_rate_limit(request, "auth-test", 3, strict=True)
+    assert exc.value.status_code == 429

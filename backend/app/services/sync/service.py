@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.i18n import t
 from app.models.receipt import Receipt
 from app.models.shopping import ShoppingItem
+from app.models.sync_operation import SyncOperationRecord
 from app.models.transaction import Transaction
 from app.routers.execute import _dispatch
 from app.schemas.common import ParsedInput
@@ -33,7 +34,7 @@ class SyncService:
         failed: list[dict] = []
 
         for op in operations:
-            cached = await self._get_cached_result(user_id, op.id)
+            cached = await self._get_cached_result(db, user_id, op.id)
             if cached:
                 applied.append({"operation_id": str(op.id), "status": "duplicate", "result": cached})
                 continue
@@ -44,7 +45,7 @@ class SyncService:
                     conflicts.append(conflict)
                 else:
                     applied.append({"operation_id": str(op.id), "status": "ok", "result": result})
-                    await self._cache_result(user_id, op.id, result)
+                    await self._cache_result(db, user_id, op.id, result)
             except Exception as exc:
                 failed.append({"operation_id": str(op.id), "error": str(exc)})
 
@@ -190,7 +191,16 @@ class SyncService:
 
         raise ValueError(t("sync.unsupported_type", locale, type=op.type))
 
-    async def _get_cached_result(self, user_id: UUID, op_id: UUID) -> dict | None:
+    async def _get_cached_result(self, db: AsyncSession, user_id: UUID, op_id: UUID) -> dict | None:
+        row = await db.execute(
+            select(SyncOperationRecord).where(
+                SyncOperationRecord.user_id == user_id,
+                SyncOperationRecord.operation_id == op_id,
+            )
+        )
+        record = row.scalar_one_or_none()
+        if record:
+            return json.loads(record.result_json)
         try:
             r = await get_redis()
             val = await r.get(f"sync:{user_id}:{op_id}")
@@ -198,7 +208,13 @@ class SyncService:
         except Exception:
             return None
 
-    async def _cache_result(self, user_id: UUID, op_id: UUID, result: dict) -> None:
+    async def _cache_result(self, db: AsyncSession, user_id: UUID, op_id: UUID, result: dict) -> None:
+        db.add(SyncOperationRecord(
+            user_id=user_id,
+            operation_id=op_id,
+            result_json=json.dumps(result, default=str),
+        ))
+        await db.flush()
         try:
             r = await get_redis()
             await r.set(f"sync:{user_id}:{op_id}", json.dumps(result, default=str), ex=604800)

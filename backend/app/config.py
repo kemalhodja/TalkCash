@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     ocr_rate_limit: int = 15
     ocr_max_upload_bytes: int = 10 * 1024 * 1024
 
+    sync_rate_limit: int = 30
+
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     whisper_model: str = "whisper-1"

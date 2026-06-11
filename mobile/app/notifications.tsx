@@ -4,10 +4,12 @@ import { Stack } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { api } from "@/services/api";
 
 export default function NotificationsScreen() {
   const { t } = useI18n();
+  useRequireUnlock();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
