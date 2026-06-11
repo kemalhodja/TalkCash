@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
@@ -32,7 +32,13 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
   const handleConfirm = async () => {
     if (!price) { setError(t.shopping.priceRequired); return; }
     try {
-      await api.completeShoppingItem(itemId, parseFloat(price), selectedWallet || undefined);
+      const res: any = await api.completeShoppingItem(itemId, parseFloat(price), selectedWallet || undefined);
+      if (res?.status === "queued") {
+        Alert.alert(t.common.confirm, t.shopping.queuedOffline);
+        setPrice("");
+        onComplete();
+        return;
+      }
       await speakBudgetAlertsAfterSpend(locale);
       setPrice("");
       onComplete();

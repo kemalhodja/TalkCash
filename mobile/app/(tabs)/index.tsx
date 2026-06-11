@@ -10,6 +10,7 @@ import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { registerForPushNotifications } from "@/services/notifications";
+import { formatDate, formatMoney } from "@/utils/format";
 import { speakBudgetAlert } from "@/services/speech";
 
 export default function DashboardScreen() {
@@ -26,7 +27,7 @@ export default function DashboardScreen() {
   const [transferVisible, setTransferVisible] = useState(false);
   const [incomeVisible, setIncomeVisible] = useState(false);
   const [walletCreateVisible, setWalletCreateVisible] = useState(false);
-  const [trackProduct, setTrackProduct] = useState("süt");
+  const [trackProduct, setTrackProduct] = useState("");
   const trackProductRef = useRef(trackProduct);
   const lastSpokenAlert = useRef("");
   trackProductRef.current = trackProduct;
@@ -64,6 +65,9 @@ export default function DashboardScreen() {
   }, [locale, t.home.loadError]);
 
   useEffect(() => { loadData(); registerForPushNotifications(); }, [loadData]);
+  useEffect(() => {
+    setTrackProduct((prev) => prev || t.home.defaultProduct);
+  }, [t.home.defaultProduct]);
   useRefreshOnFocus(loadData);
 
   if (loading) {
@@ -76,14 +80,14 @@ export default function DashboardScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }}
           tintColor={Colors.accent} />
       }>
-      <Text style={styles.greeting}>{t.home.greeting}, {userName || "User"}</Text>
+      <Text style={styles.greeting}>{t.home.greeting}, {userName || t.common.user}</Text>
 
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
 
       <View style={styles.netWorthCard}>
         <Text style={styles.label}>{t.home.netWorth}</Text>
         <Text style={styles.netWorth}>
-          {Number(netWorth).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺
+          {formatMoney(Number(netWorth), locale)}
         </Text>
       </View>
 
@@ -118,7 +122,7 @@ export default function DashboardScreen() {
             <Text style={styles.priceBtnText}>{t.home.trackPrice}</Text>
           </TouchableOpacity>
         </View>
-        {priceReport?.message && !priceReport.message.includes("bulunamadı") && !priceReport.message.includes("insufficient") && (
+        {priceReport?.has_data && priceReport?.message && (
           <View style={styles.alertCard}>
             <Text style={styles.alertText}>📊 {priceReport.message}</Text>
             {priceReport.source === "ocr" && <Text style={styles.sourceTag}>OCR</Text>}

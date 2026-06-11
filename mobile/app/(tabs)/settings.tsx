@@ -95,7 +95,7 @@ export default function SettingsScreen() {
     try {
       const blob = type === "pdf" ? await api.exportPdf() : await api.exportExcel();
       const ext = type === "pdf" ? "pdf" : "xlsx";
-      const path = `${FileSystem.cacheDirectory}talkcash-rapor.${ext}`;
+      const path = `${FileSystem.cacheDirectory}${t.settings.exportFilename}.${ext}`;
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = (reader.result as string).split(",")[1];

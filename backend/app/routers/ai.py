@@ -27,4 +27,6 @@ async def month_end_forecast(current_balance: float, user: User = Depends(get_cu
 async def price_tracker(product: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     locale = user_locale(user)
     report = await ai_service.price_change_report(db, user.id, product, locale)
-    return report or {"message": t("ai.insufficient_data", locale)}
+    if report:
+        return {**report, "has_data": True}
+    return {"message": t("ai.insufficient_data", locale), "has_data": False}

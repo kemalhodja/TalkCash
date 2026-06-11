@@ -12,7 +12,7 @@ from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
 from app.routers import agenda, ai, auth, budgets, execute, export, geofence, input, notifications, ocr, shopping, social, sync, transactions, wallets, ws
 from app.services.social.ws_bridge import start_redis_ws_bridge, stop_redis_ws_bridge
-from app.tasks.scheduler import start_scheduler
+from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.utils.redis_client import get_redis
 
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     start_redis_ws_bridge()
     yield
+    stop_scheduler()
     await stop_redis_ws_bridge()
 
 

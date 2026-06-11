@@ -9,6 +9,7 @@ export default {
     retry: "Tekrar Dene",
     close: "Kapat",
     offlineQueued: "Çevrimdışı kaydedildi, bağlantı gelince senkronize edilecek",
+    user: "Kullanıcı",
   },
   tabs: {
     home: "Ana Sayfa",
@@ -37,6 +38,7 @@ export default {
     incomeAdded: "Gelir kaydedildi",
     priceTracker: "Fiyat Takibi",
     pricePlaceholder: "Ürün adı (ör: süt)",
+    defaultProduct: "süt",
     trackPrice: "Takip Et",
     debt: "Borç",
   },
@@ -71,6 +73,7 @@ export default {
     export: "Dışa Aktar",
     exportPdf: "PDF Rapor İndir",
     exportExcel: "Excel Rapor İndir",
+    exportFilename: "talkcash-rapor",
     logout: "Çıkış Yap",
     notifications: "Bildirimler",
     noNotifications: "Bildirim yok",
@@ -130,6 +133,7 @@ export default {
     buySubtitle: "Fiyatı ne kadar? Kasadan düşelim mi?",
     deduct: "Kasadan Düş",
     priceRequired: "Fiyat girin",
+    queuedOffline: "Çevrimdışı kaydedildi, alışveriş tamamlanınca senkronize edilecek",
     pricePlaceholder: "Fiyat (TL)",
     categories: {
       sarkuteri: "🥩 Şarküteri",

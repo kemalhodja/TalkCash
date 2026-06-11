@@ -9,6 +9,7 @@ export default {
     retry: "Retry",
     close: "Close",
     offlineQueued: "Saved offline; will sync when connected",
+    user: "User",
   },
   tabs: {
     home: "Home",
@@ -37,6 +38,7 @@ export default {
     incomeAdded: "Income recorded",
     priceTracker: "Price Tracker",
     pricePlaceholder: "Product name (e.g. milk)",
+    defaultProduct: "milk",
     trackPrice: "Track",
     debt: "Debt",
   },
@@ -71,6 +73,7 @@ export default {
     export: "Export",
     exportPdf: "Download PDF Report",
     exportExcel: "Download Excel Report",
+    exportFilename: "talkcash-report",
     logout: "Sign Out",
     notifications: "Notifications",
     noNotifications: "No notifications",
@@ -130,6 +133,7 @@ export default {
     buySubtitle: "How much? Deduct from wallet?",
     deduct: "Deduct",
     priceRequired: "Enter price",
+    queuedOffline: "Saved offline; purchase will sync when connected",
     pricePlaceholder: "Price",
     categories: {
       sarkuteri: "🥩 Deli",

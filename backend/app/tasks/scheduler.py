@@ -54,6 +54,12 @@ async def sync_exchange_rates():
         logger.info("Exchange rates synced: %s", list(rates.keys()))
 
 
+def stop_scheduler():
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("Scheduler stopped")
+
+
 def start_scheduler():
     from app.config import settings
 
