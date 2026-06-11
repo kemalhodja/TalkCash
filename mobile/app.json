@@ -50,6 +50,7 @@
       ]
     },
     "plugins": [
+      "expo-dev-client",
       "./plugins/withAssistant.js",
       [
         "@config-plugins/react-native-siri-shortcut",
