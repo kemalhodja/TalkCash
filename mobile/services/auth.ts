@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import * as LocalAuthentication from "expo-local-authentication";
+import { clearLocalUserData } from "./localData";
 
 const TOKEN_KEY = "talkcash_token";
 const USER_KEY = "talkcash_user";
@@ -39,6 +40,7 @@ export const auth = {
 
   async clear() {
     sessionUnlocked = false;
+    await clearLocalUserData();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
   },

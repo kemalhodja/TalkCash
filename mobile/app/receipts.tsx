@@ -5,11 +5,13 @@ import { Stack } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { api } from "@/services/api";
 import { formatDate, formatMoney } from "@/utils/format";
 
 export default function ReceiptsScreen() {
   const { t, locale } = useI18n();
+  useRequireUnlock();
   const [receipts, setReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

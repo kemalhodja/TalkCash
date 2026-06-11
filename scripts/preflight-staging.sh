@@ -44,7 +44,14 @@ if command -v flyctl >/dev/null 2>&1; then
       echo "  OK  secret REDIS_URL"
     fi
     if ! flyctl secrets list -a "$APP" 2>/dev/null | grep -q "S3_ENABLED"; then
-      warn "S3 not configured — receipt images will not persist"
+      fail "S3_ENABLED not set — receipt images will not persist on Fly"
+    else
+      echo "  OK  secret S3_ENABLED"
+    fi
+    if ! flyctl secrets list -a "$APP" 2>/dev/null | grep -q "OPENAI_API_KEY"; then
+      warn "OPENAI_API_KEY not set — NLP/voice will be limited"
+    else
+      echo "  OK  secret OPENAI_API_KEY"
     fi
   fi
 fi

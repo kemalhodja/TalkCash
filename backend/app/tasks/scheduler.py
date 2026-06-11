@@ -9,6 +9,7 @@ from app.services.budget_scheduler import daily_budget_alert_scan
 from app.services.exchange.service import ExchangeService
 from app.services.notifications.service import NotificationService
 from app.services.shopping.service import ShoppingService
+from app.utils.scheduler_lock import refresh_scheduler_leader
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -18,40 +19,65 @@ exchange_service = ExchangeService()
 agenda_service = AgendaService()
 
 
+async def _guarded(job):
+    if not await refresh_scheduler_leader():
+        logger.debug("Skipping scheduled job — not scheduler leader")
+        return
+    await job()
+
+
 async def daily_shopping_reset():
-    async with async_session() as db:
-        count = await shopping_service.daily_reset(db)
-        logger.info("Daily shopping reset: %d items cleared", count)
+    async def _run():
+        async with async_session() as db:
+            count = await shopping_service.daily_reset(db)
+            logger.info("Daily shopping reset: %d items cleared", count)
+
+    await _guarded(_run)
 
 
 async def agenda_reminders_today():
-    async with async_session() as db:
-        count = await notif_service.check_agenda_reminders(db, when="today")
-        logger.info("Agenda today reminders sent: %d", count)
+    async def _run():
+        async with async_session() as db:
+            count = await notif_service.check_agenda_reminders(db, when="today")
+            logger.info("Agenda today reminders sent: %d", count)
+
+    await _guarded(_run)
 
 
 async def agenda_reminders_tomorrow():
-    async with async_session() as db:
-        count = await notif_service.check_agenda_reminders(db, when="tomorrow")
-        logger.info("Agenda tomorrow reminders sent: %d", count)
+    async def _run():
+        async with async_session() as db:
+            count = await notif_service.check_agenda_reminders(db, when="tomorrow")
+            logger.info("Agenda tomorrow reminders sent: %d", count)
+
+    await _guarded(_run)
 
 
 async def spawn_recurring_bills():
-    async with async_session() as db:
-        count = await agenda_service.spawn_recurring_bills(db)
-        logger.info("Recurring bills spawned: %d", count)
+    async def _run():
+        async with async_session() as db:
+            count = await agenda_service.spawn_recurring_bills(db)
+            logger.info("Recurring bills spawned: %d", count)
+
+    await _guarded(_run)
 
 
 async def budget_alerts_daily():
-    async with async_session() as db:
-        count = await daily_budget_alert_scan(db)
-        logger.info("Budget daily scan: %d alerts", count)
+    async def _run():
+        async with async_session() as db:
+            count = await daily_budget_alert_scan(db)
+            logger.info("Budget daily scan: %d alerts", count)
+
+    await _guarded(_run)
 
 
 async def sync_exchange_rates():
-    async with async_session() as db:
-        rates = await exchange_service.sync_rates(db)
-        logger.info("Exchange rates synced: %s", list(rates.keys()))
+    async def _run():
+        async with async_session() as db:
+            rates = await exchange_service.sync_rates(db)
+            logger.info("Exchange rates synced: %s", list(rates.keys()))
+
+    await _guarded(_run)
 
 
 def stop_scheduler():

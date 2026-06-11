@@ -28,7 +28,7 @@ def _token_response(user: User, token: str) -> TokenResponse:
 
 @router.post("/register", response_model=TokenResponse)
 async def register(data: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    await check_rate_limit(request, "auth", settings.auth_rate_limit)
+    await check_rate_limit(request, "auth", settings.auth_rate_limit, strict=True)
     lang = locale_from_request(request)
     try:
         user, token = await auth_service.register(db, data.email, data.password, data.full_name)
@@ -39,7 +39,7 @@ async def register(data: RegisterRequest, request: Request, db: AsyncSession = D
 
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    await check_rate_limit(request, "auth", settings.auth_rate_limit)
+    await check_rate_limit(request, "auth", settings.auth_rate_limit, strict=True)
     lang = locale_from_request(request)
     try:
         user, token = await auth_service.login(db, data.email, data.password)
@@ -73,7 +73,7 @@ async def verify_pin(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await check_rate_limit(request, "pin", 15)
+    await check_rate_limit(request, "pin", 15, strict=True)
     valid = await auth_service.verify_pin(db, user.id, data.pin)
     if not valid:
         raise HTTPException(status_code=401, detail=t("auth.pin_invalid", user.locale or "tr"))

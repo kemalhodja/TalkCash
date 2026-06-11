@@ -47,6 +47,23 @@ jobs:
         working-directory: backend
         run: pytest tests/e2e/ -v
 
+  release-check:
+    runs-on: ubuntu-latest
+    needs: [backend, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Verify release script (no live API smoke)
+        run: |
+          pip install -r backend/requirements.txt
+          cd mobile && npm install
+          API_URL=http://127.0.0.1:1 bash ../scripts/verify-release.sh
+
   mobile:
     runs-on: ubuntu-latest
     steps:

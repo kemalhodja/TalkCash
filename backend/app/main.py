@@ -13,20 +13,29 @@ from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
 from app.routers import agenda, ai, auth, budgets, execute, export, geofence, input, notifications, ocr, shopping, social, sync, transactions, wallets, ws
 from app.services.social.ws_bridge import start_redis_ws_bridge, stop_redis_ws_bridge
+from app.startup import validate_production_settings
 from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.utils.redis_client import get_redis
+from app.utils.scheduler_lock import acquire_scheduler_leader
 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_production_settings()
     if not settings.debug and settings.secret_key in ("change-me-in-production", "dev-secret-key-local"):
         logging.warning("SECRET_KEY is using a default value — set a strong secret in production")
-    start_scheduler()
+    scheduler_started = False
+    if settings.scheduler_enabled and await acquire_scheduler_leader():
+        start_scheduler()
+        scheduler_started = True
+    elif settings.scheduler_enabled:
+        logging.info("Scheduler skipped — another instance holds the leader lock")
     start_redis_ws_bridge()
     yield
-    stop_scheduler()
+    if scheduler_started:
+        stop_scheduler()
     await stop_redis_ws_bridge()
 
 

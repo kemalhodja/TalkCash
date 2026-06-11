@@ -8,6 +8,7 @@ from app.models.budget import BudgetLimit
 from app.models.social import SharedWallet, DebtRecord, SplitBill
 from app.models.notification import Notification
 from app.models.exchange_rate import ExchangeRate
+from app.models.sync_operation import SyncOperationRecord
 
 __all__ = [
     "User",
@@ -26,4 +27,5 @@ __all__ = [
     "SplitBill",
     "Notification",
     "ExchangeRate",
+    "SyncOperationRecord",
 ]
