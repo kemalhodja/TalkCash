@@ -88,6 +88,8 @@ CI: GitHub Actions `main` branch push'ta otomatik çalışır.
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Fly.io / Railway staging, Docker prod, mobil API URL |
 | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Fly setup, EAS production build, mağaza yayın checklist |
 | [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) | Deploy sonrası API + cihaz smoke test checklist |
+
+Release doğrulama: `./scripts/verify-release.sh`
 | [docs/PLAY_CONSOLE_APP_ACTIONS.md](docs/PLAY_CONSOLE_APP_ACTIONS.md) | Google Play + App Actions yayın adımları |
 
 Staging API (Fly.io):

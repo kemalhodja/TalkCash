@@ -5,7 +5,10 @@ Deploy sonrası ve mağaza yayını öncesi bu listeyi takip edin.
 ## Otomatik API testi
 
 ```bash
-# Lokal
+# Tam doğrulama (test + smoke)
+./scripts/verify-release.sh
+
+# Sadece API smoke
 python3 scripts/smoke_test.py
 
 # Staging
