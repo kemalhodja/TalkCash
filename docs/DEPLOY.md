@@ -43,7 +43,24 @@ fly postgres attach talkcash-db -a talkcash-api
 2. Connection string'i kopyalayın
 3. `fly secrets set REDIS_URL="redis://..." -a talkcash-api`
 
-### 4. API deploy
+### 4. Object storage (Cloudflare R2 — production fiş görselleri için zorunlu)
+
+Fly makineleri geçici disk kullanır; fiş görselleri restart'ta kaybolur. R2 veya S3 açın:
+
+```bash
+fly secrets set \
+  S3_ENABLED=true \
+  S3_ENDPOINT="https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com" \
+  S3_ACCESS_KEY="..." \
+  S3_SECRET_KEY="..." \
+  S3_BUCKET="talkcash" \
+  S3_REGION="auto" \
+  -a talkcash-api
+```
+
+Opsiyonel public CDN: `S3_PUBLIC_URL=https://pub-xxx.r2.dev`
+
+### 5. API deploy
 
 ```bash
 cd backend
@@ -70,7 +87,7 @@ Beklenen yanıt:
 }
 ```
 
-`degraded` görürseniz PostgreSQL veya Redis bağlantısını kontrol edin.
+`degraded` görürseniz Redis bağlantısını kontrol edin (DB zorunlu, Redis opsiyonel).
 
 ### 6. GitHub Actions ile deploy
 
@@ -136,6 +153,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 - [ ] `OPENAI_API_KEY` sadece sunucuda (mobil uygulamada değil)
 - [ ] HTTPS zorunlu (Fly/Railway varsayılan)
 - [ ] PostgreSQL şifresi güçlü
+- [ ] `S3_ENABLED=true` ve R2/S3 secret'ları ayarlı (fiş görselleri)
 - [ ] MinIO/S3 bucket public write kapalı
 
 ---

@@ -6,9 +6,10 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { formatDate, formatMoney } from "@/utils/format";
 
 export default function TransactionsScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,7 +21,7 @@ export default function TransactionsScreen() {
       setTransactions(await api.getTransactions());
     } catch (e: any) {
       setTransactions([]);
-      setError(e.message || "Error");
+      setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
@@ -40,7 +41,7 @@ export default function TransactionsScreen() {
           <View style={styles.row}>
             <Text style={styles.category}>{tx.category}</Text>
             <Text style={[styles.amount, tx.type === "income" && styles.income]}>
-              {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString("tr-TR")} ₺
+              {tx.type === "income" ? "+" : "-"}{formatMoney(tx.amount, locale)}
             </Text>
           </View>
           <Text style={styles.desc}>{tx.description || tx.place || "—"}</Text>
@@ -50,7 +51,7 @@ export default function TransactionsScreen() {
               <Text style={styles.receiptLabel}>{t.transactions.viewReceipt}</Text>
             </TouchableOpacity>
           ) : null}
-          <Text style={styles.date}>{new Date(tx.date).toLocaleDateString("tr-TR")} · {tx.input_method}</Text>
+          <Text style={styles.date}>{formatDate(tx.date, locale)} · {tx.input_method}</Text>
         </View>
       ))}
       {transactions.length === 0 && <Text style={styles.empty}>{t.transactions.empty}</Text>}

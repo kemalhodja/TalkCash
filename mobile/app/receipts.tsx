@@ -6,9 +6,10 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { api } from "@/services/api";
+import { formatDate, formatMoney } from "@/utils/format";
 
 export default function ReceiptsScreen() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [receipts, setReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,10 +40,10 @@ export default function ReceiptsScreen() {
           ) : null}
           <Text style={styles.merchant}>{r.merchant || "—"}</Text>
           <Text style={styles.amount}>
-            {r.total_amount != null ? `${Number(r.total_amount).toLocaleString()} ₺` : "—"}
+            {r.total_amount != null ? formatMoney(Number(r.total_amount), locale) : "—"}
           </Text>
           <Text style={styles.meta}>
-            {r.date ? new Date(r.date).toLocaleDateString() : "—"} ·{" "}
+            {r.date ? formatDate(r.date, locale) : "—"} ·{" "}
             {r.verified ? t.receipts.verified : t.receipts.unverified}
           </Text>
         </View>

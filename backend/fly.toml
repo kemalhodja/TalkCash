@@ -10,16 +10,16 @@ primary_region = "fra"
 
 [env]
   SCHEDULER_ENABLED = "true"
-  S3_ENABLED = "false"
   DEBUG = "false"
   RATE_LIMIT_ENABLED = "true"
+  # S3/R2: set via fly secrets (see docs/DEPLOY.md)
 
 [http_service]
   internal_port = 8000
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ["app"]
 
   [http_service.concurrency]

@@ -52,6 +52,15 @@ def test_ocr_max_upload_setting():
     assert settings.ocr_rate_limit == 15
 
 
+def test_storage_get_url_preserves_http():
+    import asyncio
+    from app.services.storage.service import StorageService
+
+    svc = StorageService()
+    url = asyncio.run(svc.get_url("https://cdn.example.com/receipt.jpg"))
+    assert url == "https://cdn.example.com/receipt.jpg"
+
+
 @pytest.mark.asyncio
 async def test_wallet_alias_resolves_english_cash():
     from uuid import uuid4

@@ -170,13 +170,22 @@ export const api = {
       throw err;
     }
   },
-  completeShoppingItem: (itemId: string, price?: number, walletId?: string) => {
+  completeShoppingItem: async (itemId: string, price?: number, walletId?: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
     let url = `/shopping/complete/${itemId}`;
     const params = new URLSearchParams();
     if (price) params.set("price", String(price));
     if (walletId) params.set("wallet_id", walletId);
     const qs = params.toString();
-    return request(`${url}${qs ? `?${qs}` : ""}`, { method: "POST" });
+    try {
+      return await request(`${url}${qs ? `?${qs}` : ""}`, { method: "POST" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "shopping_complete", payload: { item_id: itemId, price, wallet_id: walletId } });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
   },
   setRoutine: (itemId: string, isRoutine: boolean, routineType: "daily" | "weekly" = "daily") =>
     request(`/shopping/${itemId}/routine`, {

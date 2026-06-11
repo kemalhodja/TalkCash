@@ -1,9 +1,8 @@
 from decimal import Decimal
-from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +13,7 @@ from app.i18n import t
 from app.models.receipt import Receipt
 from app.models.user import User
 from app.services.ocr.service import OCRService
-from app.services.storage.service import StorageService, UPLOAD_DIR
+from app.services.storage.service import StorageService
 from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/ocr", tags=["OCR"])
@@ -99,18 +98,13 @@ async def get_receipt_image(
 
     stored = receipt.image_url
     if stored.startswith("http"):
-        raise HTTPException(status_code=400, detail=t("ocr.external_image", lang))
+        return RedirectResponse(stored)
 
-    path = Path(stored)
-    if not path.is_absolute():
-        path = UPLOAD_DIR / stored if not stored.startswith("uploads/") else Path(stored)
-    if not path.exists():
-        path = Path(stored)
-    if not path.exists():
+    try:
+        data, media_type = await storage_service.read_bytes(stored)
+        return Response(content=data, media_type=media_type)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail=t("ocr.receipt_not_found", lang))
-
-    media_type = "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
-    return FileResponse(path, media_type=media_type)
 
 
 @router.post("/verify")

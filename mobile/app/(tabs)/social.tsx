@@ -5,6 +5,7 @@ import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
+import { formatMoney } from "@/utils/format";
 import { SharedWalletWS } from "@/services/websocket";
 
 export default function SocialScreen() {
@@ -23,8 +24,6 @@ export default function SocialScreen() {
   const [expenseDesc, setExpenseDesc] = useState("");
   const [loading, setLoading] = useState(true);
   const wsMap = useRef<Map<string, SharedWalletWS>>(new Map());
-
-  const dateLocale = locale === "en" ? "en-US" : "tr-TR";
 
   const load = async () => {
     try {
@@ -73,7 +72,7 @@ export default function SocialScreen() {
     const desc = expenseDesc;
     const ws = wsMap.current.get(walletId);
     if (ws) {
-      ws.sendExpense(amount, desc, user?.fullName || "User");
+      ws.sendExpense(amount, desc, user?.fullName || t.common.user);
     } else {
       await api.addSharedWalletExpense(walletId, amount, desc);
     }
@@ -105,7 +104,7 @@ export default function SocialScreen() {
         <TouchableOpacity style={styles.btn} onPress={handleSplit}><Text style={styles.btnText}>{t.social.splitBtn}</Text></TouchableOpacity>
         {splitResult && (
           <View style={styles.result}>
-            <Text style={styles.resultText}>{t.social.perPerson}: {splitResult.per_person} TL</Text>
+            <Text style={styles.resultText}>{t.social.perPerson}: {formatMoney(splitResult.per_person, locale)}</Text>
             <TouchableOpacity style={styles.whatsappBtn} onPress={shareWhatsApp}>
               <Text style={styles.whatsappText}>{t.social.whatsapp}</Text>
             </TouchableOpacity>
@@ -117,7 +116,7 @@ export default function SocialScreen() {
         <Text style={styles.sectionTitle}>{t.social.debtBook}</Text>
         {debts.map((d) => (
           <View key={d.id} style={styles.debtCard}>
-            <Text style={styles.debtText}>{d.is_lent ? t.social.lent : t.social.borrowed}: {d.person} — {d.amount} ₺</Text>
+            <Text style={styles.debtText}>{d.is_lent ? t.social.lent : t.social.borrowed}: {d.person} — {formatMoney(d.amount, locale)}</Text>
             <TouchableOpacity onPress={async () => { await api.settleDebt(d.id); load(); }}>
               <Text style={styles.settle}>{t.social.settle}</Text>
             </TouchableOpacity>
@@ -142,7 +141,7 @@ export default function SocialScreen() {
           <View key={w.id} style={styles.walletCard}>
             <View style={styles.walletRow}>
               <Text style={styles.walletName}>{w.name}</Text>
-              <Text style={styles.walletBalance}>{w.balance?.toLocaleString(dateLocale)} ₺</Text>
+              <Text style={styles.walletBalance}>{formatMoney(w.balance ?? 0, locale)}</Text>
             </View>
             <TouchableOpacity onPress={() => setExpenseWalletId(expenseWalletId === w.id ? null : w.id)}>
               <Text style={styles.expenseLink}>{t.social.addExpense}</Text>
