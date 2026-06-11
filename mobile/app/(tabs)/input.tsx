@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
 import { PayBillModal } from "@/components/PayBillModal";
 import { NumericKeypad } from "@/components/NumericKeypad";
@@ -26,6 +26,8 @@ export default function InputScreen() {
   const [payModal, setPayModal] = useState<{ title: string } | null>(null);
   const [slashMode, setSlashMode] = useState(false);
   const [aiAvailable, setAiAvailable] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     api.getInputCapabilities().then((c) => setAiAvailable(c.voice_available && c.llm_available)).catch(() => setAiAvailable(false));
@@ -43,7 +45,8 @@ export default function InputScreen() {
   };
 
   const handleTextSubmit = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const isSlash = text.trim().startsWith("/");
       const result = isSlash
@@ -52,6 +55,8 @@ export default function InputScreen() {
       showConfirmation(result.message, result.parsed);
     } catch (e: any) {
       setError(e.message || t.input.parseError);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -68,8 +73,15 @@ export default function InputScreen() {
       return;
     }
     if (parsedData) {
+      setIsSubmitting(true);
       try {
         const res: any = await api.executeAction(parsedData, true);
+        if (res?.status === "queued") {
+          Alert.alert(t.common.confirm, t.input.queuedOffline);
+          setText("");
+          setParsedData(null);
+          return;
+        }
         if (parsedData.intent === "add_bill" && res?.result?.due_date) {
           await scheduleAgendaReminder(
             res.result.title || parsedData.description || "Fatura",
@@ -98,19 +110,27 @@ export default function InputScreen() {
         }
         setText("");
       } catch (e: any) { setError(e.message); }
+      finally { setIsSubmitting(false); }
     }
     setParsedData(null);
   };
 
-  const handleTextChange = async (val: string) => {
+  const handleTextChange = (val: string) => {
     setText(val);
     setSlashMode(val.startsWith("/"));
-    if (val.length >= 1) {
+    if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
+    if (val.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    autocompleteTimer.current = setTimeout(async () => {
       try {
         const res = await api.autocomplete(val);
         setSuggestions(res.suggestions);
-      } catch { setSuggestions([]); }
-    }
+      } catch {
+        setSuggestions([]);
+      }
+    }, 350);
   };
 
   return (
@@ -173,8 +193,8 @@ export default function InputScreen() {
       {showKeypad && <NumericKeypad value={keypadValue} onChange={setKeypadValue}
         onSubmit={() => { setText(keypadValue); setShowKeypad(false); }} />}
 
-      <TouchableOpacity style={styles.submitBtn} onPress={handleTextSubmit}>
-        <Text style={styles.submitText}>{t.input.send}</Text>
+      <TouchableOpacity style={[styles.submitBtn, isSubmitting && styles.submitDisabled]} onPress={handleTextSubmit} disabled={isSubmitting}>
+        {isSubmitting ? <ActivityIndicator color={Colors.text} /> : <Text style={styles.submitText}>{t.input.send}</Text>}
       </TouchableOpacity>
 
       <ConfirmationCard visible={confirmVisible} message={confirmMessage}
@@ -240,6 +260,7 @@ const styles = StyleSheet.create({
   keypadToggle: { alignItems: "center", marginTop: Spacing.md },
   keypadToggleText: { color: Colors.accent, fontSize: 14 },
   submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 12, alignItems: "center", marginTop: Spacing.md },
+  submitDisabled: { opacity: 0.6 },
   submitText: { color: Colors.bg, fontWeight: "700", fontSize: 16 },
   error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
   aiBanner: {

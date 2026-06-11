@@ -8,6 +8,7 @@ export default {
     error: "Bir hata oluştu",
     retry: "Tekrar Dene",
     close: "Kapat",
+    offlineQueued: "Çevrimdışı kaydedildi, bağlantı gelince senkronize edilecek",
   },
   tabs: {
     home: "Ana Sayfa",
@@ -255,6 +256,8 @@ export default {
     receiptConfirm: "{amount} TL - {merchant} kaydedilsin mi?",
     saveConfirm: "{text} kaydedilsin mi?",
     slashMode: "Slash komut modu — hızlı giriş",
+    submitting: "Kaydediliyor...",
+    queuedOffline: "Çevrimdışı kuyruğa alındı. Bağlantı gelince senkronize edilecek.",
   },
   transfer: {
     title: "Kasalar Arası Transfer",

@@ -8,6 +8,7 @@ export default {
     error: "An error occurred",
     retry: "Retry",
     close: "Close",
+    offlineQueued: "Saved offline; will sync when connected",
   },
   tabs: {
     home: "Home",
@@ -255,6 +256,8 @@ export default {
     receiptConfirm: "Save {amount} - {merchant}?",
     saveConfirm: "Save {text}?",
     slashMode: "Slash command mode — quick entry",
+    submitting: "Saving...",
+    queuedOffline: "Queued offline. Will sync when connected.",
   },
   transfer: {
     title: "Wallet Transfer",

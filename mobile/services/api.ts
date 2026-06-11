@@ -3,6 +3,8 @@ import { auth } from "./auth";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const LOCALE_KEY = "talkcash_locale";
+const REQUEST_TIMEOUT_MS = 25000;
+const MAX_RETRIES = 2;
 
 export class ApiError extends Error {
   status: number;
@@ -12,7 +14,34 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+function parseErrorDetail(body: unknown, status: number): string {
+  if (typeof body === "object" && body !== null && "detail" in body) {
+    const detail = (body as { detail: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) => (typeof item === "object" && item && "msg" in item ? String((item as { msg: string }).msg) : String(item)))
+        .join(", ");
+    }
+  }
+  return `API error: ${status}`;
+}
+
+async function handleUnauthorized(): Promise<void> {
+  await auth.clear();
+  try {
+    const { router } = await import("expo-router");
+    router.replace("/login");
+  } catch {
+    /* web / tests */
+  }
+}
+
+function shouldRetry(status: number): boolean {
+  return status >= 500 || status === 429;
+}
+
+async function request<T>(path: string, options?: RequestInit, attempt = 0): Promise<T> {
   const token = await auth.getToken();
   const locale = await SecureStore.getItemAsync(LOCALE_KEY);
   const headers: Record<string, string> = {
@@ -24,16 +53,45 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const detail = typeof err.detail === "string" ? err.detail : `API error: ${res.status}`;
-    throw new ApiError(detail, res.status);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (res.status === 401) {
+      await handleUnauthorized();
+      throw new ApiError("Session expired", 401);
+    }
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const detail = parseErrorDetail(errBody, res.status);
+      if (shouldRetry(res.status) && attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+        return request<T>(path, options, attempt + 1);
+      }
+      throw new ApiError(detail, res.status);
+    }
+
+    if (res.headers.get("content-type")?.includes("application/json")) {
+      return res.json();
+    }
+    return res.blob() as unknown as T;
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    if (attempt < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      return request<T>(path, options, attempt + 1);
+    }
+    throw new ApiError(err instanceof Error ? err.message : "Network error", 0);
+  } finally {
+    clearTimeout(timeout);
   }
-  if (res.headers.get("content-type")?.includes("application/json")) {
-    return res.json();
-  }
-  return res.blob() as unknown as T;
 }
 
 export const api = {

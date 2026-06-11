@@ -32,6 +32,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY: test-secret-key
       SCHEDULER_ENABLED: "false"
+      RATE_LIMIT_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

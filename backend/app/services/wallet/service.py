@@ -32,6 +32,13 @@ def _apply_outflow(wallet: Wallet, amount: Decimal) -> None:
         wallet.balance -= amount
 
 
+def _ensure_can_spend(wallet: Wallet, amount: Decimal) -> None:
+    if _is_credit_card(wallet):
+        return
+    if wallet.balance < amount:
+        raise I18nError("wallet.insufficient_funds")
+
+
 def _apply_inflow(wallet: Wallet, amount: Decimal) -> None:
     """Income or transfer in: credit card payment reduces debt."""
     if _is_credit_card(wallet):
@@ -90,6 +97,7 @@ class WalletService:
         if not from_wallet or not to_wallet:
             raise I18nError("wallet.not_found")
 
+        _ensure_can_spend(from_wallet, amount)
         _apply_outflow(from_wallet, amount)
         _apply_inflow(to_wallet, amount)
 
@@ -127,6 +135,7 @@ class WalletService:
         wallet = await db.get(Wallet, wallet_id)
         if not wallet:
             raise I18nError("wallet.not_found")
+        _ensure_can_spend(wallet, amount)
         _apply_outflow(wallet, amount)
         tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,

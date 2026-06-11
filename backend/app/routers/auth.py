@@ -4,9 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
+from app.config import settings
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, resolve_error, t
 from app.schemas.auth import LocaleRequest, LoginRequest, PinRequest, RegisterRequest, TimezoneRequest, TokenResponse, UserProfile
 from app.services.auth.service import AuthService
+from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 auth_service = AuthService()
@@ -26,6 +28,7 @@ def _token_response(user: User, token: str) -> TokenResponse:
 
 @router.post("/register", response_model=TokenResponse)
 async def register(data: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    await check_rate_limit(request, "auth", settings.auth_rate_limit)
     lang = locale_from_request(request)
     try:
         user, token = await auth_service.register(db, data.email, data.password, data.full_name)
@@ -36,6 +39,7 @@ async def register(data: RegisterRequest, request: Request, db: AsyncSession = D
 
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    await check_rate_limit(request, "auth", settings.auth_rate_limit)
     lang = locale_from_request(request)
     try:
         user, token = await auth_service.login(db, data.email, data.password)
@@ -63,7 +67,13 @@ async def set_pin(data: PinRequest, user: User = Depends(get_current_user), db: 
 
 
 @router.post("/pin/verify")
-async def verify_pin(data: PinRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def verify_pin(
+    data: PinRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "pin", 15)
     valid = await auth_service.verify_pin(db, user.id, data.pin)
     if not valid:
         raise HTTPException(status_code=401, detail=t("auth.pin_invalid", user.locale or "tr"))
