@@ -7,7 +7,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "jest"
+    "test": "jest",
+    "prebuild": "expo prebuild",
+    "build:dev:ios": "eas build --profile development --platform ios",
+    "build:dev:android": "eas build --profile development --platform android",
+    "build:preview:android": "eas build --profile preview --platform android"
   },
   "dependencies": {
     "@config-plugins/react-native-siri-shortcut": "8.0.0",
@@ -19,6 +23,7 @@
     "expo-av": "~15.0.0",
     "expo-camera": "~16.0.0",
     "expo-clipboard": "~7.0.0",
+    "expo-dev-client": "~5.0.20",
     "expo-file-system": "~18.0.0",
     "expo-image-picker": "~16.0.0",
     "expo-linking": "~7.0.0",

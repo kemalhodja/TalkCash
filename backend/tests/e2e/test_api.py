@@ -6,8 +6,10 @@ from httpx import AsyncClient
 async def test_health(client: AsyncClient):
     resp = await client.get("/health")
     assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
-    assert "locales" in resp.json()
+    data = resp.json()
+    assert data["status"] in ("ok", "degraded")
+    assert "locales" in data
+    assert "checks" in data
 
 
 @pytest.mark.asyncio

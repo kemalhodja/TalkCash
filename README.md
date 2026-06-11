@@ -28,11 +28,34 @@ talkcash/
 
 ```bash
 docker compose up -d
-cd mobile && npm install && npx expo start
+cd mobile && npm install && cp .env.example .env && npx expo start
 ```
 
 - API: http://localhost:8000/docs
+- Health: http://localhost:8000/health (PostgreSQL + Redis durumu)
 - MinIO Console: http://localhost:9001 (talkcash / talkcash123)
+
+Fiziksel cihazda test için `mobile/.env` içinde `EXPO_PUBLIC_API_URL` değerini bilgisayarınızın LAN IP'si ile güncelleyin.
+
+## Native Build (Siri & Google App Actions)
+
+Siri "Siri'ye Ekle" ve Android App Actions native modül gerektirir (Expo Go desteklemez).
+
+```bash
+cd mobile
+npm install
+npx eas login          # expo.dev hesabı
+npx eas init           # projectId üretir → app.config.js / .env
+npx eas build --profile development --platform ios
+npx eas build --profile development --platform android
+```
+
+Yerel geliştirme:
+
+```bash
+npx expo prebuild
+npx expo run:ios     # veya run:android
+```
 
 ## Veritabanı Migration
 
@@ -48,7 +71,27 @@ Docker başlangıcında migration otomatik çalışır (`entrypoint.sh`).
 
 ```bash
 cd backend
-pytest tests/ -v            # unit + E2E (PostgreSQL gerekli)
+pytest tests/ -v --ignore=tests/e2e   # unit (55 test)
+pytest tests/e2e/ -v                  # E2E (27 test, PostgreSQL + Redis)
+
+cd mobile
+npm test                              # unit (20 test)
+```
+
+CI: GitHub Actions `main` branch push'ta otomatik çalışır.
+
+## Deploy & Yayın
+
+| Rehber | İçerik |
+|--------|--------|
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Fly.io / Railway staging, Docker prod, mobil API URL |
+| [docs/PLAY_CONSOLE_APP_ACTIONS.md](docs/PLAY_CONSOLE_APP_ACTIONS.md) | Google Play + App Actions yayın adımları |
+
+Staging API (Fly.io):
+
+```bash
+cd backend && fly deploy
+# Secret: FLY_API_TOKEN → GitHub Actions "Deploy Staging (Fly.io)"
 ```
 
 ## Ortam Değişkenleri

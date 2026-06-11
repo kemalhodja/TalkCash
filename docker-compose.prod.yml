@@ -1,0 +1,19 @@
+# Production overlay — no dev volume mounts, restart policy
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    restart: unless-stopped
+    volumes: []   # override dev bind-mount
+    environment:
+      SCHEDULER_ENABLED: "true"
+      DEBUG: "false"
+
+  db:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  minio:
+    restart: unless-stopped
