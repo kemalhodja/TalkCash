@@ -88,6 +88,9 @@ class AgendaService:
 
         resolved_wallet = await self._resolve_wallet(db, user_id, wallet_id) if deduct_wallet else None
         item.status = AgendaStatus.PAID
+        item.paid_at = datetime.utcnow()
+        if resolved_wallet:
+            item.wallet_id = resolved_wallet
         if deduct_wallet and resolved_wallet:
             await self.wallet_service.add_expense(
                 db, user_id, resolved_wallet, item.amount,
@@ -165,6 +168,46 @@ class AgendaService:
         if items:
             await db.commit()
         return len(items)
+
+    async def list_paid(self, db: AsyncSession, user_id: UUID, limit: int = 50) -> list[AgendaItem]:
+        result = await db.execute(
+            select(AgendaItem).where(
+                AgendaItem.user_id == user_id,
+                AgendaItem.status == AgendaStatus.PAID,
+            ).order_by(AgendaItem.paid_at.desc()).limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def update_item(
+        self, db: AsyncSession, user_id: UUID, item_id: UUID,
+        title: str | None = None, amount: Decimal | None = None,
+        due_date: datetime | None = None, is_recurring: bool | None = None,
+    ) -> AgendaItem:
+        item = await db.get(AgendaItem, item_id)
+        if not item or item.user_id != user_id:
+            raise I18nError("agenda.not_found")
+        if item.status == AgendaStatus.PAID:
+            raise I18nError("agenda.cannot_edit_paid")
+        if title is not None:
+            item.title = title
+        if amount is not None:
+            item.amount = amount
+        if due_date is not None:
+            item.due_date = due_date
+        if is_recurring is not None:
+            item.is_recurring = is_recurring
+        await db.commit()
+        await db.refresh(item)
+        return item
+
+    async def delete_item(self, db: AsyncSession, user_id: UUID, item_id: UUID) -> None:
+        item = await db.get(AgendaItem, item_id)
+        if not item or item.user_id != user_id:
+            raise I18nError("agenda.not_found")
+        if item.status == AgendaStatus.PAID:
+            raise I18nError("agenda.cannot_delete_paid")
+        await db.delete(item)
+        await db.commit()
 
     async def _check_duplicate(self, db: AsyncSession, user_id: UUID, title: str) -> bool:
         now = datetime.utcnow()

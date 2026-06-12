@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { AuthImage } from "@/components/AuthImage";
 import { Stack } from "expo-router";
 import { Colors, Spacing } from "@/constants/theme";
@@ -48,6 +48,16 @@ export default function ReceiptsScreen() {
             {r.date ? formatDate(r.date, locale) : "—"} ·{" "}
             {r.verified ? t.receipts.verified : t.receipts.unverified}
           </Text>
+          <TouchableOpacity style={styles.importBtn} onPress={async () => {
+            try {
+              const res: any = await api.importReceiptToShopping(r.id);
+              Alert.alert(t.common.confirm, t.scanner.itemsImported.replace("{count}", String(res.added)));
+            } catch (e: any) {
+              Alert.alert(t.common.error, e.message);
+            }
+          }}>
+            <Text style={styles.importText}>{t.scanner.addToList}</Text>
+          </TouchableOpacity>
         </View>
       ))}
       {receipts.length === 0 && (
@@ -69,5 +79,7 @@ const styles = StyleSheet.create({
   merchant: { color: Colors.text, fontWeight: "600", fontSize: 16 },
   amount: { color: Colors.accent, fontSize: 18, fontWeight: "700", marginTop: 4 },
   meta: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
+  importBtn: { marginTop: Spacing.sm, paddingVertical: Spacing.sm },
+  importText: { color: Colors.accent, fontWeight: "600" },
   empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
 });

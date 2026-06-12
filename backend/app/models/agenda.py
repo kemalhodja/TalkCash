@@ -32,6 +32,7 @@ class AgendaItem(Base):
     installment_current: Mapped[int | None] = mapped_column(Integer, nullable=True)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("agenda_items.id"), nullable=True)
     wallet_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("wallets.id"), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="agenda_items")

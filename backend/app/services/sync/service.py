@@ -54,6 +54,7 @@ class SyncService:
     async def pull(self, db: AsyncSession, user_id: UUID) -> SyncPullResponse:
         shopping = await shopping_service.list_active(db, user_id)
         agenda = await agenda_service.list_upcoming(db, user_id, days=60)
+        agenda_history = await agenda_service.list_paid(db, user_id, limit=50)
         nw = await wallet_service.get_net_worth(db, user_id)
 
         tx_result = await db.execute(
@@ -98,16 +99,28 @@ class SyncService:
                 {
                     "id": str(i.id), "title": i.title, "amount": float(i.amount),
                     "due_date": i.due_date.isoformat(), "status": i.status.value,
+                    "paid_at": i.paid_at.isoformat() if i.paid_at else None,
+                    "is_recurring": i.is_recurring,
                 }
                 for i in agenda
+            ],
+            agenda_history=[
+                {
+                    "id": str(i.id), "title": i.title, "amount": float(i.amount),
+                    "due_date": i.due_date.isoformat(), "status": i.status.value,
+                    "paid_at": i.paid_at.isoformat() if i.paid_at else None,
+                }
+                for i in agenda_history
             ],
             wallets=[
                 {
                     "id": str(w.id), "name": w.name, "balance": float(w.balance),
                     "currency": w.currency, "wallet_type": w.wallet_type.value,
+                    "balance_try": float(w.balance_try),
                 }
                 for w in nw.wallets
             ],
+            net_worth_total=float(nw.total_try),
             transactions=transactions,
             receipts=receipts,
             server_timestamp=datetime.utcnow(),

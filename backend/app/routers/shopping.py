@@ -20,6 +20,11 @@ class AddItemsRequest(BaseModel):
     items: list[str]
 
 
+class ImportReceiptRequest(BaseModel):
+    receipt_id: UUID
+    item_names: list[str] | None = None
+
+
 class RoutineRequest(BaseModel):
     is_routine: bool
     routine_type: str | None = "daily"
@@ -43,6 +48,31 @@ async def list_items(user: User = Depends(get_current_user), db: AsyncSession = 
 async def add_items(data: AddItemsRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     created = await shopping_service.add_items(db, user.id, data.items)
     return {"added": len(created), "items": [i.name for i in created]}
+
+
+@router.post("/import-receipt")
+async def import_from_receipt(
+    data: ImportReceiptRequest,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        created = await shopping_service.import_from_receipt(
+            db, user.id, data.receipt_id, data.item_names,
+        )
+        return {"added": len(created), "items": [i.name for i in created]}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, user_locale(user)))
+
+
+@router.delete("/{item_id}")
+async def delete_item(
+    item_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        await shopping_service.delete_item(db, user.id, item_id)
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
 
 
 @router.post("/complete/{item_id}")

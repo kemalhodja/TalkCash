@@ -96,3 +96,27 @@ async def shared_wallet_expense(
         return {"balance": float(wallet.balance)}
     except Exception as e:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
+@router.post("/shared-wallet/{wallet_id}/contribution")
+async def shared_wallet_contribution(
+    wallet_id: UUID, amount: float, description: str = "",
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        wallet = await shared_service.add_contribution(
+            db, wallet_id, user.id, Decimal(str(amount)), description,
+        )
+        return {"balance": float(wallet.balance)}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
+@router.get("/shared-wallet/{wallet_id}/members")
+async def shared_wallet_members(
+    wallet_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await shared_service.get_member_summary(db, wallet_id, user.id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))

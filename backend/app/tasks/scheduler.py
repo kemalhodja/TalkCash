@@ -89,6 +89,17 @@ async def sync_exchange_rates():
     await _guarded(_run)
 
 
+async def price_watch_scan():
+    from app.services.price_watch.service import PriceWatchService
+
+    async def _run():
+        async with async_session() as db:
+            count = await PriceWatchService().scan_all(db)
+            logger.info("Price watch alerts sent: %d", count)
+
+    await _guarded(_run)
+
+
 def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown(wait=False)
@@ -106,6 +117,7 @@ def start_scheduler():
     scheduler.add_job(mark_overdue_bills, "cron", hour=7, minute=0, timezone=tz, id="overdue_bills")
     scheduler.add_job(agenda_reminders_today, "cron", hour=8, minute=0, timezone=tz, id="morning_reminders")
     scheduler.add_job(budget_alerts_daily, "cron", hour=9, minute=0, timezone=tz, id="budget_alerts")
+    scheduler.add_job(price_watch_scan, "cron", hour=10, minute=0, timezone=tz, id="price_watch")
     scheduler.add_job(agenda_reminders_tomorrow, "cron", hour=20, minute=0, timezone=tz, id="evening_reminders")
     scheduler.add_job(spawn_recurring_bills, "cron", hour=1, minute=0, timezone=tz, id="recurring_bills")
     scheduler.add_job(sync_exchange_rates, "interval", hours=1, id="rate_sync")

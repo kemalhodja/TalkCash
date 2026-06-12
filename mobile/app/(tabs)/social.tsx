@@ -22,6 +22,8 @@ export default function SocialScreen() {
   const [expenseWalletId, setExpenseWalletId] = useState<string | null>(null);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDesc, setExpenseDesc] = useState("");
+  const [memberSummaries, setMemberSummaries] = useState<Record<string, any>>({});
+  const [expandedWallet, setExpandedWallet] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const wsMap = useRef<Map<string, SharedWalletWS>>(new Map());
 
@@ -157,6 +159,19 @@ export default function SocialScreen() {
                 </TouchableOpacity>
               </View>
             )}
+            <TouchableOpacity onPress={async () => {
+              if (expandedWallet === w.id) { setExpandedWallet(null); return; }
+              const summary = await api.getSharedWalletMembers(w.id);
+              setMemberSummaries((prev) => ({ ...prev, [w.id]: summary }));
+              setExpandedWallet(w.id);
+            }}>
+              <Text style={styles.expenseLink}>{t.social.memberSpent}</Text>
+            </TouchableOpacity>
+            {expandedWallet === w.id && memberSummaries[w.id]?.members?.map((m: any) => (
+              <Text key={m.user_id} style={styles.memberRow}>
+                {m.name}: {t.social.memberSpent} {formatMoney(m.spent, locale)} · {t.social.memberContributed} {formatMoney(m.contributed, locale)} · {t.social.memberNet} {formatMoney(m.net, locale)}
+              </Text>
+            ))}
           </View>
         ))}
         <TextInput style={styles.input} placeholder={t.social.walletName} placeholderTextColor={Colors.textMuted}
@@ -196,4 +211,5 @@ const styles = StyleSheet.create({
   expenseLink: { color: Colors.accent, marginTop: Spacing.sm, fontWeight: "600" },
   expenseForm: { marginTop: Spacing.sm },
   emptyHint: { color: Colors.textMuted, marginBottom: Spacing.sm },
+  memberRow: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
 });

@@ -257,15 +257,32 @@ export default function InputScreen() {
         <ReceiptScanner
           onResult={(data) => {
             setShowScanner(false);
-            showConfirmation(
-              t.input.receiptConfirm
-                .replace("{amount}", formatMoney(Number(data.total_amount) || 0, locale))
-                .replace("{merchant}", data.merchant || t.input.receipt),
+            Alert.alert(t.input.receipt, "", [
               {
-                intent: "add_expense", amount: data.total_amount, description: data.merchant,
-                receipt_id: data.receipt_id, receipt_total_amount: data.total_amount,
+                text: t.scanner.addToList,
+                onPress: async () => {
+                  try {
+                    const res: any = await api.importReceiptToShopping(data.receipt_id);
+                    Alert.alert(t.common.confirm, t.scanner.itemsImported.replace("{count}", String(res.added)));
+                  } catch (e: any) {
+                    setError(e.message);
+                  }
+                },
               },
-            );
+              {
+                text: t.input.send,
+                onPress: () => showConfirmation(
+                  t.input.receiptConfirm
+                    .replace("{amount}", formatMoney(Number(data.total_amount) || 0, locale))
+                    .replace("{merchant}", data.merchant || t.input.receipt),
+                  {
+                    intent: "add_expense", amount: data.total_amount, description: data.merchant,
+                    receipt_id: data.receipt_id, receipt_total_amount: data.total_amount,
+                  },
+                ),
+              },
+              { text: t.common.cancel, style: "cancel" },
+            ]);
           }}
           onClose={() => setShowScanner(false)}
         />

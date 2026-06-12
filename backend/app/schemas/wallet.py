@@ -15,6 +15,12 @@ class WalletCreate(BaseModel):
     currency: str = "TRY"
 
 
+class WalletUpdate(BaseModel):
+    name: str | None = None
+    wallet_type: WalletType | None = None
+    currency: str | None = None
+
+
 class WalletResponse(ORMBase):
     id: UUID
     name: str
