@@ -86,6 +86,7 @@ export default {
     logout: "Sign Out",
     notifications: "Notifications",
     noNotifications: "No notifications",
+    markAllRead: "Mark all as read",
     viewNotifications: "View Notifications",
     viewReceipts: "Receipt Archive",
     timezone: "Timezone",

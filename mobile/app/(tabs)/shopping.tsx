@@ -6,7 +6,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
-import { getCachedSnapshot } from "@/services/syncCache";
+import { getCachedSnapshot, groupShoppingFromSnapshot } from "@/services/syncCache";
 
 export default function ShoppingScreen() {
   const { t } = useI18n();
@@ -21,13 +21,7 @@ export default function ShoppingScreen() {
       setError("");
       const snapshot = await getCachedSnapshot();
       if (snapshot?.shopping?.length) {
-        const grouped: Record<string, any[]> = {};
-        for (const item of snapshot.shopping) {
-          const cat = item.category || "OTHER";
-          if (!grouped[cat]) grouped[cat] = [];
-          grouped[cat].push(item);
-        }
-        setGrouped(grouped);
+        setGrouped(groupShoppingFromSnapshot(snapshot.shopping));
       }
       setGrouped(await api.getShoppingList());
     } catch (e: any) {

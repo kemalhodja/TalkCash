@@ -86,6 +86,7 @@ export default {
     logout: "Çıkış Yap",
     notifications: "Bildirimler",
     noNotifications: "Bildirim yok",
+    markAllRead: "Tümünü okundu işaretle",
     viewNotifications: "Bildirimleri Görüntüle",
     viewReceipts: "Fiş Arşivi",
     timezone: "Saat Dilimi",
