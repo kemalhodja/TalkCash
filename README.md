@@ -38,7 +38,7 @@ cd mobile && npm install && cp .env.example .env && npx expo start
 
 Fiziksel cihazda test için `mobile/.env` içinde `EXPO_PUBLIC_API_URL` değerini bilgisayarınızın LAN IP'si ile güncelleyin.
 
-**Android APK (telefona kurulum):** [docs/ANDROID_APK.md](docs/ANDROID_APK.md) — `./scripts/build-android-apk.sh`
+**Android telefon:** `./scripts/phone-setup.sh` → `./scripts/build-android-apk.sh --wait --download` — [docs/ANDROID_APK.md](docs/ANDROID_APK.md)
 
 ## Native Build (Siri & Google App Actions)
 

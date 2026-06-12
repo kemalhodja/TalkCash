@@ -5,12 +5,20 @@ TalkCash Play Store'da değil; APK'yı **EAS build** ile üretip telefona kurars
 ## Hızlı yol (tek komut)
 
 ```bash
-# 1) Backend açık olsun
-docker compose up -d
+chmod +x scripts/phone-setup.sh scripts/build-android-apk.sh scripts/download-android-apk.sh
 
-# 2) APK build (LAN IP otomatik algılanır)
-chmod +x scripts/build-android-apk.sh
-./scripts/build-android-apk.sh
+# Backend + health + talimatlar
+./scripts/phone-setup.sh
+
+# APK build (LAN IP otomatik) — build bitince dist/ klasörüne indir:
+./scripts/build-android-apk.sh --wait --download
+```
+
+Sadece son APK'yı indirmek (build daha önce alındıysa):
+
+```bash
+./scripts/download-android-apk.sh
+# → dist/talkcash-preview.apk
 ```
 
 Manuel IP:

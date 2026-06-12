@@ -15,7 +15,7 @@ on:
       profile:
         description: "EAS build profile"
         required: true
-        default: "development"
+        default: "preview"
         type: choice
         options:
           - development
