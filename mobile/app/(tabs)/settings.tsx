@@ -11,6 +11,7 @@ import { setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
 import { flushQueue, getPendingCount } from "@/services/offlineQueue";
 import { AssistantSetup } from "@/components/AssistantSetup";
+import { ApiConnectionCard } from "@/components/ApiConnectionCard";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
 export default function SettingsScreen() {
@@ -118,6 +119,8 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{t.settings.title}</Text>
+
+      <ApiConnectionCard />
 
       <Text style={styles.sectionTitle}>{t.settings.language}</Text>
       <View style={styles.langRow}>

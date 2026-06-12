@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { auth } from "./auth";
+import { getApiBaseUrl } from "./config";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const LOCALE_KEY = "talkcash_locale";
 const REQUEST_TIMEOUT_MS = 25000;
 const MAX_RETRIES = 2;
@@ -57,7 +57,7 @@ async function request<T>(path: string, options?: RequestInit, attempt = 0): Pro
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(`${getApiBaseUrl()}${path}`, {
       ...options,
       headers,
       signal: controller.signal,
@@ -263,7 +263,8 @@ export async function resolveMediaUrl(path: string): Promise<{ uri: string; head
   if (!path) return { uri: "" };
   if (path.startsWith("http")) return { uri: path };
   const normalized = path.startsWith("/") ? path.slice(1) : path;
-  const uri = normalized.startsWith("api/v1/") ? `${API_BASE.replace(/\/api\/v1\/?$/, "")}/${normalized}` : `${API_BASE}/${normalized}`;
+  const base = getApiBaseUrl();
+  const uri = normalized.startsWith("api/v1/") ? `${base.replace(/\/api\/v1\/?$/, "")}/${normalized}` : `${base}/${normalized}`;
   const token = await auth.getToken();
   return token ? { uri, headers: { Authorization: `Bearer ${token}` } } : { uri };
 }

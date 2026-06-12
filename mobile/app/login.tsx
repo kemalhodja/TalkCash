@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
+import { ApiConnectionCard } from "@/components/ApiConnectionCard";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
-import { api } from "@/services/api";
+import { api, ApiError } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
 
 export default function LoginScreen() {
@@ -37,7 +38,11 @@ export default function LoginScreen() {
       auth.setUnlocked(false);
       router.replace("/lock");
     } catch (e: any) {
-      setError(e.message || t.common.error);
+      if (e instanceof ApiError && e.status === 0) {
+        setError(t.errors.network);
+      } else {
+        setError(e.message || t.common.error);
+      }
     } finally {
       setLoading(false);
     }
@@ -47,6 +52,8 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <Text style={styles.logo}>💬 {t.login.title}</Text>
       <Text style={styles.subtitle}>{t.login.subtitle}</Text>
+
+      <ApiConnectionCard compact />
 
       {isRegister && (
         <TextInput style={styles.input} placeholder={t.login.fullName} placeholderTextColor={Colors.textMuted}
