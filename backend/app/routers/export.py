@@ -1,11 +1,12 @@
 from collections import defaultdict
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, user_locale
 from app.i18n import t
@@ -16,6 +17,7 @@ from app.models.wallet import Wallet
 from app.services.export.excel_service import ExcelExportService
 from app.services.export.pdf_service import PDFExportService
 from app.services.wallet.service import WalletService
+from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/export", tags=["Export"])
 pdf_service = PDFExportService()
@@ -25,12 +27,15 @@ wallet_service = WalletService()
 
 @router.get("/pdf")
 async def export_pdf(
+    request: Request,
     limit: int = 500,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await check_rate_limit(request, "export", settings.export_rate_limit, identifier=str(user.id), strict=True)
     locale = user_locale(user)
-    data = await _gather_data(db, user, limit=limit)
+    row_limit = min(max(limit, 1), settings.max_export_rows)
+    data = await _gather_data(db, user, limit=row_limit)
     content = pdf_service.generate_report(
         user.full_name or user.email, data["net_worth"],
         data["wallets"], data["transactions"], data["agenda"],
@@ -44,12 +49,15 @@ async def export_pdf(
 
 @router.get("/excel")
 async def export_excel(
+    request: Request,
     limit: int = 500,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await check_rate_limit(request, "export", settings.export_rate_limit, identifier=str(user.id), strict=True)
     locale = user_locale(user)
-    data = await _gather_data(db, user, limit=limit)
+    row_limit = min(max(limit, 1), settings.max_export_rows)
+    data = await _gather_data(db, user, limit=row_limit)
     content = excel_service.generate_report(
         user.full_name or user.email,
         data["wallets"], data["transactions"], data["agenda"], locale,
@@ -80,7 +88,9 @@ async def _gather_data(db: AsyncSession, user: User, limit: int = 500) -> dict:
             if tx.transaction_type.value == "expense":
                 category_totals[tx.category or "Genel"] += float(tx.amount)
 
-    ag_result = await db.execute(select(AgendaItem).where(AgendaItem.user_id == user.id))
+    ag_result = await db.execute(
+        select(AgendaItem).where(AgendaItem.user_id == user.id).limit(min(limit, settings.max_export_rows))
+    )
     agenda = [
         {"title": a.title, "amount": float(a.amount),
          "due_date": a.due_date.strftime("%d.%m.%Y"), "status": a.status.value}

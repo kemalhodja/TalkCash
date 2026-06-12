@@ -47,6 +47,6 @@ async def check_rate_limit(
     except HTTPException:
         raise
     except Exception:
-        if strict:
-            _memory_rate_limit(key, limit, window_seconds)
-        return
+        if settings.debug and not strict:
+            return
+        _memory_rate_limit(key, limit, window_seconds)

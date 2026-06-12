@@ -106,8 +106,10 @@ def test_production_settings_rejects_wildcard_cors(monkeypatch):
 async def test_auth_rate_limit_strict_uses_memory_when_redis_down():
     from fastapi import HTTPException
     from unittest.mock import patch
+    from app.utils import rate_limit
     from app.utils.rate_limit import check_rate_limit
 
+    rate_limit._memory_windows.clear()
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
@@ -118,3 +120,23 @@ async def test_auth_rate_limit_strict_uses_memory_when_redis_down():
             with pytest.raises(HTTPException) as exc:
                 await check_rate_limit(request, "auth-test", 3, strict=True)
     assert exc.value.status_code == 429
+
+
+def test_parse_positive_amount_rejects_negative():
+    from app.utils.validation import parse_positive_amount
+    with pytest.raises(ValueError):
+        parse_positive_amount(-10)
+
+
+def test_validate_image_rejects_non_image():
+    from app.utils.validation import validate_image_bytes
+    with pytest.raises(ValueError):
+        validate_image_bytes(b"not-an-image", 1024)
+
+
+def test_parsed_input_rejects_oversized_amount():
+    from pydantic import ValidationError
+    from app.schemas.common import ParsedInput
+
+    with pytest.raises(ValidationError):
+        ParsedInput(intent="add_expense", amount="9999999999999")

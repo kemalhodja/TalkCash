@@ -40,10 +40,12 @@ async def test_shared_wallet_member_check():
 
 @pytest.mark.asyncio
 async def test_input_capabilities_route():
+    from unittest.mock import MagicMock
     from app.routers.input import input_capabilities
+    user = MagicMock()
     with patch("app.config.settings") as mock_settings:
         mock_settings.openai_api_key = ""
         mock_settings.google_vision_api_key = ""
-        result = await input_capabilities()
+        result = await input_capabilities(user)
     assert result["voice_available"] is False
     assert result["ocr_tesseract"] is True

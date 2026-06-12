@@ -65,8 +65,8 @@ async def test_sync_pull_includes_wallets(client: AsyncClient, auth_headers: dic
 
 
 @pytest.mark.asyncio
-async def test_input_capabilities(client: AsyncClient):
-    resp = await client.get("/api/v1/input/capabilities")
+async def test_input_capabilities(client: AsyncClient, auth_headers: dict):
+    resp = await client.get("/api/v1/input/capabilities", headers=auth_headers)
     assert resp.status_code == 200
     assert "voice_available" in resp.json()
 

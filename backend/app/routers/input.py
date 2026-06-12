@@ -12,12 +12,13 @@ from app.schemas.common import ConfirmationCard
 from app.services.nlp import nlp_engine
 from app.utils.rate_limit import check_rate_limit
 from app.utils.redis_client import cache_get, cache_set
+from app.utils.validation import validate_audio_bytes, validate_image_bytes
 
 router = APIRouter(prefix="/input", tags=["Data Input"])
 
 
 @router.get("/capabilities")
-async def input_capabilities():
+async def input_capabilities(user: User = Depends(get_current_user)):
     ai = bool(settings.openai_api_key)
     return {
         "voice_available": ai,
@@ -48,7 +49,7 @@ async def parse_text(
     whisper_mode: bool = False,
     user: User = Depends(get_current_user),
 ):
-    await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id))
+    await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
     parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang)
     message = nlp_engine.build_confirmation(parsed, lang)
@@ -62,12 +63,11 @@ async def parse_voice(
     whisper_mode: bool = False,
     user: User = Depends(get_current_user),
 ):
-    await check_rate_limit(request, "voice", settings.voice_rate_limit, identifier=str(user.id))
+    await check_rate_limit(request, "voice", settings.voice_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
     try:
         audio_bytes = await audio.read()
-        if len(audio_bytes) > settings.ocr_max_upload_bytes:
-            raise HTTPException(status_code=413, detail=t("input.file_too_large", lang))
+        validate_audio_bytes(audio_bytes, settings.ocr_max_upload_bytes)
         text = await nlp_engine.transcribe_audio(audio_bytes, whisper_mode=whisper_mode, locale=lang)
         parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang)
         message = nlp_engine.build_confirmation(parsed, lang)
@@ -84,7 +84,7 @@ async def parse_slash_command(
     request: Request,
     user: User = Depends(get_current_user),
 ):
-    await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id))
+    await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
     parsed = await nlp_engine.parse_text(command, locale=lang)
     message = nlp_engine.build_confirmation(parsed, lang)

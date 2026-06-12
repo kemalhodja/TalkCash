@@ -5,9 +5,11 @@ import { Colors } from "@/constants/theme";
 import { I18nProvider } from "@/i18n";
 import { auth } from "@/services/auth";
 import { useAssistantLinking } from "@/hooks/useAssistantLinking";
+import { useAppLock } from "@/hooks/useAppLock";
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  useAppLock();
   useEffect(() => {
     auth.getUser().then((user) => {
       if (!user) {
