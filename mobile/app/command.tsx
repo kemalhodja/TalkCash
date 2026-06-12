@@ -10,11 +10,13 @@ import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { parseAssistantUrl, storePendingAssistant, type AssistantParams } from "@/services/assistant";
 import { auth } from "@/services/auth";
+import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { scheduleAgendaReminder } from "@/services/notifications";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
 
 export default function AssistantCommandScreen() {
   const { t, locale } = useI18n();
+  useRequireUnlock();
   const params = useLocalSearchParams<{ text?: string; confirm?: string; source?: string }>();
   const [loading, setLoading] = useState(true);
   const [confirmVisible, setConfirmVisible] = useState(false);

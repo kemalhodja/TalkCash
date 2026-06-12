@@ -48,6 +48,11 @@ if command -v flyctl >/dev/null 2>&1; then
     else
       echo "  OK  secret S3_ENABLED"
     fi
+    if ! flyctl secrets list -a "$APP" 2>/dev/null | grep -q "ALLOWED_ORIGINS"; then
+      fail "ALLOWED_ORIGINS not set — set explicit CORS origins for production"
+    else
+      echo "  OK  secret ALLOWED_ORIGINS"
+    fi
     if ! flyctl secrets list -a "$APP" 2>/dev/null | grep -q "OPENAI_API_KEY"; then
       warn "OPENAI_API_KEY not set — NLP/voice will be limited"
     else

@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     ocr_max_upload_bytes: int = 10 * 1024 * 1024
 
     sync_rate_limit: int = 30
+    execute_rate_limit: int = 60
+    export_rate_limit: int = 10
+    ai_rate_limit: int = 30
+    geofence_rate_limit: int = 20
+    sync_max_batch: int = 50
+    max_export_rows: int = 2000
 
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"

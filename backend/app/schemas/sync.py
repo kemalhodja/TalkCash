@@ -17,7 +17,7 @@ class SyncOperation(BaseModel):
 
 
 class SyncPushRequest(BaseModel):
-    operations: list[SyncOperation] = Field(default_factory=list)
+    operations: list[SyncOperation] = Field(default_factory=list, max_length=50)
 
 
 class SyncConflict(BaseModel):

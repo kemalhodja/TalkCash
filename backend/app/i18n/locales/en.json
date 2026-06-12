@@ -28,6 +28,7 @@
   "error.rate_limited": "Too many requests. Please wait a moment.",
   "input.file_too_large": "File is too large (max 10 MB)",
   "ocr.file_too_large": "Receipt image is too large (max 10 MB)",
+  "ocr.invalid_image": "Invalid receipt image format",
   "ocr.receipt_not_found": "Receipt not found",
   "ocr.external_image": "External receipt image cannot be served from this endpoint",
   "wallet.insufficient_funds": "Insufficient wallet balance",

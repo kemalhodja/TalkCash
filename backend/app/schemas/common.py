@@ -1,8 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
-from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+MAX_MONEY = Decimal("999999999.99")
 
 
 class ORMBase(BaseModel):
@@ -14,24 +15,29 @@ class ConfirmAction(BaseModel):
 
 
 class ParsedInput(BaseModel):
-    intent: str
-    amount: Decimal | None = None
-    currency: str = "TRY"
-    category: str | None = None
-    description: str | None = None
-    place: str | None = None
+    intent: str = Field(max_length=64)
+    amount: Decimal | None = Field(default=None, gt=0, le=MAX_MONEY)
+    currency: str = Field(default="TRY", max_length=10)
+    category: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
+    place: str | None = Field(default=None, max_length=255)
     date: datetime | None = None
-    wallet_name: str | None = None
-    target_wallet_name: str | None = None
-    items: list[str] = []
-    person_name: str | None = None
-    installment_count: int | None = None
-    person_count: int | None = None
-    receipt_id: str | None = None
+    wallet_name: str | None = Field(default=None, max_length=100)
+    target_wallet_name: str | None = Field(default=None, max_length=100)
+    items: list[str] = Field(default_factory=list, max_length=50)
+    person_name: str | None = Field(default=None, max_length=100)
+    installment_count: int | None = Field(default=None, ge=1, le=360)
+    person_count: int | None = Field(default=None, ge=2, le=100)
+    receipt_id: str | None = Field(default=None, max_length=64)
     force: bool = False
     is_recurring: bool = False
-    raw_text: str = ""
-    confidence: float = 1.0
+    raw_text: str = Field(default="", max_length=2000)
+    confidence: float = Field(default=1.0, ge=0, le=1)
+
+    @field_validator("items")
+    @classmethod
+    def trim_items(cls, value: list[str]) -> list[str]:
+        return [item[:255] for item in value[:50]]
 
 
 class ConfirmationCard(BaseModel):

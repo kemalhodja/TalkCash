@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
 
 const QUEUE_KEY = "talkcash_offline_queue";
+const BATCH_SIZE = 50;
 
 export type QueuedOperation = {
   id: string;
@@ -68,60 +69,74 @@ export async function enqueue(
 export async function flushQueue(
   onConflict?: (conflict: SyncConflict) => Promise<"local" | "server" | "skip">,
 ): Promise<{ applied: number; conflicts: number; failed: number }> {
-  const queue = await getQueue();
-  if (queue.length === 0) return { applied: 0, conflicts: 0, failed: 0 };
-
-  const batch = queue.map((op) => ({
-    id: op.id,
-    type: op.type,
-    payload: op.payload,
-    client_timestamp: op.clientTimestamp,
-    resolve_strategy: op.resolveStrategy ?? null,
-  }));
-
-  const result = await api.syncPush(batch);
-  const nextQueue: QueuedOperation[] = [];
   let applied = 0;
   let conflicts = 0;
+  let failed = 0;
 
-  for (const op of queue) {
-    const ok = result.applied.find((a: any) => a.operation_id === op.id);
-    const fail = result.failed.find((f: any) => f.operation_id === op.id);
-    const conflict = result.conflicts.find((c: SyncConflict) => c.operation_id === op.id);
+  while ((await getQueue()).length > 0) {
+    const queue = await getQueue();
+    const chunk = queue.slice(0, BATCH_SIZE);
+    const rest = queue.slice(BATCH_SIZE);
 
-    if (ok) {
-      applied += ok.status === "ok" ? 1 : 0;
-      continue;
-    }
-    if (fail) {
-      nextQueue.push(op);
-      continue;
-    }
-    if (conflict) {
-      conflicts += 1;
-      if (onConflict) {
-        const choice = await onConflict(conflict);
-        if (choice !== "skip") {
-          nextQueue.push({ ...op, resolveStrategy: choice });
-        }
-      } else {
-        nextQueue.push(op);
+    const batch = chunk.map((op) => ({
+      id: op.id,
+      type: op.type,
+      payload: op.payload,
+      client_timestamp: op.clientTimestamp,
+      resolve_strategy: op.resolveStrategy ?? null,
+    }));
+
+    const result = await api.syncPush(batch);
+    const nextQueue: QueuedOperation[] = [...rest];
+    let chunkApplied = 0;
+    let chunkConflicts = 0;
+
+    for (const op of chunk) {
+      const ok = result.applied.find((a: any) => a.operation_id === op.id);
+      const fail = result.failed.find((f: any) => f.operation_id === op.id);
+      const conflict = result.conflicts.find((c: SyncConflict) => c.operation_id === op.id);
+
+      if (ok) {
+        chunkApplied += ok.status === "ok" ? 1 : 0;
+        continue;
       }
-      continue;
+      if (fail) {
+        nextQueue.push(op);
+        continue;
+      }
+      if (conflict) {
+        chunkConflicts += 1;
+        if (onConflict) {
+          const choice = await onConflict(conflict);
+          if (choice !== "skip") {
+            nextQueue.push({ ...op, resolveStrategy: choice });
+          }
+        } else {
+          nextQueue.push(op);
+        }
+        continue;
+      }
+      nextQueue.push(op);
     }
-    nextQueue.push(op);
+
+    await saveQueue(nextQueue);
+    applied += chunkApplied;
+    conflicts += chunkConflicts;
+    failed += result.failed.length;
+
+    if (nextQueue.some((op) => op.resolveStrategy) && onConflict) {
+      const retry = await flushQueue(onConflict);
+      return {
+        applied: applied + retry.applied,
+        conflicts: conflicts + retry.conflicts,
+        failed: failed + retry.failed,
+      };
+    }
+
+    if (chunk.length < BATCH_SIZE) {
+      break;
+    }
   }
 
-  await saveQueue(nextQueue);
-
-  if (nextQueue.some((op) => op.resolveStrategy) && onConflict) {
-    const retry = await flushQueue(onConflict);
-    return {
-      applied: applied + retry.applied,
-      conflicts: conflicts + retry.conflicts,
-      failed: result.failed.length + retry.failed,
-    };
-  }
-
-  return { applied, conflicts, failed: result.failed.length };
+  return { applied, conflicts, failed };
 }

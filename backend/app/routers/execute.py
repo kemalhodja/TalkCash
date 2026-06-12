@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.i18n import I18nError, resolve_error, t
@@ -15,6 +16,7 @@ from app.services.budget_notify import push_budget_alerts_after_expense
 from app.services.shopping.service import ShoppingService
 from app.services.social.service import SocialService
 from app.services.wallet.service import WalletService
+from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/execute", tags=["Execute"])
 wallet_service = WalletService()
@@ -26,11 +28,13 @@ social_service = SocialService()
 @router.post("/confirm")
 async def execute_confirmed_action(
     body: ExecuteRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if not body.action.confirmed:
         return {"status": "cancelled"}
+    await check_rate_limit(request, "execute", settings.execute_rate_limit, identifier=str(user.id), strict=True)
     locale = user.locale or "tr"
     try:
         result = await _dispatch(user.id, body.parsed, db, locale)

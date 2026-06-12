@@ -28,6 +28,7 @@
   "error.rate_limited": "Çok fazla istek. Lütfen biraz bekleyin.",
   "input.file_too_large": "Dosya boyutu çok büyük (en fazla 10 MB)",
   "ocr.file_too_large": "Fiş görseli çok büyük (en fazla 10 MB)",
+  "ocr.invalid_image": "Geçersiz fiş görseli formatı",
   "ocr.receipt_not_found": "Fiş bulunamadı",
   "ocr.external_image": "Harici fiş görseli bu uç noktadan sunulamaz",
   "wallet.insufficient_funds": "Kasa bakiyesi yetersiz",

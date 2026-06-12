@@ -20,11 +20,16 @@ async def sync_push(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await check_rate_limit(request, "sync", settings.sync_rate_limit, identifier=str(user.id))
+    await check_rate_limit(request, "sync", settings.sync_rate_limit, identifier=str(user.id), strict=True)
     locale = user_locale(user)
     return await sync_service.push(db, user.id, body.operations, locale)
 
 
 @router.get("/pull", response_model=SyncPullResponse)
-async def sync_pull(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def sync_pull(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "sync_pull", settings.sync_rate_limit, identifier=str(user.id), strict=True)
     return await sync_service.pull(db, user.id)

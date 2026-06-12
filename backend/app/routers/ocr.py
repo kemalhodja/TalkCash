@@ -15,6 +15,7 @@ from app.models.user import User
 from app.services.ocr.service import OCRService
 from app.services.storage.service import StorageService
 from app.utils.rate_limit import check_rate_limit
+from app.utils.validation import validate_image_bytes
 
 router = APIRouter(prefix="/ocr", tags=["OCR"])
 ocr_service = OCRService()
@@ -33,10 +34,12 @@ async def scan_receipt(
     db: AsyncSession = Depends(get_db),
 ):
     lang = user_locale(user)
-    await check_rate_limit(request, "ocr", settings.ocr_rate_limit, identifier=str(user.id))
+    await check_rate_limit(request, "ocr", settings.ocr_rate_limit, identifier=str(user.id), strict=True)
     image_bytes = await image.read()
-    if len(image_bytes) > settings.ocr_max_upload_bytes:
-        raise HTTPException(status_code=413, detail=t("ocr.file_too_large", lang))
+    try:
+        validate_image_bytes(image_bytes, settings.ocr_max_upload_bytes)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=t("ocr.invalid_image", lang))
     data = await ocr_service.extract_receipt_data(image_bytes, locale=lang)
     image_url = await storage_service.upload(str(user.id), image_bytes)
 

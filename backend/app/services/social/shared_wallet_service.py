@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError
 from app.models.social import SharedWallet
+from app.utils.validation import parse_positive_amount, clamp_text
 
 
 class SharedWalletManager:
@@ -70,6 +71,9 @@ class SharedWalletService:
             raise I18nError("social.wallet_not_found")
         if user_id and not await self.is_member(db, wallet_id, user_id):
             raise I18nError("social.wallet_not_member")
+        amount = parse_positive_amount(amount)
+        description = clamp_text(description, max_len=255)
+        user_name = clamp_text(user_name, max_len=100)
         wallet.balance -= amount
         await db.commit()
         msg = {
