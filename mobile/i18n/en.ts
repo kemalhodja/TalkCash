@@ -90,6 +90,9 @@ export default {
     connectionOk: "Connected ({status})",
     connectionFailed: "Cannot connect: {error}",
     localhostWarning: "localhost does not work on a phone. Rebuild APK with your computer LAN IP (scripts/build-android-apk.sh).",
+    copyHealthUrl: "Copy health URL",
+    urlCopied: "Copied",
+    openHealth: "Open in browser",
   },
   errors: {
     network: "Cannot reach server. Check Settings → Test connection. Same Wi‑Fi and running backend required.",

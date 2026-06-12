@@ -90,6 +90,9 @@ export default {
     connectionOk: "Bağlantı OK ({status})",
     connectionFailed: "Bağlantı yok: {error}",
     localhostWarning: "localhost telefonda çalışmaz. APK'yı bilgisayar IP'si ile yeniden build edin (scripts/build-android-apk.sh).",
+    copyHealthUrl: "Health URL kopyala",
+    urlCopied: "Kopyalandı",
+    openHealth: "Tarayıcıda aç",
   },
   errors: {
     network: "Sunucuya ulaşılamıyor. Ayarlar → Bağlantıyı test et. Aynı Wi‑Fi ve backend açık olmalı.",

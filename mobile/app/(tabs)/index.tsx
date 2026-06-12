@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { IncomeModal } from "@/components/IncomeModal";
+import { ApiConnectionCard } from "@/components/ApiConnectionCard";
+import { ErrorState } from "@/components/ErrorState";
 import { TransferModal } from "@/components/TransferModal";
 import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
-import { api } from "@/services/api";
+import { api, ApiError } from "@/services/api";
 import { auth } from "@/services/auth";
 import { registerForPushNotifications } from "@/services/notifications";
 import { formatDate, formatMoney } from "@/utils/format";
@@ -57,7 +59,11 @@ export default function DashboardScreen() {
       }
       setPriceReport(priceReportData);
     } catch (e: any) {
-      setError(e.message || t.home.loadError);
+      if (e instanceof ApiError && e.status === 0) {
+        setError(t.errors.network);
+      } else {
+        setError(e.message || t.home.loadError);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -72,6 +78,15 @@ export default function DashboardScreen() {
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>;
+  }
+
+  if (error && wallets.length === 0) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ErrorState message={error} onRetry={() => { setLoading(true); setError(""); loadData(); }} />
+        <ApiConnectionCard />
+      </ScrollView>
+    );
   }
 
   return (
