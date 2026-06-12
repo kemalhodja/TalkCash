@@ -85,6 +85,14 @@ export default {
     syncNow: "Sync Now",
     pendingOps: "{count} pending operations in queue",
     syncResult: "Applied: {applied}, Conflicts: {conflicts}, Failed: {failed}",
+    serverConnection: "Server connection",
+    testConnection: "Test connection",
+    connectionOk: "Connected ({status})",
+    connectionFailed: "Cannot connect: {error}",
+    localhostWarning: "localhost does not work on a phone. Rebuild APK with your computer LAN IP (scripts/build-android-apk.sh).",
+  },
+  errors: {
+    network: "Cannot reach server. Check Settings → Test connection. Same Wi‑Fi and running backend required.",
   },
   assistant: {
     title: "Siri & Google Assistant",

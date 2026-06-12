@@ -85,6 +85,14 @@ export default {
     syncNow: "Şimdi Senkronize Et",
     pendingOps: "{count} bekleyen işlem kuyrukta",
     syncResult: "Uygulanan: {applied}, Çakışma: {conflicts}, Başarısız: {failed}",
+    serverConnection: "Sunucu bağlantısı",
+    testConnection: "Bağlantıyı test et",
+    connectionOk: "Bağlantı OK ({status})",
+    connectionFailed: "Bağlantı yok: {error}",
+    localhostWarning: "localhost telefonda çalışmaz. APK'yı bilgisayar IP'si ile yeniden build edin (scripts/build-android-apk.sh).",
+  },
+  errors: {
+    network: "Sunucuya ulaşılamıyor. Ayarlar → Bağlantıyı test et. Aynı Wi‑Fi ve backend açık olmalı.",
   },
   assistant: {
     title: "Siri & Google Asistan",

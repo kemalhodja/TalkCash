@@ -1,0 +1,49 @@
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
+/** API base URL baked in at build time (EAS) or from .env in dev. */
+export function getApiBaseUrl(): string {
+  return (
+    process.env.EXPO_PUBLIC_API_URL
+    || (Constants.expoConfig?.extra?.apiUrl as string | undefined)
+    || "http://localhost:8000/api/v1"
+  );
+}
+
+export function healthUrlFromApiBase(apiBase: string): string {
+  const root = apiBase.replace(/\/api\/v1\/?$/, "");
+  return `${root}/health`;
+}
+
+export function getHealthUrl(): string {
+  return healthUrlFromApiBase(getApiBaseUrl());
+}
+
+export function isMobileDevice(): boolean {
+  return Platform.OS === "android" || Platform.OS === "ios";
+}
+
+export function usesLocalhostApi(): boolean {
+  const url = getApiBaseUrl().toLowerCase();
+  return url.includes("localhost") || url.includes("127.0.0.1");
+}
+
+export type ApiHealthResult = { ok: true; status: string } | { ok: false; error: string };
+
+export async function checkApiHealth(timeoutMs = 8000): Promise<ApiHealthResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(getHealthUrl(), { signal: controller.signal });
+    if (!res.ok) {
+      return { ok: false, error: `HTTP ${res.status}` };
+    }
+    const data = await res.json();
+    return { ok: true, status: String(data.status || "ok") };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "network";
+    return { ok: false, error: msg };
+  } finally {
+    clearTimeout(timer);
+  }
+}
