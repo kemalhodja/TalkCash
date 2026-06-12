@@ -32,6 +32,10 @@ class TransferRequest(BaseModel):
     description: str = ""
 
 
+class WalletNetWorthItem(WalletResponse):
+    balance_try: Decimal
+
+
 class NetWorthResponse(BaseModel):
     total_try: Decimal
-    wallets: list[WalletResponse]
+    wallets: list[WalletNetWorthItem]

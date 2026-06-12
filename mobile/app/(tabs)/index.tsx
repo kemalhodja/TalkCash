@@ -118,6 +118,17 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
+      {forecast && Number(forecast.burn_rate_daily) > 0 && (
+        <View style={styles.forecastCard}>
+          <Text style={styles.forecastText}>
+            {t.home.burnRateDaily.replace("{amount}", formatMoney(Number(forecast.burn_rate_daily), locale))}
+          </Text>
+          <Text style={[styles.forecastText, forecast.warning && styles.forecastWarn]}>
+            {t.home.projectedBalance.replace("{amount}", formatMoney(Number(forecast.projected_balance), locale))}
+          </Text>
+        </View>
+      )}
+
       {forecast?.warning && (
         <View style={styles.alertCard}><Text style={styles.alertText}>⚠️ {forecast.message}</Text></View>
       )}
@@ -147,7 +158,14 @@ export default function DashboardScreen() {
 
       <Text style={styles.sectionTitle}>{t.home.wallets}</Text>
       {wallets.map((w) => (
-        <WalletCard key={w.id} name={w.name} balance={Number(w.balance)} type={w.wallet_type} />
+        <WalletCard
+          key={w.id}
+          name={w.name}
+          balance={Number(w.balance)}
+          balanceTry={w.balance_try != null ? Number(w.balance_try) : undefined}
+          currency={w.currency}
+          type={w.wallet_type}
+        />
       ))}
 
       <IncomeModal visible={incomeVisible} onClose={() => setIncomeVisible(false)} onSuccess={loadData} />
@@ -181,6 +199,12 @@ const styles = StyleSheet.create({
   },
   alertDanger: { backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" },
   alertText: { color: Colors.warning, fontSize: 14 },
+  forecastCard: {
+    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
+  },
+  forecastText: { color: Colors.textSecondary, fontSize: 13, marginBottom: 4 },
+  forecastWarn: { color: Colors.warning, fontWeight: "600" },
   errorCard: { backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.md },
   errorText: { color: Colors.danger, textAlign: "center" },
   priceTracker: { marginBottom: Spacing.lg },

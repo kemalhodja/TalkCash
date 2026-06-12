@@ -62,6 +62,15 @@ async def spawn_recurring_bills():
     await _guarded(_run)
 
 
+async def mark_overdue_bills():
+    async def _run():
+        async with async_session() as db:
+            count = await agenda_service.mark_overdue_bills(db)
+            logger.info("Agenda overdue marked: %d", count)
+
+    await _guarded(_run)
+
+
 async def budget_alerts_daily():
     async def _run():
         async with async_session() as db:
@@ -94,6 +103,7 @@ def start_scheduler():
         return
     tz = ZoneInfo(settings.app_timezone)
     scheduler.add_job(daily_shopping_reset, "cron", hour=0, minute=0, timezone=tz, id="daily_reset")
+    scheduler.add_job(mark_overdue_bills, "cron", hour=7, minute=0, timezone=tz, id="overdue_bills")
     scheduler.add_job(agenda_reminders_today, "cron", hour=8, minute=0, timezone=tz, id="morning_reminders")
     scheduler.add_job(budget_alerts_daily, "cron", hour=9, minute=0, timezone=tz, id="budget_alerts")
     scheduler.add_job(agenda_reminders_tomorrow, "cron", hour=20, minute=0, timezone=tz, id="evening_reminders")

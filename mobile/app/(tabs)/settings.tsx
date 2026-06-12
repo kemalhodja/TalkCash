@@ -7,7 +7,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useI18n, Locale } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
-import { setupGeofencing, stopGeofencing } from "@/services/geofencing";
+import { isGeofencingEnabled, restoreGeofencingIfEnabled, setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
 import { flushQueue, getPendingCount } from "@/services/offlineQueue";
 import { AssistantSetup } from "@/components/AssistantSetup";
@@ -33,7 +33,11 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     isBudgetTtsEnabled().then(setTtsBudget);
-    api.getMe().then((u) => { if (u.timezone) setTimezone(u.timezone); }).catch(() => {});
+    api.getMe().then((u) => {
+      if (u.timezone) setTimezone(u.timezone);
+      if (typeof u.biometric_enabled === "boolean") setBiometric(u.biometric_enabled);
+    }).catch(() => {});
+    isGeofencingEnabled().then(setGeofence).catch(() => {});
     getPendingCount().then(setPendingCount);
   }, []);
 
@@ -90,6 +94,10 @@ export default function SettingsScreen() {
     }
     setGeofence(val);
   };
+
+  useEffect(() => {
+    restoreGeofencingIfEnabled().catch(() => {});
+  }, []);
 
   const handleExport = async (type: "pdf" | "excel") => {
     setExporting(true);

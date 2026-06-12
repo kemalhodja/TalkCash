@@ -39,8 +39,11 @@ export default {
     priceTracker: "Fiyat Takibi",
     pricePlaceholder: "Ürün adı (ör: süt)",
     defaultProduct: "süt",
+    burnRateDaily: "Günlük harcama: {amount}",
+    projectedBalance: "Ay sonu tahmini bakiye: {amount}",
     trackPrice: "Takip Et",
     debt: "Borç",
+    walletCurrency: "Para birimi",
   },
   login: {
     title: "TalkCash",

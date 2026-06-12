@@ -17,23 +17,37 @@ export function PayBillModal({ visible, billTitle, amount, onConfirm, onCancel }
   const { t, locale } = useI18n();
   const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [displayAmount, setDisplayAmount] = useState(amount);
 
   useEffect(() => {
     if (visible) {
+      setDisplayAmount(amount);
       api.getWallets().then((w) => {
         setWallets(w);
         const bank = w.find((x: any) => x.name?.toLowerCase().includes("banka") || x.name?.toLowerCase().includes("bank"));
         setSelectedWallet(bank?.id || w[0]?.id || null);
       }).catch(() => setWallets([]));
+
+      if (!amount) {
+        api.getAgenda(365).then((items) => {
+          const match = items.find((i: any) =>
+            i.title?.toLowerCase().includes(billTitle.toLowerCase())
+            || billTitle.toLowerCase().includes(i.title?.toLowerCase()),
+          );
+          if (match?.amount) setDisplayAmount(Number(match.amount));
+        }).catch(() => {});
+      }
     }
-  }, [visible]);
+  }, [visible, amount, billTitle]);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.title}>{t.agenda.paid}</Text>
-          <Text style={styles.subtitle}>{billTitle} — {formatMoney(amount, locale)}</Text>
+          <Text style={styles.subtitle}>
+            {billTitle}{displayAmount > 0 ? ` — ${formatMoney(displayAmount, locale)}` : ""}
+          </Text>
           <Text style={styles.label}>{t.agenda.selectWallet}</Text>
           <View style={styles.chips}>
             {wallets.map((w) => (

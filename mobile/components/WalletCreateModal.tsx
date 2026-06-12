@@ -5,6 +5,7 @@ import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
 const WALLET_TYPES = ["cash", "bank", "credit_card", "investment_gold", "investment_forex"] as const;
+const CURRENCIES = ["TRY", "USD", "EUR", "GBP"] as const;
 
 interface Props {
   visible: boolean;
@@ -16,13 +17,14 @@ export function WalletCreateModal({ visible, onClose, onSuccess }: Props) {
   const { t } = useI18n();
   const [name, setName] = useState("");
   const [walletType, setWalletType] = useState<string>("cash");
+  const [currency, setCurrency] = useState<string>("TRY");
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      await api.createWallet(name.trim(), walletType);
+      await api.createWallet(name.trim(), walletType, currency);
       Alert.alert(t.home.walletCreated);
       setName("");
       onSuccess();
@@ -50,6 +52,16 @@ export function WalletCreateModal({ visible, onClose, onSuccess }: Props) {
               </TouchableOpacity>
             ))}
           </View>
+          <Text style={styles.sectionLabel}>{t.home.walletCurrency}</Text>
+          <View style={styles.chips}>
+            {CURRENCIES.map((c) => (
+              <TouchableOpacity key={c}
+                style={[styles.chip, currency === c && styles.chipActive]}
+                onPress={() => setCurrency(c)}>
+                <Text style={styles.chipText}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
               <Text style={styles.cancelText}>{t.common.cancel}</Text>
@@ -73,6 +85,7 @@ const styles = StyleSheet.create({
     color: Colors.text, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border,
   },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md },
+  sectionLabel: { color: Colors.textSecondary, fontSize: 13, marginBottom: Spacing.sm },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: Colors.border },
   chipActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
   chipText: { color: Colors.textSecondary, fontSize: 12 },

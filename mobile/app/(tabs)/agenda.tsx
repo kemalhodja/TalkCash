@@ -22,6 +22,10 @@ function defaultDueDate() {
   return d;
 }
 
+function isPayableStatus(status: string) {
+  return status === "pending" || status === "overdue";
+}
+
 export default function AgendaScreen() {
   const { t, locale } = useI18n();
   const [items, setItems] = useState<any[]>([]);
@@ -130,7 +134,7 @@ export default function AgendaScreen() {
 
       {viewMode === "calendar" && (
         <AgendaCalendar items={items} onSelectItem={(item) => {
-          if (item.status === "pending") setPayModal({ title: item.title, amount: item.amount });
+          if (isPayableStatus(item.status)) setPayModal({ title: item.title, amount: item.amount });
         }} />
       )}
 
@@ -181,12 +185,13 @@ export default function AgendaScreen() {
       )}
 
       {viewMode === "list" && items.map((item) => (
-        <View key={item.id} style={styles.card}>
+        <View key={item.id} style={[styles.card, item.status === "overdue" && styles.cardOverdue]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>
               {item.title}{item.is_recurring ? " 🔄" : ""}
+              {item.status === "overdue" ? ` · ${t.agenda.overdue}` : ""}
             </Text>
-            {item.status === "pending" && (
+            {isPayableStatus(item.status) && (
               <TouchableOpacity onPress={() => setPayModal({ title: item.title, amount: item.amount })}>
                 <Text style={styles.payBtn}>{t.agenda.paid}</Text>
               </TouchableOpacity>
@@ -252,6 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md,
     marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
   },
+  cardOverdue: { borderColor: Colors.danger, backgroundColor: "rgba(239,68,68,0.06)" },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { color: Colors.text, fontSize: 16, fontWeight: "600" },
   payBtn: { color: Colors.success, fontWeight: "600" },

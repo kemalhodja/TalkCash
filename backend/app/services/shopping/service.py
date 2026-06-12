@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +11,30 @@ from app.models.shopping import ShoppingCategory, ShoppingItem
 from app.services.wallet.service import WalletService
 
 CATEGORY_KEYWORDS = {
-    ShoppingCategory.BUTCHER: ["et", "sucuk", "sosis", "tavuk", "köfte", "kofte"],
-    ShoppingCategory.GREENS: ["domates", "salatalık", "salatalik", "biber", "marul", "meyve"],
-    ShoppingCategory.DAIRY: ["süt", "sut", "yumurta", "peynir", "yoğurt", "yogurt", "tereyağı"],
-    ShoppingCategory.CLEANING: ["deterjan", "sabun", "temizlik", "bulaşık", "bulasik"],
-    ShoppingCategory.BAKERY: ["ekmek", "simit", "poğaça", "pogaca"],
-    ShoppingCategory.BEVERAGE: ["su", "kola", "meyve suyu", "çay", "cay", "kahve"],
+    ShoppingCategory.BUTCHER: [
+        "et", "sucuk", "sosis", "tavuk", "köfte", "kofte",
+        "meat", "chicken", "beef", "sausage", "steak",
+    ],
+    ShoppingCategory.GREENS: [
+        "domates", "salatalık", "salatalik", "biber", "marul", "meyve",
+        "tomato", "cucumber", "pepper", "lettuce", "fruit", "apple", "banana",
+    ],
+    ShoppingCategory.DAIRY: [
+        "süt", "sut", "yumurta", "peynir", "yoğurt", "yogurt", "tereyağı",
+        "milk", "egg", "cheese", "yogurt", "butter", "cream",
+    ],
+    ShoppingCategory.CLEANING: [
+        "deterjan", "sabun", "temizlik", "bulaşık", "bulasik",
+        "detergent", "soap", "cleaning", "bleach", "sponge",
+    ],
+    ShoppingCategory.BAKERY: [
+        "ekmek", "simit", "poğaça", "pogaca",
+        "bread", "bagel", "pastry", "roll",
+    ],
+    ShoppingCategory.BEVERAGE: [
+        "su", "kola", "meyve suyu", "çay", "cay", "kahve",
+        "water", "cola", "juice", "tea", "coffee", "soda",
+    ],
 }
 
 
@@ -87,7 +106,9 @@ class ShoppingService:
         )
         existing_routine_names = {item.name for item in routines.scalars().all()}
 
-        is_monday = datetime.utcnow().weekday() == 0
+        from app.config import settings
+        local_now = datetime.now(ZoneInfo(settings.app_timezone))
+        is_monday = local_now.weekday() == 0
         all_routines = await db.execute(
             select(ShoppingItem).where(ShoppingItem.is_routine == True)
         )

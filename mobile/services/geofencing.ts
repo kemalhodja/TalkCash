@@ -9,6 +9,7 @@ import { api } from "./api";
 const GEOFENCE_TASK = "TALKCASH_GEOFENCE";
 const LOCALE_KEY = "talkcash_locale";
 const MARKET_NAMES_KEY = "talkcash_geofence_markets";
+const GEOFENCE_ENABLED_KEY = "talkcash_geofence_enabled";
 const MAX_REGIONS = 20;
 const GEOFENCE_RADIUS_M = 150;
 
@@ -68,6 +69,7 @@ export async function setupGeofencing() {
   });
 
   await SecureStore.setItemAsync(MARKET_NAMES_KEY, JSON.stringify(nameMap));
+  await SecureStore.setItemAsync(GEOFENCE_ENABLED_KEY, "1");
 
   const isRegistered = await TaskManager.isTaskRegisteredAsync(GEOFENCE_TASK);
   if (isRegistered) {
@@ -83,4 +85,14 @@ export async function stopGeofencing() {
     await Location.stopGeofencingAsync(GEOFENCE_TASK);
   }
   await SecureStore.deleteItemAsync(MARKET_NAMES_KEY);
+  await SecureStore.deleteItemAsync(GEOFENCE_ENABLED_KEY);
+}
+
+export async function isGeofencingEnabled(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(GEOFENCE_ENABLED_KEY)) === "1";
+}
+
+export async function restoreGeofencingIfEnabled(): Promise<boolean> {
+  if (!(await isGeofencingEnabled())) return false;
+  return setupGeofencing();
 }

@@ -30,3 +30,19 @@ async def test_mark_paid_deducts_from_default_wallet():
             result = await service.mark_paid(db, user_id, "Elektrik", None, deduct_wallet=True)
             expense_mock.assert_awaited_once()
             assert result.status == AgendaStatus.PAID
+
+
+@pytest.mark.asyncio
+async def test_mark_overdue_bills():
+    db = AsyncMock()
+    item = MagicMock()
+    item.status = AgendaStatus.PENDING
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [item]
+    db.execute = AsyncMock(return_value=mock_result)
+
+    service = AgendaService()
+    count = await service.mark_overdue_bills(db)
+    assert count == 1
+    assert item.status == AgendaStatus.OVERDUE
+    db.commit.assert_awaited_once()
