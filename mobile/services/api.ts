@@ -139,10 +139,42 @@ export const api = {
   updateWallet: (id: string, data: { name?: string; wallet_type?: string; currency?: string }) =>
     request(`/wallets/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteWallet: (id: string) => request(`/wallets/${id}`, { method: "DELETE" }),
-  transfer: (fromId: string, toId: string, amount: number, description = "") =>
-    request("/wallets/transfer", { method: "POST", body: JSON.stringify({ from_wallet_id: fromId, to_wallet_id: toId, amount, description }) }),
-  addIncome: (walletId: string, amount: number, description = "") =>
-    request(`/wallets/income?wallet_id=${walletId}&amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
+  transfer: async (fromId: string, toId: string, amount: number, description = "") => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request("/wallets/transfer", {
+        method: "POST",
+        body: JSON.stringify({ from_wallet_id: fromId, to_wallet_id: toId, amount, description }),
+      });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({
+          type: "wallet_transfer",
+          payload: { from_wallet_id: fromId, to_wallet_id: toId, amount, description },
+        });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
+  addIncome: async (walletId: string, amount: number, description = "") => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(
+        `/wallets/income?wallet_id=${walletId}&amount=${amount}&description=${encodeURIComponent(description)}`,
+        { method: "POST" },
+      );
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({
+          type: "wallet_income",
+          payload: { wallet_id: walletId, amount, description },
+        });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
 
   // Transactions
   getTransactions: (limit = 50) => request<any[]>(`/transactions/?limit=${limit}`),
@@ -271,6 +303,8 @@ export const api = {
   registerPushToken: (token: string) =>
     request(`/notifications/register-token?token=${encodeURIComponent(token)}`, { method: "POST" }),
   getNotifications: () => request<any[]>("/notifications/"),
+  markNotificationRead: (id: string) => request(`/notifications/${id}/read`, { method: "POST" }),
+  markAllNotificationsRead: () => request<{ marked: number }>("/notifications/read-all", { method: "POST" }),
 
   // Export
   exportPdf: () => request<Blob>("/export/pdf"),

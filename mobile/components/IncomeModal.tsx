@@ -32,8 +32,12 @@ export function IncomeModal({ visible, onClose, onSuccess }: Props) {
     if (!selectedWallet || !amount) return;
     setLoading(true);
     try {
-      await api.addIncome(selectedWallet, parseFloat(amount), description);
-      Alert.alert(t.home.incomeAdded);
+      const res: any = await api.addIncome(selectedWallet, parseFloat(amount), description);
+      if (res?.status === "queued") {
+        Alert.alert(t.common.confirm, t.common.offlineQueued);
+      } else {
+        Alert.alert(t.home.incomeAdded);
+      }
       setAmount("");
       setDescription("");
       onSuccess();

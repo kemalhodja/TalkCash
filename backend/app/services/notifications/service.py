@@ -41,7 +41,7 @@ class NotificationService:
         """when: 'today' for due-date morning reminders, 'tomorrow' for day-before evening reminders."""
         result = await db.execute(
             select(AgendaItem, User).join(User, AgendaItem.user_id == User.id).where(
-                AgendaItem.status == AgendaStatus.PENDING,
+                AgendaItem.status.in_([AgendaStatus.PENDING, AgendaStatus.OVERDUE]),
             )
         )
         sent = 0
@@ -71,3 +71,23 @@ class NotificationService:
             select(Notification).where(Notification.user_id == user_id).order_by(Notification.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def mark_read(self, db: AsyncSession, user_id: UUID, notification_id: UUID) -> Notification:
+        notif = await db.get(Notification, notification_id)
+        if not notif or notif.user_id != user_id:
+            raise ValueError("not_found")
+        notif.is_read = True
+        await db.commit()
+        return notif
+
+    async def mark_all_read(self, db: AsyncSession, user_id: UUID) -> int:
+        result = await db.execute(
+            select(Notification).where(Notification.user_id == user_id, Notification.is_read == False)
+        )
+        count = 0
+        for notif in result.scalars().all():
+            notif.is_read = True
+            count += 1
+        if count:
+            await db.commit()
+        return count

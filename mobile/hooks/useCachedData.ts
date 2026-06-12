@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCachedSnapshot, pullAndCacheSnapshot } from "@/services/syncCache";
 
 type Loaders<T> = {
@@ -11,6 +11,8 @@ export function useCachedData<T>(loaders: Loaders<T>, deps: unknown[] = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [fromCache, setFromCache] = useState(false);
+  const dataRef = useRef<T | null>(null);
+  dataRef.current = data;
 
   const refresh = useCallback(async () => {
     setError("");
@@ -28,7 +30,7 @@ export function useCachedData<T>(loaders: Loaders<T>, deps: unknown[] = []) {
       setFromCache(false);
       await pullAndCacheSnapshot();
     } catch (e: any) {
-      if (data == null) setError(e.message || "Error");
+      if (dataRef.current == null) setError(e.message || "Error");
     } finally {
       setLoading(false);
     }

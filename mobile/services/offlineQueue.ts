@@ -6,7 +6,7 @@ const BATCH_SIZE = 50;
 
 export type QueuedOperation = {
   id: string;
-  type: "execute" | "shopping_add" | "shopping_complete";
+  type: "execute" | "shopping_add" | "shopping_complete" | "wallet_income" | "wallet_transfer";
   payload: Record<string, unknown>;
   clientTimestamp: string;
   resolveStrategy?: "local" | "server";

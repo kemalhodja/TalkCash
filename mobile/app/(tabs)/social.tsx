@@ -20,6 +20,8 @@ export default function SocialScreen() {
   const [walletName, setWalletName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [expenseWalletId, setExpenseWalletId] = useState<string | null>(null);
+  const [contributionWalletId, setContributionWalletId] = useState<string | null>(null);
+  const [contributionAmount, setContributionAmount] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDesc, setExpenseDesc] = useState("");
   const [memberSummaries, setMemberSummaries] = useState<Record<string, any>>({});
@@ -172,6 +174,25 @@ export default function SocialScreen() {
                 {m.name}: {t.social.memberSpent} {formatMoney(m.spent, locale)} · {t.social.memberContributed} {formatMoney(m.contributed, locale)} · {t.social.memberNet} {formatMoney(m.net, locale)}
               </Text>
             ))}
+            <TouchableOpacity onPress={() => setContributionWalletId(contributionWalletId === w.id ? null : w.id)}>
+              <Text style={styles.expenseLink}>{t.social.contribute}</Text>
+            </TouchableOpacity>
+            {contributionWalletId === w.id && (
+              <View style={styles.expenseForm}>
+                <TextInput style={styles.input} placeholder={t.social.expenseAmount} placeholderTextColor={Colors.textMuted}
+                  keyboardType="decimal-pad" value={contributionAmount} onChangeText={setContributionAmount} />
+                <TouchableOpacity style={styles.btn} onPress={async () => {
+                  if (!contributionAmount) return;
+                  await api.addSharedWalletContribution(w.id, parseFloat(contributionAmount));
+                  Alert.alert(t.social.expenseAdded);
+                  setContributionAmount("");
+                  setContributionWalletId(null);
+                  load();
+                }}>
+                  <Text style={styles.btnText}>{t.social.contribute}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ))}
         <TextInput style={styles.input} placeholder={t.social.walletName} placeholderTextColor={Colors.textMuted}

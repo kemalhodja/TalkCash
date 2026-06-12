@@ -16,7 +16,7 @@ Son güncelleme: PR #19 — kalan PRD maddeleri kapatıldı.
 | 4.1 | Alışveriş madde silme | **Tam** — `DELETE /shopping/{id}` |
 | 5.2 | Fiyat watchlist + push | **Tam** — `GET/POST/DELETE /ai/watchlist`, scheduler 10:00 |
 | 6.1 | Ortak kasa üye muhasebesi | **Tam** — ledger + `GET .../members` |
-| 6.2 | Offline-first okuma | **Kısmi** — sync snapshot önbellek ana ekranlarda |
+| 6.2 | Offline-first okuma | **Kısmi** — sync snapshot + transfer/gelir kuyruğu (PR #20) |
 
 ---
 

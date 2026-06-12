@@ -33,8 +33,12 @@ export function TransferModal({ visible, onClose, onSuccess }: Props) {
     if (!fromId || !toId || !amount) return;
     setLoading(true);
     try {
-      await api.transfer(fromId, toId, parseFloat(amount), description);
-      Alert.alert(t.transfer.success);
+      const res: any = await api.transfer(fromId, toId, parseFloat(amount), description);
+      if (res?.status === "queued") {
+        Alert.alert(t.common.confirm, t.common.offlineQueued);
+      } else {
+        Alert.alert(t.transfer.success);
+      }
       setAmount("");
       setDescription("");
       onSuccess();

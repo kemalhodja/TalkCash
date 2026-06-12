@@ -9,7 +9,7 @@ import { useI18n } from "@/i18n";
 export default function TabLayout() {
   const { t } = useI18n();
   useRequireUnlock();
-  const { conflict, resolveConflict } = useOfflineSync();
+  const { conflict, resolveConflict, pendingCount } = useOfflineSync();
 
   return (
     <>
@@ -33,7 +33,11 @@ export default function TabLayout() {
       <Tabs.Screen name="input" options={{ title: t.tabs.input, tabBarIcon: ({ color, size }) => <Ionicons name="mic" size={size} color={color} /> }} />
       <Tabs.Screen name="budgets" options={{ title: t.tabs.budget, tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart" size={size} color={color} /> }} />
       <Tabs.Screen name="social" options={{ title: t.tabs.social, tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
-      <Tabs.Screen name="settings" options={{ title: t.tabs.settings, tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} /> }} />
+      <Tabs.Screen name="settings" options={{
+        title: t.tabs.settings,
+        tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+        tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+      }} />
     </Tabs>
     </>
   );
