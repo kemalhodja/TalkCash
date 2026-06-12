@@ -93,6 +93,9 @@ export default {
     copyHealthUrl: "Health URL kopyala",
     urlCopied: "Kopyalandı",
     openHealth: "Tarayıcıda aç",
+    connectionFixHint:
+      "Aynı Wi‑Fi, backend açık (docker compose up), telefondan health URL'yi tarayıcıda deneyin. localhost uyarısı varsa APK'yı yeniden build edin.",
+    stagingHint: "Staging build: scripts/build-android-apk.sh --staging",
   },
   errors: {
     network: "Sunucuya ulaşılamıyor. Ayarlar → Bağlantıyı test et. Aynı Wi‑Fi ve backend açık olmalı.",

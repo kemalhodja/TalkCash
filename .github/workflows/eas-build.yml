@@ -62,8 +62,27 @@ jobs:
         run: |
           PLATFORM="${{ github.event.inputs.platform }}"
           PROFILE="${{ github.event.inputs.profile }}"
-          if [ "$PLATFORM" = "all" ]; then
-            eas build --profile "$PROFILE" --platform all --non-interactive
-          else
-            eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive
+          WAIT_FLAG=""
+          if [ "$PROFILE" = "preview" ] && [ "$PLATFORM" = "android" ]; then
+            WAIT_FLAG="--wait"
           fi
+          if [ "$PLATFORM" = "all" ]; then
+            eas build --profile "$PROFILE" --platform all --non-interactive $WAIT_FLAG
+          else
+            eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive $WAIT_FLAG
+          fi
+
+      - name: Download Android preview APK
+        if: github.event.inputs.profile == 'preview' && github.event.inputs.platform == 'android'
+        working-directory: mobile
+        run: |
+          mkdir -p ../dist
+          eas build:download --platform android --latest --output ../dist/talkcash-preview.apk
+
+      - name: Upload APK artifact
+        if: github.event.inputs.profile == 'preview' && github.event.inputs.platform == 'android'
+        uses: actions/upload-artifact@v4
+        with:
+          name: talkcash-preview-apk
+          path: dist/talkcash-preview.apk
+          retention-days: 14
