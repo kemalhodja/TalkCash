@@ -44,9 +44,14 @@ export function ApiConnectionCard({ compact }: Props) {
         <Text style={styles.warn}>{t.settings.localhostWarning}</Text>
       ) : null}
       {result ? (
-        <Text style={[styles.status, result.ok ? styles.ok : styles.fail]}>
-          {result.ok ? t.settings.connectionOk.replace("{status}", result.detail) : t.settings.connectionFailed.replace("{error}", result.detail)}
-        </Text>
+        <>
+          <Text style={[styles.status, result.ok ? styles.ok : styles.fail]}>
+            {result.ok ? t.settings.connectionOk.replace("{status}", result.detail) : t.settings.connectionFailed.replace("{error}", result.detail)}
+          </Text>
+          {!result.ok && !localhostWarning ? (
+            <Text style={styles.hint}>{t.settings.connectionFixHint}</Text>
+          ) : null}
+        </>
       ) : null}
       <View style={styles.actions}>
         <TouchableOpacity
@@ -86,6 +91,7 @@ const styles = StyleSheet.create({
   status: { fontSize: 13, marginBottom: Spacing.sm },
   ok: { color: Colors.accent },
   fail: { color: Colors.danger },
+  hint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.sm, lineHeight: 18 },
   actions: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm },
   actionBtn: {
     flex: 1,

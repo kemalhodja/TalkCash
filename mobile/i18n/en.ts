@@ -93,6 +93,9 @@ export default {
     copyHealthUrl: "Copy health URL",
     urlCopied: "Copied",
     openHealth: "Open in browser",
+    connectionFixHint:
+      "Use the same Wi‑Fi, keep the backend running (docker compose up), open the health URL in the phone browser. Rebuild the APK if you see a localhost warning.",
+    stagingHint: "Staging build: scripts/build-android-apk.sh --staging",
   },
   errors: {
     network: "Cannot reach server. Check Settings → Test connection. Same Wi‑Fi and running backend required.",
