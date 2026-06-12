@@ -90,6 +90,36 @@ class ShoppingService:
         await db.commit()
         return item
 
+    async def delete_item(self, db: AsyncSession, user_id: UUID, item_id: UUID) -> None:
+        item = await db.get(ShoppingItem, item_id)
+        if not item or item.user_id != user_id:
+            raise I18nError("shopping.item_not_found")
+        await db.delete(item)
+        await db.commit()
+
+    async def import_from_receipt(
+        self, db: AsyncSession, user_id: UUID, receipt_id: UUID,
+        item_names: list[str] | None = None,
+    ) -> list[ShoppingItem]:
+        from app.models.receipt import Receipt
+        from app.services.ocr.service import OCRService
+
+        receipt = await db.get(Receipt, receipt_id)
+        if not receipt or receipt.user_id != user_id:
+            raise I18nError("ocr.receipt_not_found")
+        if not receipt.ocr_raw_text:
+            raise I18nError("ocr.no_text")
+
+        ocr = OCRService()
+        line_items = ocr._extract_line_items(receipt.ocr_raw_text)
+        names = [li["name"] for li in line_items if li.get("name")]
+        if item_names:
+            wanted = {n.lower().strip() for n in item_names}
+            names = [n for n in names if n.lower().strip() in wanted]
+        if not names:
+            raise I18nError("shopping.no_items_to_import")
+        return await self.add_items(db, user_id, names)
+
     async def daily_reset(self, db: AsyncSession) -> int:
         result = await db.execute(
             select(ShoppingItem).where(ShoppingItem.is_completed == True)

@@ -6,6 +6,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { getCachedSnapshot } from "@/services/syncCache";
 import { formatDate, formatMoney } from "@/utils/format";
 
 export default function TransactionsScreen() {
@@ -18,9 +19,11 @@ export default function TransactionsScreen() {
   const load = async () => {
     setError("");
     try {
+      const snapshot = await getCachedSnapshot();
+      if (snapshot?.transactions?.length) setTransactions(snapshot.transactions);
       setTransactions(await api.getTransactions());
     } catch (e: any) {
-      setTransactions([]);
+      if (!transactions.length) setTransactions([]);
       setError(e.message || t.common.error);
     } finally {
       setLoading(false);

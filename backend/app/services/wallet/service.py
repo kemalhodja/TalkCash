@@ -162,6 +162,31 @@ class WalletService:
         await db.refresh(tx)
         return tx
 
+    async def update_wallet(
+        self, db: AsyncSession, user_id: UUID, wallet_id: UUID, data,
+    ) -> WalletResponse:
+        wallet = await db.get(Wallet, wallet_id)
+        if not wallet or wallet.user_id != user_id or not wallet.is_active:
+            raise I18nError("wallet.not_found")
+        if data.name is not None:
+            wallet.name = data.name
+        if data.wallet_type is not None:
+            wallet.wallet_type = data.wallet_type
+        if data.currency is not None:
+            wallet.currency = data.currency
+        await db.commit()
+        await db.refresh(wallet)
+        return WalletResponse.model_validate(wallet)
+
+    async def deactivate_wallet(self, db: AsyncSession, user_id: UUID, wallet_id: UUID) -> None:
+        wallet = await db.get(Wallet, wallet_id)
+        if not wallet or wallet.user_id != user_id or not wallet.is_active:
+            raise I18nError("wallet.not_found")
+        if wallet.balance != Decimal("0"):
+            raise I18nError("wallet.non_zero_balance")
+        wallet.is_active = False
+        await db.commit()
+
     async def find_by_name(self, db: AsyncSession, user_id: UUID, name: str) -> Wallet | None:
         key = name.lower().strip()
         resolved = WALLET_ALIASES.get(key, name)

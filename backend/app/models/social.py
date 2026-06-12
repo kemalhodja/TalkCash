@@ -45,3 +45,27 @@ class SplitBill(Base):
     per_person: Mapped[Decimal] = mapped_column(Numeric(15, 2))
     share_message: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PriceWatchItem(Base):
+    __tablename__ = "price_watch_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    product_name: Mapped[str] = mapped_column(String(100))
+    threshold_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("5"))
+    last_avg_price: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SharedWalletEntry(Base):
+    __tablename__ = "shared_wallet_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    wallet_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shared_wallets.id"))
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
+    entry_type: Mapped[str] = mapped_column(String(20))
+    description: Mapped[str] = mapped_column(String(255), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

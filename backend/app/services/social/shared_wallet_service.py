@@ -2,11 +2,12 @@ import json
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError
-from app.models.social import SharedWallet
+from app.models.social import SharedWallet, SharedWalletEntry
+from app.models.user import User
 from app.utils.validation import parse_positive_amount, clamp_text
 
 
@@ -75,14 +76,97 @@ class SharedWalletService:
         description = clamp_text(description, max_len=255)
         user_name = clamp_text(user_name, max_len=100)
         wallet.balance -= amount
+        if user_id:
+            db.add(SharedWalletEntry(
+                wallet_id=wallet_id, user_id=user_id, amount=amount,
+                entry_type="expense", description=description,
+            ))
         await db.commit()
+        member_spent = await self._member_spent_totals(db, wallet_id)
         msg = {
             "type": "expense",
             "amount": float(amount),
             "description": description,
             "by": user_name,
+            "by_user_id": str(user_id) if user_id else None,
+            "balance": float(wallet.balance),
+            "member_spent": member_spent,
+        }
+        from app.utils.redis_client import publish
+        await publish(f"shared_wallet:{wallet_id}", msg)
+        return wallet
+
+    async def add_contribution(
+        self, db: AsyncSession, wallet_id: UUID, user_id: UUID,
+        amount: Decimal, description: str = "",
+    ) -> SharedWallet:
+        if not await self.is_member(db, wallet_id, user_id):
+            raise I18nError("social.wallet_not_member")
+        wallet = await db.get(SharedWallet, wallet_id)
+        if not wallet:
+            raise I18nError("social.wallet_not_found")
+        amount = parse_positive_amount(amount)
+        description = clamp_text(description, max_len=255)
+        wallet.balance += amount
+        db.add(SharedWalletEntry(
+            wallet_id=wallet_id, user_id=user_id, amount=amount,
+            entry_type="contribution", description=description,
+        ))
+        await db.commit()
+        msg = {
+            "type": "contribution",
+            "amount": float(amount),
+            "description": description,
             "balance": float(wallet.balance),
         }
         from app.utils.redis_client import publish
         await publish(f"shared_wallet:{wallet_id}", msg)
         return wallet
+
+    async def _member_spent_totals(self, db: AsyncSession, wallet_id: UUID) -> dict[str, float]:
+        result = await db.execute(
+            select(SharedWalletEntry.user_id, func.sum(SharedWalletEntry.amount)).where(
+                SharedWalletEntry.wallet_id == wallet_id,
+                SharedWalletEntry.entry_type == "expense",
+            ).group_by(SharedWalletEntry.user_id)
+        )
+        return {str(uid): float(total) for uid, total in result.all()}
+
+    async def get_member_summary(self, db: AsyncSession, wallet_id: UUID, user_id: UUID) -> dict:
+        wallet = await db.get(SharedWallet, wallet_id)
+        if not wallet or not await self.is_member(db, wallet_id, user_id):
+            raise I18nError("social.wallet_not_member")
+        members = json.loads(wallet.member_ids or "[]")
+        summaries = []
+        for mid in members:
+            uid = UUID(mid)
+            user = await db.get(User, uid)
+            spent_r = await db.execute(
+                select(func.coalesce(func.sum(SharedWalletEntry.amount), 0)).where(
+                    SharedWalletEntry.wallet_id == wallet_id,
+                    SharedWalletEntry.user_id == uid,
+                    SharedWalletEntry.entry_type == "expense",
+                )
+            )
+            contrib_r = await db.execute(
+                select(func.coalesce(func.sum(SharedWalletEntry.amount), 0)).where(
+                    SharedWalletEntry.wallet_id == wallet_id,
+                    SharedWalletEntry.user_id == uid,
+                    SharedWalletEntry.entry_type == "contribution",
+                )
+            )
+            spent = Decimal(str(spent_r.scalar() or 0))
+            contributed = Decimal(str(contrib_r.scalar() or 0))
+            summaries.append({
+                "user_id": mid,
+                "name": (user.full_name or user.email) if user else mid,
+                "spent": float(spent),
+                "contributed": float(contributed),
+                "net": float(contributed - spent),
+            })
+        return {
+            "wallet_id": str(wallet.id),
+            "name": wallet.name,
+            "balance": float(wallet.balance),
+            "members": summaries,
+        }

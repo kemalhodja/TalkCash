@@ -1,116 +1,49 @@
 # TalkCash — PRD Uyumluluk Matrisi
 
-Bu doküman ürün teknik şartnamesi (PRD) maddelerini mevcut kod tabanıyla eşleştirir.
-
 Durum: **Tam** · **Kısmi** · **Eksik**
 
----
-
-## 1. Giriş Metotları ve Veri Yakalama
-
-| PRD | Durum | Not |
-|-----|-------|-----|
-| Ses + NLP (Whisper + LLM) | Kısmi | `backend/app/routers/input.py`, `services/nlp/` — OpenAI key gerekir |
-| Yerel dil / argo (200 kağıt, yüzlük…) | Tam | `turkish_parser.py`, `english_parser.py` |
-| Fısıltı modu | Tam | `VoiceInput.tsx`, whisper flag |
-| Onay kartı (Pop-up) | Tam | `ConfirmationCard.tsx` |
-| Slash commands (`/150 kahve`) | Tam | `POST /input/slash`, `input.tsx` |
-| Numerik klavye | Kısmi | `NumericKeypad.tsx` — metin alanına yazar, doğrudan harcama akışı yok |
-| Akıllı tamamlama | Tam | `GET /input/autocomplete` |
-| OCR fiş tarama | Tam | `ReceiptScanner.tsx`, `services/ocr/` |
-| Fiş doğrulama (tutar eşleştirme) | Tam | `POST /ocr/verify` |
-| Dijital garanti arşivi | Tam | S3/MinIO + `receipts.tsx` |
-| OCR satır → alışveriş listesi | Eksik | Satır kalemleri extract edilir, listeye aktarılmaz |
+Son güncelleme: PR #19 — kalan PRD maddeleri kapatıldı.
 
 ---
 
-## 2. Dinamik Kasa ve Varlık Yönetimi
+## Kapatılan maddeler (PR #19)
 
-| PRD | Durum | Not |
-|-----|-------|-----|
-| Çoklu kasa tipleri | Tam | Nakit, banka, kredi, altın, döviz |
-| Bağımsız bakiye | Tam | `WalletService` |
-| Döviz/altın kur senkronu | Tam | Saatlik `sync_exchange_rates` |
-| Gelir girişi (ses/metin) | Tam | NLP + `IncomeModal` |
-| Kasalar arası transfer | Tam | NLP + `TransferModal` |
-| Net varlık (dashboard) | Tam | `GET /wallets/net-worth` |
-| TL karşılığı cüzdan satırı | Tam | `balance_try` alanı (PR #18) |
-| Kasa para birimi seçimi | Tam | `WalletCreateModal` currency |
-| Kasa düzenle/sil | Eksik | API/UI yok |
+| PRD | Özellik | Durum |
+|-----|---------|--------|
+| 1.3 | OCR satır → alışveriş listesi | **Tam** — `POST /shopping/import-receipt` |
+| 2.1 | Kasa düzenle/sil | **Tam** — `PATCH/DELETE /wallets/{id}` |
+| 3.1 | Ajanda düzenle/sil + ödenen geçmiş | **Tam** — `PATCH/DELETE /agenda/{id}`, `GET /agenda/history` |
+| 4.1 | Alışveriş madde silme | **Tam** — `DELETE /shopping/{id}` |
+| 5.2 | Fiyat watchlist + push | **Tam** — `GET/POST/DELETE /ai/watchlist`, scheduler 10:00 |
+| 6.1 | Ortak kasa üye muhasebesi | **Tam** — ledger + `GET .../members` |
+| 6.2 | Offline-first okuma | **Kısmi** — sync snapshot önbellek ana ekranlarda |
 
 ---
 
-## 3. Akıllı Ajanda ve Fatura Takibi
+## Kalan iyileştirmeler (düşük öncelik)
 
-| PRD | Durum | Not |
-|-----|-------|-----|
-| İleri tarihli borç/fatura | Tam | `agenda.tsx`, `AgendaService` |
-| Taksit bölücü | Tam | `create_installments` |
-| Push hatırlatma (1 gün önce + sabah) | Tam | Scheduler + `NotificationService` |
-| Mükerrer kayıt uyarısı | Tam | `DuplicateBillDialog` |
-| "Ödendi" tetikleyici + kasadan düşme | Tam | `mark_paid` |
-| Gecikmiş (overdue) durumu | Tam | Scheduler 07:00 + UI badge (PR #18) |
-| Ajanda düzenle/sil | Eksik | — |
-| Ödenen geçmiş görünümü | Eksik | Sadece pending/overdue listelenir |
+- Tam offline-first: tüm ekranlar + wallet push kuyruğu
+- LLM sohbet mentoru
+- Fiyat watchlist UI ayrı ekran (dashboard’da mevcut)
+- Play Store / production release
 
 ---
 
-## 4. Alışveriş Listesi
+## API özeti
 
-| PRD | Durum | Not |
-|-----|-------|-----|
-| Ses/klavye ile ekleme | Tam | NLP + shopping tab |
-| Akıllı kategorizasyon | Kısmi | TR+EN anahtar kelimeler (PR #18) |
-| Gece yarısı sıfırlama | Tam | Scheduler 00:00, tamamlananlar silinir |
-| Rutinler (günlük/haftalık) | Tam | Long-press, timezone düzeltmesi (PR #18) |
-| Al ve harca | Tam | `BuyToSpendModal` |
-| Madde silme | Eksik | Sadece complete |
+```
+PATCH  /wallets/{id}          Kasa güncelle
+DELETE /wallets/{id}          Kasa deaktive et
+PATCH  /agenda/{id}           Fatura düzenle
+DELETE /agenda/{id}           Fatura sil
+GET    /agenda/history        Ödenen geçmiş
+POST   /shopping/import-receipt  Fiş → liste
+DELETE /shopping/{id}         Liste maddesi sil
+GET    /ai/watchlist          Fiyat izleme listesi
+POST   /ai/watchlist          Ürün ekle
+DELETE /ai/watchlist/{id}     Ürün kaldır
+GET    /social/shared-wallet/{id}/members  Üye özeti
+POST   /social/shared-wallet/{id}/contribution  Katkı
+```
 
----
-
-## 5. Yapay Zeka Mentorluk ve Analiz
-
-| PRD | Durum | Not |
-|-----|-------|-----|
-| Kategori bütçe limitleri | Tam | `budgets.tsx`, %80/%100 uyarı |
-| Burn rate / ay sonu tahmini | Tam | API + dashboard kartı (PR #18) |
-| Fiyat değişim analizi | Kısmi | OCR + işlem verisi; watchlist/push yok |
-| LLM sohbet mentoru | Eksik | Kural tabanlı analiz var |
-
----
-
-## 6. Sosyal Katman ve Güvenlik
-
-| PRD | Durum | Not |
-|-----|-------|-----|
-| Ortak kasa + WebSocket | Tam | `social.tsx`, `ws.py`, Redis bridge |
-| Borç/alacak defteri | Tam | `POST /social/debt` |
-| Hesap bölüştürme + WhatsApp | Tam | `POST /social/split` |
-| Biyometrik / PIN | Tam | `lock.tsx`, `useAppLock` — sunucu tercihi hydrate (PR #18) |
-| Geofencing | Tam | `geofencing.ts` — kalıcı toggle (PR #18) |
-| PDF / Excel export | Tam | `settings.tsx`, `export.py` |
-| Bulut senkron | Kısmi | Push kuyruk + pull cache; tam offline-first değil |
-| Üye bazlı ortak kasa bakiyesi | Eksik | Tek havuz bakiye |
-
----
-
-## 7. Teknoloji Seti (PRD önerisi vs gerçek)
-
-| PRD | Gerçek |
-|-----|--------|
-| Flutter veya RN | **React Native (Expo 52)** |
-| FastAPI / Django | **FastAPI** |
-| PostgreSQL + Redis | **Evet** (+ MinIO) |
-| Whisper + GPT | **OpenAI API** (opsiyonel) |
-| Vision / Tesseract | **Tesseract + opsiyonel Vision** |
-
----
-
-## Öncelikli backlog (kalan)
-
-1. OCR satır kalemlerini alışveriş listesine aktarma
-2. Tam offline-first sync (pull cache birincil kaynak)
-3. Ajanda düzenle/sil + ödenen geçmiş
-4. Fiyat watchlist + push bildirimi
-5. Ortak kasa üye bazlı muhasebe
-6. WebSocket E2E testleri
+Migration: `004_prd_gaps.py` (paid_at, price_watch_items, shared_wallet_entries)

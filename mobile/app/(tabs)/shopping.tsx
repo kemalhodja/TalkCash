@@ -6,6 +6,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { getCachedSnapshot } from "@/services/syncCache";
 
 export default function ShoppingScreen() {
   const { t } = useI18n();
@@ -18,6 +19,16 @@ export default function ShoppingScreen() {
   const loadList = async () => {
     try {
       setError("");
+      const snapshot = await getCachedSnapshot();
+      if (snapshot?.shopping?.length) {
+        const grouped: Record<string, any[]> = {};
+        for (const item of snapshot.shopping) {
+          const cat = item.category || "OTHER";
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(item);
+        }
+        setGrouped(grouped);
+      }
       setGrouped(await api.getShoppingList());
     } catch (e: any) {
       setError(e.message);
@@ -89,6 +100,7 @@ export default function ShoppingScreen() {
                   Alert.alert(t.shopping.title, "", [
                     { text: t.agenda.routineDaily, onPress: async () => { await api.setRoutine(item.id, true, "daily"); loadList(); } },
                     { text: t.agenda.routineWeekly, onPress: async () => { await api.setRoutine(item.id, true, "weekly"); loadList(); } },
+                    { text: t.common.delete, style: "destructive", onPress: async () => { await api.deleteShoppingItem(item.id); loadList(); } },
                     { text: t.common.cancel, style: "cancel" },
                   ]);
                 }

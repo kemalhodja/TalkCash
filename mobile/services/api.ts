@@ -136,6 +136,9 @@ export const api = {
   getWallets: () => request<any[]>("/wallets/"),
   createWallet: (name: string, walletType: string, currency = "TRY") =>
     request("/wallets/", { method: "POST", body: JSON.stringify({ name, wallet_type: walletType, currency }) }),
+  updateWallet: (id: string, data: { name?: string; wallet_type?: string; currency?: string }) =>
+    request(`/wallets/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteWallet: (id: string) => request(`/wallets/${id}`, { method: "DELETE" }),
   transfer: (fromId: string, toId: string, amount: number, description = "") =>
     request("/wallets/transfer", { method: "POST", body: JSON.stringify({ from_wallet_id: fromId, to_wallet_id: toId, amount, description }) }),
   addIncome: (walletId: string, amount: number, description = "") =>
@@ -146,6 +149,10 @@ export const api = {
 
   // Agenda
   getAgenda: (days = 30) => request<any[]>(`/agenda/?days=${days}`),
+  getAgendaHistory: (limit = 50) => request<any[]>(`/agenda/history?limit=${limit}`),
+  updateAgendaItem: (id: string, data: object) =>
+    request(`/agenda/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteAgendaItem: (id: string) => request(`/agenda/${id}`, { method: "DELETE" }),
   addBill: (title: string, amount: number, dueDate: string, force = false, isRecurring = false) =>
     request<any>(
       `/agenda/bill?title=${encodeURIComponent(title)}&amount=${amount}&due_date=${dueDate}&force=${force}&is_recurring=${isRecurring}`,
@@ -192,6 +199,12 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ is_routine: isRoutine, routine_type: routineType }),
     }),
+  deleteShoppingItem: (itemId: string) => request(`/shopping/${itemId}`, { method: "DELETE" }),
+  importReceiptToShopping: (receiptId: string, itemNames?: string[]) =>
+    request("/shopping/import-receipt", {
+      method: "POST",
+      body: JSON.stringify({ receipt_id: receiptId, item_names: itemNames }),
+    }),
 
   // OCR
   scanReceipt: async (uri: string) => {
@@ -227,6 +240,13 @@ export const api = {
   getBudgetAlerts: () => request<any[]>("/ai/budget-alerts"),
   getForecast: (balance: number) => request<any>(`/ai/forecast?current_balance=${balance}`),
   getPriceTracker: (product: string) => request<any>(`/ai/price-tracker?product=${encodeURIComponent(product)}`),
+  getWatchlist: () => request<any[]>("/ai/watchlist"),
+  addWatchlistItem: (productName: string, thresholdPercent = 5) =>
+    request("/ai/watchlist", {
+      method: "POST",
+      body: JSON.stringify({ product_name: productName, threshold_percent: thresholdPercent }),
+    }),
+  removeWatchlistItem: (id: string) => request(`/ai/watchlist/${id}`, { method: "DELETE" }),
 
   // Social
   splitBill: (total: number, personCount: number) =>
@@ -243,6 +263,9 @@ export const api = {
   },
   addSharedWalletExpense: (walletId: string, amount: number, description = "") =>
     request(`/social/shared-wallet/${walletId}/expense?amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
+  addSharedWalletContribution: (walletId: string, amount: number, description = "") =>
+    request(`/social/shared-wallet/${walletId}/contribution?amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
+  getSharedWalletMembers: (walletId: string) => request<any>(`/social/shared-wallet/${walletId}/members`),
 
   // Notifications
   registerPushToken: (token: string) =>

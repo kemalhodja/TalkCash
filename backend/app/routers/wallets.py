@@ -9,7 +9,7 @@ from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error
 from app.models.user import User
 from app.schemas.transaction import TransactionResponse
-from app.schemas.wallet import NetWorthResponse, TransferRequest, WalletCreate, WalletResponse
+from app.schemas.wallet import NetWorthResponse, TransferRequest, WalletCreate, WalletResponse, WalletUpdate
 from app.services.budget_notify import push_budget_alerts_after_expense
 from app.services.wallet.service import WalletService
 
@@ -25,6 +25,28 @@ async def list_wallets(user: User = Depends(get_current_user), db: AsyncSession 
 @router.post("/", response_model=WalletResponse)
 async def create_wallet(data: WalletCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await wallet_service.create_wallet(db, user.id, data)
+
+
+@router.patch("/{wallet_id}", response_model=WalletResponse)
+async def update_wallet(
+    wallet_id: UUID, data: WalletUpdate,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await wallet_service.update_wallet(db, user.id, wallet_id, data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, user_locale(user)))
+
+
+@router.delete("/{wallet_id}")
+async def deactivate_wallet(
+    wallet_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        await wallet_service.deactivate_wallet(db, user.id, wallet_id)
+        return {"status": "deactivated"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, user_locale(user)))
 
 
 @router.get("/net-worth", response_model=NetWorthResponse)

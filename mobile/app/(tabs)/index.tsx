@@ -5,6 +5,7 @@ import { ApiConnectionCard } from "@/components/ApiConnectionCard";
 import { ErrorState } from "@/components/ErrorState";
 import { TransferModal } from "@/components/TransferModal";
 import { WalletCreateModal } from "@/components/WalletCreateModal";
+import { WalletEditModal } from "@/components/WalletEditModal";
 import { WalletCard } from "@/components/WalletCard";
 import { Colors, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -14,6 +15,7 @@ import { auth } from "@/services/auth";
 import { registerForPushNotifications } from "@/services/notifications";
 import { formatDate, formatMoney } from "@/utils/format";
 import { speakBudgetAlert } from "@/services/speech";
+import { getCachedSnapshot } from "@/services/syncCache";
 
 export default function DashboardScreen() {
   const { t, locale } = useI18n();
@@ -29,6 +31,9 @@ export default function DashboardScreen() {
   const [transferVisible, setTransferVisible] = useState(false);
   const [incomeVisible, setIncomeVisible] = useState(false);
   const [walletCreateVisible, setWalletCreateVisible] = useState(false);
+  const [walletEdit, setWalletEdit] = useState<any | null>(null);
+  const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [watchProduct, setWatchProduct] = useState("");
   const [trackProduct, setTrackProduct] = useState("");
   const trackProductRef = useRef(trackProduct);
   const lastSpokenAlert = useRef("");
@@ -41,13 +46,20 @@ export default function DashboardScreen() {
     const productQuery = product ?? trackProductRef.current;
     try {
       setError("");
-      const [nw, budgetAlerts, priceReportData] = await Promise.all([
+      const snapshot = await getCachedSnapshot();
+      if (snapshot?.wallets?.length) {
+        setNetWorth(Number(snapshot.net_worth_total || 0));
+        setWallets(snapshot.wallets);
+      }
+      const [nw, budgetAlerts, priceReportData, watchItems] = await Promise.all([
         api.getNetWorth(),
         api.getBudgetAlerts(),
         api.getPriceTracker(productQuery),
+        api.getWatchlist().catch(() => []),
       ]);
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
+      setWatchlist(watchItems);
       setForecast(await api.getForecast(nw.total_try));
       setAlerts(budgetAlerts);
       if (budgetAlerts.length > 0) {
@@ -140,6 +152,30 @@ export default function DashboardScreen() {
       ))}
 
       <View style={styles.priceTracker}>
+        <Text style={styles.sectionTitle}>{t.home.watchlist}</Text>
+        {watchlist.map((w) => (
+          <View key={w.id} style={styles.watchRow}>
+            <Text style={styles.watchName}>{w.product_name}</Text>
+            <TouchableOpacity onPress={async () => { await api.removeWatchlistItem(w.id); loadData(); }}>
+              <Text style={styles.watchRemove}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        <View style={styles.priceRow}>
+          <TextInput style={styles.priceInput} placeholder={t.home.pricePlaceholder}
+            placeholderTextColor={Colors.textMuted} value={watchProduct} onChangeText={setWatchProduct} />
+          <TouchableOpacity style={styles.priceBtn} onPress={async () => {
+            if (!watchProduct.trim()) return;
+            await api.addWatchlistItem(watchProduct.trim());
+            setWatchProduct("");
+            loadData();
+          }}>
+            <Text style={styles.priceBtnText}>{t.home.addWatch}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.priceTracker}>
         <Text style={styles.sectionTitle}>{t.home.priceTracker}</Text>
         <View style={styles.priceRow}>
           <TextInput style={styles.priceInput} placeholder={t.home.pricePlaceholder}
@@ -158,19 +194,21 @@ export default function DashboardScreen() {
 
       <Text style={styles.sectionTitle}>{t.home.wallets}</Text>
       {wallets.map((w) => (
-        <WalletCard
-          key={w.id}
-          name={w.name}
-          balance={Number(w.balance)}
-          balanceTry={w.balance_try != null ? Number(w.balance_try) : undefined}
-          currency={w.currency}
-          type={w.wallet_type}
-        />
+        <TouchableOpacity key={w.id} onLongPress={() => setWalletEdit(w)}>
+          <WalletCard
+            name={w.name}
+            balance={Number(w.balance)}
+            balanceTry={w.balance_try != null ? Number(w.balance_try) : undefined}
+            currency={w.currency}
+            type={w.wallet_type}
+          />
+        </TouchableOpacity>
       ))}
 
       <IncomeModal visible={incomeVisible} onClose={() => setIncomeVisible(false)} onSuccess={loadData} />
       <TransferModal visible={transferVisible} onClose={() => setTransferVisible(false)} onSuccess={loadData} />
       <WalletCreateModal visible={walletCreateVisible} onClose={() => setWalletCreateVisible(false)} onSuccess={loadData} />
+      <WalletEditModal visible={!!walletEdit} wallet={walletEdit} onClose={() => setWalletEdit(null)} onSuccess={loadData} />
     </ScrollView>
   );
 }
@@ -216,4 +254,7 @@ const styles = StyleSheet.create({
   priceBtn: { backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: Spacing.md, justifyContent: "center" },
   priceBtnText: { color: Colors.bg, fontWeight: "700" },
   sourceTag: { color: Colors.textMuted, fontSize: 11, marginTop: 4 },
+  watchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+  watchName: { color: Colors.textSecondary, fontSize: 14 },
+  watchRemove: { color: Colors.danger, fontSize: 16, padding: 4 },
 });

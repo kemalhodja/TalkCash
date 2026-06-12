@@ -5,7 +5,7 @@ from app.models.agenda import AgendaItem, AgendaStatus
 from app.models.shopping import ShoppingItem, ShoppingCategory
 from app.models.receipt import Receipt
 from app.models.budget import BudgetLimit
-from app.models.social import SharedWallet, DebtRecord, SplitBill
+from app.models.social import SharedWallet, DebtRecord, SplitBill, PriceWatchItem, SharedWalletEntry
 from app.models.notification import Notification
 from app.models.exchange_rate import ExchangeRate
 from app.models.sync_operation import SyncOperationRecord
@@ -25,6 +25,8 @@ __all__ = [
     "SharedWallet",
     "DebtRecord",
     "SplitBill",
+    "PriceWatchItem",
+    "SharedWalletEntry",
     "Notification",
     "ExchangeRate",
     "SyncOperationRecord",
