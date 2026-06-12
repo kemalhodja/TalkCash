@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.i18n import I18nError
 from app.models.transaction import Transaction, TransactionType
 from app.models.wallet import Wallet, WalletType
-from app.schemas.wallet import NetWorthResponse, WalletCreate, WalletResponse
+from app.schemas.wallet import NetWorthResponse, WalletCreate, WalletNetWorthItem, WalletResponse
 from app.services.exchange.service import ExchangeService
 
 
@@ -99,8 +99,8 @@ class WalletService:
                 total -= try_value
             else:
                 total += try_value
-            resp = WalletResponse.model_validate(w)
-            wallet_responses.append(resp)
+            base = WalletResponse.model_validate(w)
+            wallet_responses.append(WalletNetWorthItem(**base.model_dump(), balance_try=try_value))
         return NetWorthResponse(total_try=total, wallets=wallet_responses)
 
     async def transfer(

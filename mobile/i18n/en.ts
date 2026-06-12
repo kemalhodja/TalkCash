@@ -39,8 +39,11 @@ export default {
     priceTracker: "Price Tracker",
     pricePlaceholder: "Product name (e.g. milk)",
     defaultProduct: "milk",
+    burnRateDaily: "Daily spend: {amount}",
+    projectedBalance: "Projected month-end balance: {amount}",
     trackPrice: "Track",
     debt: "Debt",
+    walletCurrency: "Currency",
   },
   login: {
     title: "TalkCash",

@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import and_, extract, select
+from sqlalchemy import and_, extract, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError
@@ -79,7 +79,7 @@ class AgendaService:
             select(AgendaItem).where(
                 AgendaItem.user_id == user_id,
                 AgendaItem.title.ilike(f"%{title}%"),
-                AgendaItem.status == AgendaStatus.PENDING,
+                AgendaItem.status.in_([AgendaStatus.PENDING, AgendaStatus.OVERDUE]),
             ).order_by(AgendaItem.due_date)
         )
         item = result.scalars().first()
@@ -142,11 +142,29 @@ class AgendaService:
         result = await db.execute(
             select(AgendaItem).where(
                 AgendaItem.user_id == user_id,
-                AgendaItem.status == AgendaStatus.PENDING,
-                AgendaItem.due_date <= cutoff,
+                AgendaItem.status.in_([AgendaStatus.PENDING, AgendaStatus.OVERDUE]),
+                or_(
+                    AgendaItem.status == AgendaStatus.OVERDUE,
+                    AgendaItem.due_date <= cutoff,
+                ),
             ).order_by(AgendaItem.due_date)
         )
         return list(result.scalars().all())
+
+    async def mark_overdue_bills(self, db: AsyncSession) -> int:
+        now = datetime.utcnow()
+        result = await db.execute(
+            select(AgendaItem).where(
+                AgendaItem.status == AgendaStatus.PENDING,
+                AgendaItem.due_date < now,
+            )
+        )
+        items = list(result.scalars().all())
+        for item in items:
+            item.status = AgendaStatus.OVERDUE
+        if items:
+            await db.commit()
+        return len(items)
 
     async def _check_duplicate(self, db: AsyncSession, user_id: UUID, title: str) -> bool:
         now = datetime.utcnow()

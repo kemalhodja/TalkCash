@@ -6,6 +6,7 @@ import { formatMoney } from "@/utils/format";
 interface Props {
   name: string;
   balance: number;
+  balanceTry?: number;
   currency?: string;
   type?: string;
 }
@@ -15,9 +16,10 @@ const TYPE_ICONS: Record<string, string> = {
   investment_gold: "🥇", investment_forex: "💱",
 };
 
-export function WalletCard({ name, balance, currency = "TRY", type = "cash" }: Props) {
+export function WalletCard({ name, balance, balanceTry, currency = "TRY", type = "cash" }: Props) {
   const { t, locale } = useI18n();
   const isDebt = type === "credit_card";
+  const showTryEquivalent = currency !== "TRY" && balanceTry != null;
   return (
     <View style={styles.card}>
       <Text style={styles.icon}>{TYPE_ICONS[type] || "💰"}</Text>
@@ -27,6 +29,9 @@ export function WalletCard({ name, balance, currency = "TRY", type = "cash" }: P
           {isDebt ? `${t.home.debt}: ` : ""}
           {formatMoney(balance, locale, currency)}
         </Text>
+        {showTryEquivalent ? (
+          <Text style={styles.tryHint}>≈ {formatMoney(balanceTry, locale)}</Text>
+        ) : null}
       </View>
     </View>
   );
@@ -43,5 +48,6 @@ const styles = StyleSheet.create({
   info: { flex: 1 },
   name: { color: Colors.textSecondary, fontSize: 14 },
   balance: { color: Colors.text, fontSize: 18, fontWeight: "700", marginTop: 2 },
+  tryHint: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
   debt: { color: Colors.danger },
 });
