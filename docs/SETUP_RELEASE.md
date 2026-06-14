@@ -1,6 +1,6 @@
-# TalkCash — Release Kurulumu (İlk Kez)
+# TalkCash — Release Kurulumu
 
-Staging deploy şu an **başarısız** çünkü GitHub secret `FLY_API_TOKEN` boş. Bu rehber sırayla ne yapılacağını anlatır.
+GitHub secret'ları eksikse staging deploy atlanır ve release workflow hata verir. Aşağıdaki adımları tamamlayın, ardından **Validate Release Config** workflow'unu yeşile getirin.
 
 ## Durum kontrolü
 

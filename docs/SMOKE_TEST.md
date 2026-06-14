@@ -64,10 +64,14 @@ python3 scripts/smoke_test.py
 ### Play Store öncesi
 
 ```bash
-./scripts/release.sh --checklist   # tüm testler + verify-release
-./scripts/release.sh --production  # Fly prod + EAS AAB
-./scripts/release.sh --submit-play # Play Console yükleme
+./scripts/release.sh --checklist
+FLY_API_TOKEN=... ./scripts/release.sh --skip-verify --production
+EXPO_TOKEN=... ./scripts/release.sh --skip-verify --submit-play
+# veya ikisi birden:
+FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production --submit-play
 ```
+
+GitHub tek tık: **Actions → Release Production (Full Pipeline)** → `confirm`: `release`
 
 ### Fiş (S3 açık olmalı)
 - [ ] Fiş tara → görsel Fiş Arşivi'nde görünüyor

@@ -25,6 +25,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.repository == 'kemalhodja/eduai-sale'
     steps:
       - uses: actions/checkout@v4
 

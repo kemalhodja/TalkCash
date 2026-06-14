@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@v1
 
       - uses: actions/setup-node@v4
         with:
@@ -54,6 +54,10 @@ jobs:
           pid="${{ vars.EAS_PROJECT_ID }}"
           if ! echo "$pid" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
             echo "EAS_PROJECT_ID must be a UUID"
+            exit 1
+          fi
+          if [ "$pid" = "00000000-0000-0000-0000-000000000000" ]; then
+            echo "EAS_PROJECT_ID cannot be the nil UUID placeholder"
             exit 1
           fi
           echo "OK: EAS_PROJECT_ID format valid"

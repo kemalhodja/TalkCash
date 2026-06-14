@@ -35,6 +35,10 @@ jobs:
           check "EXPO_TOKEN" "${{ secrets.EXPO_TOKEN }}"
           check "EXPO_PUBLIC_API_URL" "${{ vars.EXPO_PUBLIC_API_URL }}"
           check "EAS_PROJECT_ID" "${{ vars.EAS_PROJECT_ID }}"
+          if [ "${{ vars.EAS_PROJECT_ID }}" = "00000000-0000-0000-0000-000000000000" ]; then
+            echo "::error::EAS_PROJECT_ID is the nil UUID placeholder — set real Expo project UUID"
+            missing=1
+          fi
           exit $missing
 
   verify:
@@ -72,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@v1
 
       - name: Preflight production
         run: bash scripts/preflight-production.sh

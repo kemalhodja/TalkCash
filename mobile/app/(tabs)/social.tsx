@@ -269,7 +269,7 @@ export default function SocialScreen() {
           </Surface>
         ))}
         <InputField placeholder={t.social.walletName} value={walletName} onChangeText={setWalletName} />
-        <InputField placeholder={t.agenda.memberEmail} keyboardType="email-address" autoCapitalize="none" value={memberEmail} onChangeText={setMemberEmail} />
+        <InputField placeholder={t.social.inviteEmail} keyboardType="email-address" autoCapitalize="none" value={memberEmail} onChangeText={setMemberEmail} />
         <PrimaryButton label={t.social.createWallet} onPress={async () => {
           await api.createSharedWallet(walletName, memberEmail || undefined);
           setWalletName(""); setMemberEmail(""); load();
@@ -280,9 +280,6 @@ export default function SocialScreen() {
 }
 
 const styles = StyleSheet.create({
-  section: { marginBottom: Spacing.xl },
-  sectionTitle: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: Spacing.sm },
-  sectionCard: { padding: Spacing.md },
   result: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border },
   resultText: { color: Colors.accent, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
   whatsappBtn: { backgroundColor: "#25D366", padding: Spacing.sm, borderRadius: Radius.sm, alignItems: "center" },
