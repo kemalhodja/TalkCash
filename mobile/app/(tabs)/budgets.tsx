@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InsightChip } from "@/components/ui/InsightChip";
 import { InputField } from "@/components/ui/InputField";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -10,10 +11,13 @@ import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { getCachedSnapshot } from "@/services/syncCache";
 import { formatMoney } from "@/utils/format";
+import { isQueuedResult, showQueuedAlert } from "@/utils/apiWriteResult";
 
 export default function BudgetsScreen() {
   const { t, locale } = useI18n();
@@ -25,33 +29,50 @@ export default function BudgetsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setError("");
+    let cachedCount = 0;
     try {
+      const snapshot = await getCachedSnapshot();
+      if (snapshot?.budgets?.length) {
+        cachedCount = snapshot.budgets.length;
+        setBudgets(snapshot.budgets);
+      }
       setBudgets(await api.getBudgets());
     } catch (e: any) {
-      setBudgets([]);
+      if (!cachedCount) setBudgets([]);
       setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [t.common.error]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
   useRefreshOnFocus(load);
+  const { refreshing, onRefresh } = usePullRefresh(load);
 
   const handleAdd = async () => {
     if (!category || !limit) return;
-    await api.createBudget(category, parseFloat(limit));
-    setCategory(""); setLimit("");
-    load();
+    try {
+      const res = await api.createBudget(category, parseFloat(limit));
+      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+      setCategory(""); setLimit("");
+      load();
+    } catch (e: any) {
+      Alert.alert(t.common.error, e.message || t.common.error);
+    }
   };
 
   const handleUpdate = async () => {
     if (!editing || !editLimit) return;
-    await api.updateBudget(editing.id, parseFloat(editLimit));
-    setEditing(null); setEditLimit("");
-    load();
+    try {
+      const res = await api.updateBudget(editing.id, parseFloat(editLimit));
+      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+      setEditing(null); setEditLimit("");
+      load();
+    } catch (e: any) {
+      Alert.alert(t.common.error, e.message || t.common.error);
+    }
   };
 
   const barColor = (percent: number) => {
@@ -65,8 +86,9 @@ export default function BudgetsScreen() {
 
   return (
     <>
-      <ScreenShell>
+      <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
         <ScreenHeader title={t.budget.title} />
+        {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
 
         <Surface variant="glass" style={styles.form}>
           <InputField placeholder={t.budget.category} value={category} onChangeText={setCategory} />
@@ -89,7 +111,15 @@ export default function BudgetsScreen() {
                     </Text>
                     <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
                   </View>
-                  <TextLink label={t.common.delete} onPress={async () => { await api.deleteBudget(b.id); load(); }} danger />
+                  <TextLink label={t.common.delete} onPress={async () => {
+                    try {
+                      const res = await api.deleteBudget(b.id);
+                      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+                      load();
+                    } catch (e: any) {
+                      Alert.alert(t.common.error, e.message || t.common.error);
+                    }
+                  }} danger />
                 </View>
                 <View style={styles.progressBg}>
                   <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor(percent) }]} />

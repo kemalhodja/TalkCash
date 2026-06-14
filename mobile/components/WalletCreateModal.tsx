@@ -39,8 +39,12 @@ export function WalletCreateModal({ visible, onClose, onSuccess }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      await api.createWallet(name.trim(), walletType, currency);
-      Alert.alert(t.home.walletCreated);
+      const res: any = await api.createWallet(name.trim(), walletType, currency);
+      if (res?.status === "queued") {
+        Alert.alert(t.common.confirm, t.common.offlineQueued);
+      } else {
+        Alert.alert(t.home.walletCreated);
+      }
       setName("");
       onSuccess();
       onClose();

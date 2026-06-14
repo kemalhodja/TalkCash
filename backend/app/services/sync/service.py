@@ -16,6 +16,7 @@ from app.schemas.common import ParsedInput
 from app.schemas.sync import SyncConflict, SyncOperation, SyncPushResponse, SyncPullResponse
 from app.schemas.wallet import TransferRequest, WalletCreate, WalletUpdate
 from app.models.wallet import WalletType
+from app.services.budget.service import BudgetService
 from app.services.agenda.service import AgendaService
 from app.services.shopping.service import ShoppingService
 from app.services.storage.service import StorageService
@@ -29,6 +30,33 @@ agenda_service = AgendaService()
 wallet_service = WalletService()
 transaction_service = TransactionService()
 storage_service = StorageService()
+budget_service = BudgetService()
+
+_ID_FIELDS = ("wallet_id", "from_wallet_id", "to_wallet_id", "item_id", "transaction_id", "budget_id")
+
+
+def _remap_payload(payload: dict, id_map: dict[str, str]) -> dict:
+    remapped = dict(payload)
+    for field in _ID_FIELDS:
+        val = remapped.get(field)
+        if isinstance(val, str) and val in id_map:
+            remapped[field] = id_map[val]
+    return remapped
+
+
+def _register_batch_remap(op: SyncOperation, result: dict, id_map: dict[str, str]) -> None:
+    if op.type == "wallet_create" and op.payload.get("client_wallet_id") and result.get("wallet_id"):
+        id_map[str(op.payload["client_wallet_id"])] = str(result["wallet_id"])
+    if op.type == "agenda_add_bill" and op.payload.get("client_item_id") and result.get("id"):
+        id_map[str(op.payload["client_item_id"])] = str(result["id"])
+    if op.type == "budget_create" and op.payload.get("client_budget_id") and result.get("budget_id"):
+        id_map[str(op.payload["client_budget_id"])] = str(result["budget_id"])
+    if op.type == "shopping_add":
+        client_ids = op.payload.get("client_item_ids") or []
+        added = result.get("added") or []
+        for i, client_id in enumerate(client_ids):
+            if i < len(added) and isinstance(added[i], dict) and added[i].get("id"):
+                id_map[str(client_id)] = str(added[i]["id"])
 
 
 class SyncService:
@@ -37,7 +65,12 @@ class SyncService:
         conflicts: list[SyncConflict] = []
         failed: list[dict] = []
 
+        batch_id_map: dict[str, str] = {}
+
         for op in operations:
+            remapped_payload = _remap_payload(op.payload, batch_id_map)
+            op = op.model_copy(update={"payload": remapped_payload})
+
             cached = await self._get_cached_result(db, user_id, op.id)
             if cached:
                 applied.append({"operation_id": str(op.id), "status": "duplicate", "result": cached})
@@ -50,6 +83,8 @@ class SyncService:
                 else:
                     applied.append({"operation_id": str(op.id), "status": "ok", "result": result})
                     await self._cache_result(db, user_id, op.id, result)
+                    if result:
+                        _register_batch_remap(op, result, batch_id_map)
             except Exception as exc:
                 failed.append({"operation_id": str(op.id), "error": str(exc)})
 
@@ -60,6 +95,7 @@ class SyncService:
         agenda = await agenda_service.list_upcoming(db, user_id, days=60)
         agenda_history = await agenda_service.list_paid(db, user_id, limit=50)
         nw = await wallet_service.get_net_worth(db, user_id)
+        budget_rows = await budget_service.list_with_usage(db, user_id)
 
         tx_result = await db.execute(
             select(Transaction).where(Transaction.user_id == user_id)
@@ -125,6 +161,17 @@ class SyncService:
                 for w in nw.wallets
             ],
             net_worth_total=float(nw.total_try),
+            budgets=[
+                {
+                    "id": str(b["id"]),
+                    "category": b["category"],
+                    "monthly_limit": float(b["monthly_limit"]),
+                    "spent": float(b["spent"]),
+                    "percent": b["percent"],
+                    "currency": b.get("currency", "TRY"),
+                }
+                for b in budget_rows
+            ],
             transactions=transactions,
             receipts=receipts,
             server_timestamp=datetime.utcnow(),
@@ -174,7 +221,7 @@ class SyncService:
         if op.type == "shopping_add":
             items = op.payload.get("items", [])
             created = await shopping_service.add_items(db, user_id, items)
-            return {"added": [i.name for i in created]}, None
+            return {"added": [{"id": str(i.id), "name": i.name} for i in created]}, None
 
         if op.type == "shopping_complete":
             item_id = UUID(op.payload["item_id"])
@@ -271,6 +318,22 @@ class SyncService:
             wallet_id = UUID(op.payload["wallet_id"]) if op.payload.get("wallet_id") else None
             item = await agenda_service.mark_paid(db, user_id, op.payload["title"], wallet_id)
             return {"id": str(item.id), "title": item.title}, None
+
+        if op.type == "budget_create":
+            budget = await budget_service.create(
+                db, user_id, op.payload["category"], Decimal(str(op.payload["monthly_limit"])),
+            )
+            return {"budget_id": str(budget.id), "category": budget.category}, None
+
+        if op.type == "budget_update":
+            budget = await budget_service.update(
+                db, UUID(op.payload["budget_id"]), user_id, Decimal(str(op.payload["monthly_limit"])),
+            )
+            return {"budget_id": str(budget.id)}, None
+
+        if op.type == "budget_delete":
+            await budget_service.delete(db, UUID(op.payload["budget_id"]), user_id)
+            return {"deleted": True}, None
 
         raise ValueError(t("sync.unsupported_type", locale, type=op.type))
 

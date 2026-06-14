@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { AgendaCalendar } from "@/components/AgendaCalendar";
 import { DueDatePicker } from "@/components/DueDatePicker";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { ErrorState } from "@/components/ErrorState";
 import { PayBillModal } from "@/components/PayBillModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -14,6 +15,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
@@ -55,23 +57,28 @@ export default function AgendaScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadAgenda = async () => {
+  const loadAgenda = useCallback(async () => {
     setError("");
+    let cachedCount = 0;
     try {
       const snapshot = await getCachedSnapshot();
-      if (snapshot?.agenda?.length) setItems(snapshot.agenda);
+      if (snapshot?.agenda?.length) {
+        cachedCount = snapshot.agenda.length;
+        setItems(snapshot.agenda);
+      }
       setItems(await api.getAgenda());
       setHistoryItems(await api.getAgendaHistory());
     } catch (e: any) {
-      if (!items.length) setItems([]);
+      if (!cachedCount) setItems([]);
       setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [t.common.error]);
 
-  useEffect(() => { loadAgenda(); }, []);
+  useEffect(() => { loadAgenda(); }, [loadAgenda]);
   useRefreshOnFocus(loadAgenda);
+  const { refreshing, onRefresh } = usePullRefresh(loadAgenda);
 
   const resetForm = () => {
     setTitle(""); setAmount(""); setInstallmentCount("6");
@@ -162,7 +169,7 @@ export default function AgendaScreen() {
   if (error && items.length === 0) return <ErrorState message={error} onRetry={loadAgenda} />;
 
   return (
-    <ScreenShell>
+    <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader
         title={t.agenda.title}
         actions={
@@ -247,6 +254,13 @@ export default function AgendaScreen() {
           <InputField placeholder={t.agenda.installmentCount} keyboardType="number-pad" value={installmentCount} onChangeText={setInstallmentCount} />
           <PrimaryButton label={t.agenda.add} onPress={handleAddInstallment} />
         </Surface>
+      )}
+
+      {viewMode === "list" && displayItems.length === 0 && (
+        <EmptyState
+          message={listTab === "upcoming" ? t.agenda.emptyUpcoming : t.agenda.emptyHistory}
+          icon="📅"
+        />
       )}
 
       {viewMode === "list" && displayItems.map((item) => (

@@ -19,15 +19,20 @@ export function useOfflineSync() {
   }, []);
 
   const runSync = useCallback(async () => {
-    const result = await flushQueue(async (c) => {
-      setConflict(c);
-      return new Promise<"local" | "server" | "skip">((resolve) => {
-        resolverRef.current = resolve;
+    try {
+      const result = await flushQueue(async (c) => {
+        setConflict(c);
+        return new Promise<"local" | "server" | "skip">((resolve) => {
+          resolverRef.current = resolve;
+        });
       });
-    });
-    await pullAndCacheSnapshot();
-    await refreshCount();
-    return result;
+      await pullAndCacheSnapshot();
+      await refreshCount();
+      return result;
+    } catch {
+      await refreshCount();
+      return { applied: 0, conflicts: 0, failed: 0 };
+    }
   }, [refreshCount]);
 
   useEffect(() => {

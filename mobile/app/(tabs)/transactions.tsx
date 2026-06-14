@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert, Modal, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
@@ -6,6 +6,7 @@ import { AuthImage } from "@/components/AuthImage";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
+import { InsightChip } from "@/components/ui/InsightChip";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -13,6 +14,7 @@ import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
@@ -30,22 +32,27 @@ export default function TransactionsScreen() {
   const [editDescription, setEditDescription] = useState("");
   const [editAmount, setEditAmount] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setError("");
+    let cachedCount = 0;
     try {
       const snapshot = await getCachedSnapshot();
-      if (snapshot?.transactions?.length) setTransactions(snapshot.transactions);
+      if (snapshot?.transactions?.length) {
+        cachedCount = snapshot.transactions.length;
+        setTransactions(snapshot.transactions);
+      }
       setTransactions(await api.getTransactions());
     } catch (e: any) {
-      if (!transactions.length) setTransactions([]);
+      if (!cachedCount) setTransactions([]);
       setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [t.common.error]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
   useRefreshOnFocus(load);
+  const { refreshing, onRefresh } = usePullRefresh(load);
 
   const openEdit = (tx: any) => {
     if (tx.type === "transfer") return;
@@ -90,12 +97,15 @@ export default function TransactionsScreen() {
   };
 
   if (loading) return <LoadingScreen />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error && transactions.length === 0) {
+    return <ErrorState message={error} onRetry={load} />;
+  }
 
   return (
     <>
-      <ScreenShell ambient="subtle">
+      <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
         <ScreenHeader title={t.transactions.title} />
+        {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
         {transactions.map((tx) => (
           <TouchableOpacity
             key={tx.id}
@@ -110,7 +120,7 @@ export default function TransactionsScreen() {
                   {tx.type === "income" ? "+" : "-"}{formatMoney(tx.amount, locale)}
                 </Text>
               </View>
-              <Text style={styles.desc}>{tx.description || tx.place || "—"}</Text>
+              <Text style={styles.desc}>{tx.description || tx.place || t.common.noData}</Text>
               {tx.receipt_url ? (
                 <TouchableOpacity onPress={() => setPreviewUrl(tx.receipt_url)} style={styles.receiptRow}>
                   <AuthImage path={tx.receipt_url} style={styles.receiptThumb} />
@@ -137,9 +147,9 @@ export default function TransactionsScreen() {
         <View style={styles.modalOverlay}>
           <Surface variant="glass" style={styles.modalCard}>
             <Text style={styles.modalTitle}>{t.transactions.edit}</Text>
-            <InputField value={editCategory} onChangeText={setEditCategory} placeholder="Category" />
-            <InputField value={editDescription} onChangeText={setEditDescription} placeholder="Description" />
-            <InputField value={editAmount} onChangeText={setEditAmount} keyboardType="decimal-pad" placeholder="Amount" />
+            <InputField value={editCategory} onChangeText={setEditCategory} placeholder={t.transactions.category} />
+            <InputField value={editDescription} onChangeText={setEditDescription} placeholder={t.transactions.description} />
+            <InputField value={editAmount} onChangeText={setEditAmount} keyboardType="decimal-pad" placeholder={t.transactions.amount} />
             <View style={styles.modalActions}>
               <TextLink label={t.common.cancel} onPress={() => setEditTx(null)} />
               <TextLink label={t.common.save} onPress={saveEdit} />

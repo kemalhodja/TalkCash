@@ -10,6 +10,7 @@ import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletEditModal } from "@/components/WalletEditModal";
 import { WalletCard } from "@/components/WalletCard";
 import { AppBrandHeader } from "@/components/ui/AppBrandHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { HeroNetWorth } from "@/components/ui/HeroNetWorth";
 import { InputField } from "@/components/ui/InputField";
 import { InsightChip } from "@/components/ui/InsightChip";
@@ -135,6 +136,9 @@ export default function DashboardScreen() {
       />
 
       <SectionBlock title={t.home.wallets} bare>
+        {wallets.length === 0 ? (
+          <EmptyState message={t.home.createWallet} icon="💰" />
+        ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletScroll}>
           {wallets.map((w) => (
             <TouchableOpacity key={w.id} onLongPress={() => setWalletEdit(w)} activeOpacity={0.9}>
@@ -149,6 +153,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        )}
       </SectionBlock>
 
       {(forecast || alerts.length > 0) && (

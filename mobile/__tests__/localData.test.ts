@@ -11,6 +11,7 @@ describe("localData", () => {
     expect(AsyncStorage.multiRemove).toHaveBeenCalledWith([
       "talkcash_offline_queue",
       "talkcash_cloud_snapshot",
+      "talkcash_id_remap",
     ]);
   });
 });

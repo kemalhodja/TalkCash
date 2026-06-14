@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { getIdMap, registerRemapFromResult, remapPayload, remapQueue, remapSnapshotWithMap } from "./idRemap";
 import { applyOptimisticForQueuedOp } from "./syncCache";
 
 const QUEUE_KEY = "talkcash_offline_queue";
@@ -21,7 +22,10 @@ export type QueuedOperation = {
     | "agenda_add_bill"
     | "agenda_update"
     | "agenda_delete"
-    | "agenda_mark_paid";
+    | "agenda_mark_paid"
+    | "budget_create"
+    | "budget_update"
+    | "budget_delete";
   payload: Record<string, unknown>;
   clientTimestamp: string;
   resolveStrategy?: "local" | "server";
@@ -61,6 +65,10 @@ async function saveQueue(queue: QueuedOperation[]): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 }
 
+export async function replaceQueue(queue: QueuedOperation[]): Promise<void> {
+  await saveQueue(queue);
+}
+
 export async function getPendingCount(): Promise<number> {
   return (await getQueue()).length;
 }
@@ -91,7 +99,11 @@ export async function flushQueue(
 
   while ((await getQueue()).length > 0) {
     const queue = await getQueue();
-    const chunk = queue.slice(0, BATCH_SIZE);
+    const idMap = await getIdMap();
+    const chunk = queue.slice(0, BATCH_SIZE).map((op) => ({
+      ...op,
+      payload: remapPayload(op.type, op.payload, idMap),
+    }));
     const rest = queue.slice(BATCH_SIZE);
 
     const batch = chunk.map((op) => ({
@@ -102,10 +114,18 @@ export async function flushQueue(
       resolve_strategy: op.resolveStrategy ?? null,
     }));
 
-    const result = await api.syncPush(batch);
+    let result: Awaited<ReturnType<typeof api.syncPush>>;
+    try {
+      result = await api.syncPush(batch);
+    } catch {
+      failed += chunk.length;
+      break;
+    }
+
     const nextQueue: QueuedOperation[] = [...rest];
     let chunkApplied = 0;
     let chunkConflicts = 0;
+    let remapped = false;
 
     for (const op of chunk) {
       const ok = result.applied.find((a: any) => a.operation_id === op.id);
@@ -114,6 +134,9 @@ export async function flushQueue(
 
       if (ok) {
         chunkApplied += ok.status === "ok" ? 1 : 0;
+        if (ok.result && await registerRemapFromResult(op, ok.result as Record<string, unknown>)) {
+          remapped = true;
+        }
         continue;
       }
       if (fail) {
@@ -136,9 +159,18 @@ export async function flushQueue(
     }
 
     await saveQueue(nextQueue);
+    if (remapped) {
+      const updatedMap = await getIdMap();
+      await replaceQueue(remapQueue(await getQueue(), updatedMap));
+      await remapSnapshotWithMap(updatedMap);
+    }
     applied += chunkApplied;
     conflicts += chunkConflicts;
     failed += result.failed.length;
+
+    if (chunkConflicts > 0 && !onConflict) {
+      break;
+    }
 
     if (nextQueue.some((op) => op.resolveStrategy) && onConflict) {
       const retry = await flushQueue(onConflict);

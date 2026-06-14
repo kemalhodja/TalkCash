@@ -56,6 +56,109 @@ async def test_shared_wallet_ownership_transfer(client: AsyncClient, auth_header
 
 
 @pytest.mark.asyncio
+async def test_sync_shopping_add_and_complete_same_batch(client: AsyncClient, auth_headers):
+    client_item_id = str(uuid.uuid4())
+    add_op = str(uuid.uuid4())
+    complete_op = str(uuid.uuid4())
+    push = await client.post("/api/v1/sync/push", headers=auth_headers, json={
+        "operations": [
+            {
+                "id": add_op,
+                "type": "shopping_add",
+                "payload": {
+                    "items": ["Süt"],
+                    "client_item_ids": [client_item_id],
+                },
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+            {
+                "id": complete_op,
+                "type": "shopping_complete",
+                "payload": {"item_id": client_item_id},
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+        ],
+    })
+    assert push.status_code == 200, push.text
+    body = push.json()
+    assert len(body["applied"]) == 2
+    assert body["failed"] == []
+
+    pull = await client.get("/api/v1/sync/pull", headers=auth_headers)
+    assert pull.status_code == 200
+    shopping = pull.json()["shopping"]
+    assert not any(i["name"] == "Süt" for i in shopping)
+
+
+@pytest.mark.asyncio
+async def test_sync_wallet_create_and_income_same_batch(client: AsyncClient, auth_headers):
+    client_wallet_id = str(uuid.uuid4())
+    create_op = str(uuid.uuid4())
+    income_op = str(uuid.uuid4())
+    push = await client.post("/api/v1/sync/push", headers=auth_headers, json={
+        "operations": [
+            {
+                "id": create_op,
+                "type": "wallet_create",
+                "payload": {
+                    "name": "Offline Kasa",
+                    "wallet_type": "cash",
+                    "currency": "TRY",
+                    "client_wallet_id": client_wallet_id,
+                },
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+            {
+                "id": income_op,
+                "type": "wallet_income",
+                "payload": {
+                    "wallet_id": client_wallet_id,
+                    "amount": 250,
+                    "description": "Maaş",
+                },
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+        ],
+    })
+    assert push.status_code == 200, push.text
+    body = push.json()
+    assert len(body["applied"]) == 2
+    assert body["failed"] == []
+
+    pull = await client.get("/api/v1/sync/pull", headers=auth_headers)
+    assert pull.status_code == 200
+    wallets = pull.json()["wallets"]
+    created = next(w for w in wallets if w["name"] == "Offline Kasa")
+    assert float(created["balance"]) == 250.0
+
+
+@pytest.mark.asyncio
+async def test_sync_budget_crud(client: AsyncClient, auth_headers):
+    client_budget_id = str(uuid.uuid4())
+    create_op = str(uuid.uuid4())
+    push = await client.post("/api/v1/sync/push", headers=auth_headers, json={
+        "operations": [
+            {
+                "id": create_op,
+                "type": "budget_create",
+                "payload": {
+                    "category": "Market",
+                    "monthly_limit": 3000,
+                    "client_budget_id": client_budget_id,
+                },
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+        ],
+    })
+    assert push.status_code == 200, push.text
+    assert len(push.json()["applied"]) == 1
+
+    budgets = await client.get("/api/v1/budgets/", headers=auth_headers)
+    assert budgets.status_code == 200
+    assert any(b["category"] == "Market" for b in budgets.json())
+
+
+@pytest.mark.asyncio
 async def test_sync_wallet_create(client: AsyncClient, auth_headers):
     op_id = str(uuid.uuid4())
     due = (datetime.utcnow() + timedelta(days=7)).isoformat()
