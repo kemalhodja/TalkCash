@@ -80,7 +80,9 @@ if [ "$fail" -gt 0 ]; then
   exit 1
 fi
 echo "Ready for release pipeline:"
+echo "  GitHub: Actions → Validate Release Config"
 echo "  GitHub: Actions → Release Production (Full Pipeline) → confirm: release"
+echo "  Setup:  docs/SETUP_RELEASE.md"
 echo "  Local:  FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production --submit-play"
 echo "  Device: manual smoke (docs/SMOKE_TEST.md)"
 exit 0

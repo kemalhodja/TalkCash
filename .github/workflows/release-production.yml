@@ -16,8 +16,30 @@ on:
         default: false
 
 jobs:
+  config:
+    runs-on: ubuntu-latest
+    if: github.repository == 'kemalhodja/eduai-sale' && github.event.inputs.confirm == 'release'
+    steps:
+      - name: Require release secrets and variables
+        run: |
+          missing=0
+          check() {
+            if [ -z "$2" ]; then
+              echo "::error::Missing $1 — see docs/SETUP_RELEASE.md"
+              missing=1
+            else
+              echo "OK: $1"
+            fi
+          }
+          check "FLY_API_TOKEN" "${{ secrets.FLY_API_TOKEN }}"
+          check "EXPO_TOKEN" "${{ secrets.EXPO_TOKEN }}"
+          check "EXPO_PUBLIC_API_URL" "${{ vars.EXPO_PUBLIC_API_URL }}"
+          check "EAS_PROJECT_ID" "${{ vars.EAS_PROJECT_ID }}"
+          exit $missing
+
   verify:
     runs-on: ubuntu-latest
+    needs: config
     if: github.repository == 'kemalhodja/eduai-sale' && github.event.inputs.confirm == 'release'
     steps:
       - uses: actions/checkout@v4

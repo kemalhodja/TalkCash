@@ -61,22 +61,24 @@ CI: GitHub Actions `main` branch push'ta otomatik çalışır.
 
 ## Release
 
+**İlk kurulum (secret'lar eksikse):** [docs/SETUP_RELEASE.md](docs/SETUP_RELEASE.md)
+
 ```bash
-# Doğrulama (test + smoke)
-./scripts/release.sh
+./scripts/setup-github-release.sh      # Fly + GitHub komutları
+./scripts/validate-release-config.sh   # secret/variable kontrolü
+./scripts/release.sh --checklist
+```
 
-# Staging deploy
-./scripts/release.sh --staging
+GitHub → **Actions** → **Release Production (Full Pipeline)** → `confirm`: `release`
 
-# Production deploy (Fly secrets gerekli)
-./scripts/release.sh --production
-
-# Play Store submit (EAS + Google credentials gerekli)
-./scripts/release.sh --submit-play
+```bash
+# Yerel (token'lar export edilmişse)
+FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production --submit-play
 ```
 
 | Rehber | İçerik |
 |--------|--------|
+| [docs/SETUP_RELEASE.md](docs/SETUP_RELEASE.md) | **İlk release kurulumu** (Fly + GitHub secrets) |
 | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Fly setup, EAS production build |
 | [docs/PLAY_STORE_LISTING.md](docs/PLAY_STORE_LISTING.md) | Mağaza metinleri + checklist |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | Gizlilik politikası |
