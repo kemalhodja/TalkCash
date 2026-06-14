@@ -16,17 +16,17 @@ Son güncelleme: PR #21 — roadmap Phase 1–2 tamamlandı.
 | UX | Onboarding + bildirim deep link + güvenlik ayarları | **Tam** |
 | UX | Borç CRUD + borrowed/lent UI | **Tam** |
 | UX | Offline kuyruk genişletme | **Kısmi** — wallet/agenda CRUD + transaction ops |
-| UX | Shared wallet admin | **Tam** — rename, invite, delete |
+| UX | Shared wallet admin | **Tam** — rename, invite, delete, remove member |
 | UX | LLM chat mentor | **Tam** — `POST /ai/chat`, mobil mentor sekmesi |
 
 ---
 
 ## Kalan iyileştirmeler
 
-- Tam offline-first: optimistic snapshot, tüm ekranlar
+- Tam offline-first: optimistic snapshot (shopping add), tüm ekranlar
 - Play Store release (EAS submit + listing)
 - Production Fly app kurulumu (`./scripts/setup-fly-prod.sh`)
-- Shared wallet: üye çıkarma UI, ownership transfer
+- Shared wallet: ownership transfer
 
 ---
 

@@ -308,6 +308,8 @@ export default {
     deleteWallet: "Kasayı sil",
     adminTitle: "Kasa yönetimi",
     inviteEmail: "E-posta",
+    removeMember: "Üyeyi çıkar",
+    removeMemberConfirm: "{name} ortak kasadan çıkarılsın mı?",
   },
   mentor: {
     title: "AI Finans Mentoru",

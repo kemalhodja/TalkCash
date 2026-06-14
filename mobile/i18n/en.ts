@@ -308,6 +308,8 @@ export default {
     deleteWallet: "Delete wallet",
     adminTitle: "Wallet admin",
     inviteEmail: "Email",
+    removeMember: "Remove member",
+    removeMemberConfirm: "Remove {name} from this shared wallet?",
   },
   mentor: {
     title: "AI Finance Mentor",

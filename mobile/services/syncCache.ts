@@ -54,3 +54,18 @@ export async function patchCachedSnapshot(partial: Partial<CloudSnapshot>): Prom
     cached_at: new Date().toISOString(),
   }));
 }
+
+/** Optimistically append shopping items when an offline queue entry is created. */
+export async function optimisticAddShopping(names: string[]): Promise<void> {
+  const snapshot = (await getCachedSnapshot()) || {};
+  const shopping = [...(snapshot.shopping || [])];
+  const stamp = Date.now();
+  for (let i = 0; i < names.length; i++) {
+    shopping.push({
+      id: `local-${stamp}-${i}`,
+      name: names[i],
+      category: "OTHER",
+    });
+  }
+  await patchCachedSnapshot({ shopping });
+}

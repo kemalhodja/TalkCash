@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Colors, Spacing } from "@/constants/theme";
+import { Alert, StyleSheet, View } from "react-native";
+import { BottomSheetModal } from "@/components/ui/BottomSheetModal";
+import { ChipPicker } from "@/components/ui/ChipPicker";
+import { InputField } from "@/components/ui/InputField";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
@@ -50,63 +54,29 @@ export function TransferModal({ visible, onClose, onSuccess }: Props) {
     }
   };
 
-  const renderWalletPicker = (label: string, selected: string | null, onSelect: (id: string) => void) => (
-    <View style={styles.section}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.chips}>
-        {wallets.map((w) => (
-          <TouchableOpacity key={w.id}
-            style={[styles.chip, selected === w.id && styles.chipActive]}
-            onPress={() => onSelect(w.id)}>
-            <Text style={styles.chipText}>{w.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+  const walletOptions = wallets.map((w) => ({ id: w.id, label: w.name }));
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>{t.transfer.title}</Text>
-          {renderWalletPicker(t.transfer.from, fromId, setFromId)}
-          {renderWalletPicker(t.transfer.to, toId, setToId)}
-          <TextInput style={styles.input} placeholder={t.transfer.amount} placeholderTextColor={Colors.textMuted}
-            keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-          <TextInput style={styles.input} placeholder={t.transfer.description} placeholderTextColor={Colors.textMuted}
-            value={description} onChangeText={setDescription} />
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelText}>{t.common.cancel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.submitBtn} onPress={handleTransfer} disabled={loading}>
-              <Text style={styles.submitText}>{loading ? "..." : t.transfer.submit}</Text>
-            </TouchableOpacity>
-          </View>
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t.transfer.title}
+      footer={
+        <View style={styles.actions}>
+          <PrimaryButton label={t.common.cancel} onPress={onClose} variant="ghost" style={styles.btn} />
+          <PrimaryButton label={t.transfer.submit} onPress={handleTransfer} loading={loading} disabled={loading} style={styles.btn} />
         </View>
-      </View>
-    </Modal>
+      }
+    >
+      <ChipPicker label={t.transfer.from} options={walletOptions} value={fromId} onChange={setFromId} />
+      <ChipPicker label={t.transfer.to} options={walletOptions} value={toId} onChange={setToId} />
+      <InputField placeholder={t.transfer.amount} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+      <InputField placeholder={t.transfer.description} value={description} onChangeText={setDescription} />
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  card: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: Spacing.lg },
-  title: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },
-  section: { marginBottom: Spacing.md },
-  label: { color: Colors.textSecondary, marginBottom: Spacing.sm },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
-  chipActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
-  chipText: { color: Colors.textSecondary, fontSize: 13 },
-  input: {
-    backgroundColor: Colors.bg, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
-  },
-  actions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
-  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  cancelText: { color: Colors.textSecondary },
-  submitBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, backgroundColor: Colors.accent, alignItems: "center" },
-  submitText: { color: Colors.bg, fontWeight: "700" },
+  actions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md },
+  btn: { flex: 1 },
 });

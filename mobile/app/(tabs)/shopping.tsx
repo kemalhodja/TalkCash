@@ -12,7 +12,7 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
-import { getCachedSnapshot, groupShoppingFromSnapshot } from "@/services/syncCache";
+import { getCachedSnapshot, groupShoppingFromSnapshot, optimisticAddShopping } from "@/services/syncCache";
 
 export default function ShoppingScreen() {
   const { t } = useI18n();
@@ -44,6 +44,8 @@ export default function ShoppingScreen() {
     if (!newItem.trim()) return;
     const res: any = await api.addShoppingItems([newItem.trim()]);
     if (res?.status === "queued") {
+      await optimisticAddShopping([newItem.trim()]);
+      setGrouped(groupShoppingFromSnapshot((await getCachedSnapshot())?.shopping));
       Alert.alert(t.common.confirm, t.common.offlineQueued);
     }
     setNewItem("");

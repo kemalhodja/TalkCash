@@ -191,9 +191,24 @@ export default function SocialScreen() {
               setExpandedWallet(w.id);
             }} />
             {expandedWallet === w.id && memberSummaries[w.id]?.members?.map((m: any) => (
-              <Text key={m.user_id} style={styles.memberRow}>
-                {m.name}: {t.social.memberSpent} {formatMoney(m.spent, locale)} · {t.social.memberContributed} {formatMoney(m.contributed, locale)} · {t.social.memberNet} {formatMoney(m.net, locale)}
-              </Text>
+              <View key={m.user_id} style={styles.memberRow}>
+                <Text style={styles.memberText}>
+                  {m.name}: {t.social.memberSpent} {formatMoney(m.spent, locale)} · {t.social.memberContributed} {formatMoney(m.contributed, locale)} · {t.social.memberNet} {formatMoney(m.net, locale)}
+                </Text>
+                {w.is_owner && m.user_id !== w.owner_id && adminWalletId === w.id && (
+                  <TextLink label={t.social.removeMember} danger onPress={() => {
+                    Alert.alert(t.social.removeMember, t.social.removeMemberConfirm.replace("{name}", m.name), [
+                      { text: t.common.cancel, style: "cancel" },
+                      { text: t.social.removeMember, style: "destructive", onPress: async () => {
+                        await api.removeSharedWalletMember(w.id, m.user_id);
+                        const summary = await api.getSharedWalletMembers(w.id);
+                        setMemberSummaries((prev) => ({ ...prev, [w.id]: summary }));
+                        load();
+                      }},
+                    ]);
+                  }} />
+                )}
+              </View>
             ))}
             <TextLink label={t.social.contribute} onPress={() => setContributionWalletId(contributionWalletId === w.id ? null : w.id)} />
             {contributionWalletId === w.id && (
@@ -271,5 +286,6 @@ const styles = StyleSheet.create({
   walletName: { color: Colors.text, fontWeight: "600" },
   walletBalance: { color: Colors.accent, fontWeight: "700" },
   expenseForm: { marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border },
-  memberRow: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
+  memberRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginTop: 4, gap: Spacing.sm },
+  memberText: { color: Colors.textMuted, fontSize: 12, flex: 1 },
 });
