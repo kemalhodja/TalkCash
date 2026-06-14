@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Surface } from "@/components/ui/Surface";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { checkApiHealth, getApiBaseUrl, getHealthUrl, isMobileDevice, usesLocalhostApi } from "@/services/config";
@@ -37,7 +39,10 @@ export function ApiConnectionCard({ compact }: Props) {
   }
 
   return (
-    <View style={[styles.card, localhostWarning && styles.cardWarn, result && !result.ok && styles.cardWarn]}>
+    <Surface
+      variant={localhostWarning || (result && !result.ok) ? "accent" : "elevated"}
+      style={styles.card}
+    >
       <Text style={styles.title}>{t.settings.serverConnection}</Text>
       <Text style={styles.url} numberOfLines={2}>{apiUrl}</Text>
       {localhostWarning ? (
@@ -68,25 +73,22 @@ export function ApiConnectionCard({ compact }: Props) {
           <Text style={styles.actionText}>{t.settings.openHealth}</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.btn} onPress={runTest} disabled={testing}>
-        {testing ? <ActivityIndicator color={Colors.accent} /> : <Text style={styles.btnText}>{t.settings.testConnection}</Text>}
-      </TouchableOpacity>
-    </View>
+      <PrimaryButton
+        label={testing ? "" : t.settings.testConnection}
+        onPress={runTest}
+        variant="secondary"
+        disabled={testing}
+        loading={testing}
+        compact
+      />
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: 10,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cardWarn: { borderColor: Colors.warning },
+  card: { padding: Spacing.md, marginBottom: Spacing.md },
   title: { color: Colors.text, fontWeight: "600", marginBottom: Spacing.sm },
-  url: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.sm },
+  url: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.sm, fontFamily: "monospace" },
   warn: { color: Colors.warning, fontSize: 13, marginBottom: Spacing.sm },
   status: { fontSize: 13, marginBottom: Spacing.sm },
   ok: { color: Colors.accent },
@@ -96,12 +98,11 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     paddingVertical: Spacing.sm,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: "center",
+    backgroundColor: Colors.card,
   },
   actionText: { color: Colors.accent, fontSize: 12, fontWeight: "600" },
-  btn: { alignItems: "center", paddingVertical: Spacing.sm },
-  btnText: { color: Colors.accent, fontWeight: "600" },
 });

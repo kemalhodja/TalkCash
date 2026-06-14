@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text } from "react-native";
 import { AuthImage } from "@/components/AuthImage";
 import { Stack } from "expo-router";
-import { Colors, Spacing } from "@/constants/theme";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { ScreenShell } from "@/components/ui/ScreenShell";
+import { Surface } from "@/components/ui/Surface";
+import { TextLink } from "@/components/ui/TextLink";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useRequireUnlock } from "@/hooks/useRequireUnlock";
@@ -28,15 +33,13 @@ export default function ReceiptsScreen() {
   useEffect(() => { load(); }, []);
   useRefreshOnFocus(load);
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Stack.Screen options={{ title: t.receipts.title }} />
+    <ScreenShell bottomInset={false}>
+      <Stack.Screen options={{ title: t.receipts.title, headerStyle: { backgroundColor: Colors.bg }, headerTintColor: Colors.text }} />
       {receipts.map((r) => (
-        <View key={r.id} style={styles.card}>
+        <Surface key={r.id} variant="elevated" style={styles.card}>
           {r.image_url ? (
             <AuthImage path={r.image_url} style={styles.image} />
           ) : null}
@@ -48,38 +51,28 @@ export default function ReceiptsScreen() {
             {r.date ? formatDate(r.date, locale) : "—"} ·{" "}
             {r.verified ? t.receipts.verified : t.receipts.unverified}
           </Text>
-          <TouchableOpacity style={styles.importBtn} onPress={async () => {
+          <TextLink label={t.scanner.addToList} onPress={async () => {
             try {
               const res: any = await api.importReceiptToShopping(r.id);
               Alert.alert(t.common.confirm, t.scanner.itemsImported.replace("{count}", String(res.added)));
             } catch (e: any) {
               Alert.alert(t.common.error, e.message);
             }
-          }}>
-            <Text style={styles.importText}>{t.scanner.addToList}</Text>
-          </TouchableOpacity>
-        </View>
+          }} style={styles.importLink} />
+        </Surface>
       ))}
       {receipts.length === 0 && (
-        <Text style={styles.empty}>{t.receipts.empty}</Text>
+        <EmptyState message={t.receipts.empty} icon="🧾" />
       )}
-    </ScrollView>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.md },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  card: {
-    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
-  },
-  image: { width: "100%", height: 160, borderRadius: 8, marginBottom: Spacing.sm },
+  card: { padding: Spacing.md, marginBottom: Spacing.sm, overflow: "hidden" },
+  image: { width: "100%", height: 160, borderRadius: Radius.sm, marginBottom: Spacing.sm },
   merchant: { color: Colors.text, fontWeight: "600", fontSize: 16 },
   amount: { color: Colors.accent, fontSize: 18, fontWeight: "700", marginTop: 4 },
   meta: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
-  importBtn: { marginTop: Spacing.sm, paddingVertical: Spacing.sm },
-  importText: { color: Colors.accent, fontWeight: "600" },
-  empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
+  importLink: { marginTop: Spacing.sm },
 });

@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { Colors, Spacing } from "@/constants/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Surface } from "@/components/ui/Surface";
+import { TextLink } from "@/components/ui/TextLink";
+import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { registerForPushNotifications } from "@/services/notifications";
 
@@ -18,6 +22,7 @@ export async function markOnboardingComplete(): Promise<void> {
 
 export default function OnboardingScreen() {
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -50,36 +55,51 @@ export default function OnboardingScreen() {
   const current = steps[step];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>💬 TalkCash</Text>
-      <Text style={styles.title}>{current.title}</Text>
-      <Text style={styles.body}>{current.body}</Text>
-      <View style={styles.dots}>
-        {steps.map((_, i) => (
-          <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
-        ))}
+    <View style={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.lg }]}>
+      <View style={styles.glowOrb} />
+      <View style={styles.brandRow}>
+        <View style={styles.logoDot} />
+        <Text style={styles.brand}>TalkCash</Text>
       </View>
-      <TouchableOpacity style={styles.btn} onPress={next}>
-        <Text style={styles.btnText}>{step >= 2 ? t.onboarding.start : t.onboarding.next}</Text>
-      </TouchableOpacity>
-      {step < 2 && (
-        <TouchableOpacity onPress={finish}>
-          <Text style={styles.skip}>{t.onboarding.skip}</Text>
-        </TouchableOpacity>
-      )}
+
+      <Surface variant="glass" glow style={styles.card}>
+        <Text style={styles.title}>{current.title}</Text>
+        <Text style={styles.body}>{current.body}</Text>
+        <View style={styles.dots}>
+          {steps.map((_, i) => (
+            <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+          ))}
+        </View>
+        <PrimaryButton label={step >= 2 ? t.onboarding.start : t.onboarding.next} onPress={next} />
+        {step < 2 && (
+          <TextLink label={t.onboarding.skip} onPress={finish} style={styles.skip} />
+        )}
+      </Surface>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg, justifyContent: "center", padding: Spacing.lg },
-  logo: { color: Colors.text, fontSize: 28, fontWeight: "700", textAlign: "center", marginBottom: Spacing.xl },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700", marginBottom: Spacing.md },
+  glowOrb: {
+    position: "absolute",
+    top: "15%",
+    left: "50%",
+    marginLeft: -120,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: Colors.accentGlow,
+    opacity: 0.2,
+  },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: Spacing.xl },
+  logoDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent },
+  brand: { color: Colors.textMuted, ...Typography.label },
+  card: { padding: Spacing.xl },
+  title: { color: Colors.text, ...Typography.title, marginBottom: Spacing.md },
   body: { color: Colors.textSecondary, fontSize: 16, lineHeight: 24, marginBottom: Spacing.xl },
   dots: { flexDirection: "row", gap: 8, marginBottom: Spacing.lg },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.border },
-  dotActive: { backgroundColor: Colors.accent, width: 20 },
-  btn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
-  btnText: { color: Colors.bg, fontWeight: "700", fontSize: 16 },
-  skip: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.lg },
+  dotActive: { backgroundColor: Colors.accent, width: 24, borderRadius: Radius.pill },
+  skip: { textAlign: "center", marginTop: Spacing.lg },
 });
