@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Colors, Spacing } from "@/constants/theme";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { formatMoney, getDateLocale } from "@/utils/format";
 
@@ -112,12 +112,16 @@ const styles = StyleSheet.create({
   weekday: { flex: 1, textAlign: "center", color: Colors.textMuted, fontSize: 12 },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   cell: { width: "14.28%", aspectRatio: 1, alignItems: "center", justifyContent: "center" },
-  cellSelected: { backgroundColor: "rgba(0,212,170,0.2)", borderRadius: 8 },
-  cellToday: { borderWidth: 1, borderColor: Colors.accent, borderRadius: 8 },
+  cellSelected: { backgroundColor: Colors.accentSoft, borderRadius: Radius.sm },
+  cellToday: { borderWidth: 1, borderColor: Colors.borderStrong, borderRadius: Radius.sm },
   dayNum: { color: Colors.text, fontSize: 14 },
   dayNumSelected: { fontWeight: "700", color: Colors.accent },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: Colors.accent, marginTop: 2 },
-  dayList: { marginTop: Spacing.md, padding: Spacing.md, backgroundColor: Colors.card, borderRadius: 10 },
+  dayList: {
+    marginTop: Spacing.md, padding: Spacing.md,
+    backgroundColor: Colors.cardElevated, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+  },
   dayListTitle: { color: Colors.textSecondary, marginBottom: Spacing.sm },
   dayItem: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
   dayItemTitle: { color: Colors.text },

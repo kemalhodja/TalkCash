@@ -122,6 +122,9 @@ export default {
     passwordChanged: "Password updated",
     accountDeleted: "Account deleted",
     appEnv: "Environment",
+    about: "About",
+    version: "Version",
+    privacyPolicy: "Privacy Policy",
   },
   onboarding: {
     welcomeTitle: "Welcome to TalkCash",

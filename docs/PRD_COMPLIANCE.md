@@ -29,9 +29,9 @@ Son güncelleme: PR #22 + remaining PRD — tüm roadmap maddeleri tamamlandı.
 Bu adımlar kod dışında bir kez yapılır:
 
 1. `./scripts/setup-fly-prod.sh` + Fly secrets (REDIS, OpenAI, S3, ALLOWED_ORIGINS)
-2. `./scripts/deploy-production.sh`
+2. `./scripts/release.sh --production`
 3. Expo `eas credentials` → Google Play service account
-4. `./scripts/submit-play-store.sh` veya GitHub **EAS Submit**
+4. `./scripts/release.sh --submit-play` veya GitHub **EAS Submit**
 5. Play Console: content rating, data safety, internal → production
 
 ---

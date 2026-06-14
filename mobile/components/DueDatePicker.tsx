@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
-import { Colors, Spacing } from "@/constants/theme";
+import { Surface } from "@/components/ui/Surface";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { getDateLocale } from "@/utils/format";
 
@@ -26,23 +27,27 @@ export function DueDatePicker({ value, onChange, minimumDate }: Props) {
     <View style={styles.container}>
       <Text style={styles.label}>{t.agenda.selectDueDate}</Text>
       {Platform.OS === "android" && (
-        <TouchableOpacity style={styles.dateBtn} onPress={() => setShow(true)}>
-          <Text style={styles.dateText}>{value.toLocaleDateString(dateLocale, {
-            weekday: "short", year: "numeric", month: "long", day: "numeric",
-          })}</Text>
-          <Text style={styles.pickHint}>{t.agenda.pickDate}</Text>
+        <TouchableOpacity activeOpacity={0.85} onPress={() => setShow(true)}>
+          <Surface variant="elevated" style={styles.dateBtn}>
+            <Text style={styles.dateText}>{value.toLocaleDateString(dateLocale, {
+              weekday: "short", year: "numeric", month: "long", day: "numeric",
+            })}</Text>
+            <Text style={styles.pickHint}>{t.agenda.pickDate}</Text>
+          </Surface>
         </TouchableOpacity>
       )}
       {(show || Platform.OS === "ios") && (
-        <DateTimePicker
-          value={value}
-          mode="date"
-          display={Platform.OS === "ios" ? "inline" : "default"}
-          minimumDate={min}
-          locale={dateLocale}
-          onChange={onPickerChange}
-          themeVariant="dark"
-        />
+        <Surface variant="glass" style={styles.pickerWrap}>
+          <DateTimePicker
+            value={value}
+            mode="date"
+            display={Platform.OS === "ios" ? "inline" : "default"}
+            minimumDate={min}
+            locale={dateLocale}
+            onChange={onPickerChange}
+            themeVariant="dark"
+          />
+        </Surface>
       )}
     </View>
   );
@@ -50,11 +55,9 @@ export function DueDatePicker({ value, onChange, minimumDate }: Props) {
 
 const styles = StyleSheet.create({
   container: { marginBottom: Spacing.sm },
-  label: { color: Colors.textSecondary, marginBottom: Spacing.sm },
-  dateBtn: {
-    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    borderWidth: 1, borderColor: Colors.border,
-  },
+  label: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", marginBottom: Spacing.sm, letterSpacing: 0.5 },
+  dateBtn: { padding: Spacing.md },
+  pickerWrap: { padding: Spacing.sm, marginTop: Spacing.xs },
   dateText: { color: Colors.text, fontSize: 16, fontWeight: "600" },
   pickHint: { color: Colors.accent, fontSize: 13, marginTop: 4 },
 });
