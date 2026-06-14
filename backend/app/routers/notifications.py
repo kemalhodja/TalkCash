@@ -1,5 +1,7 @@
 from uuid import UUID
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +28,7 @@ async def list_notifications(user: User = Depends(get_current_user), db: AsyncSe
             "id": str(n.id), "title": n.title, "body": n.body,
             "type": n.notification_type, "is_read": n.is_read,
             "created_at": n.created_at.isoformat() if n.created_at else None,
+            "metadata": json.loads(n.metadata_json) if n.metadata_json else {},
         }
         for n in items
     ]

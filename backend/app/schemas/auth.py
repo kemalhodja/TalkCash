@@ -35,6 +35,7 @@ class PinRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user_id: UUID
     full_name: str
@@ -42,6 +43,38 @@ class TokenResponse(BaseModel):
     has_pin: bool
     locale: str = "tr"
     timezone: str = "Europe/Istanbul"
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=10, max_length=512)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        if value.isdigit():
+            raise ValueError("auth.password_too_weak")
+        return value
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PinChangeRequest(BaseModel):
+    current_pin: str = Field(min_length=4, max_length=6)
+    new_pin: str = Field(min_length=4, max_length=6)
+
+    @field_validator("current_pin", "new_pin")
+    @classmethod
+    def pin_digits(cls, value: str) -> str:
+        if not re.fullmatch(r"\d{4,6}", value):
+            raise ValueError("auth.pin_invalid_format")
+        return value
 
 
 class UserProfile(BaseModel):

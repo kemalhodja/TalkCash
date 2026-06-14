@@ -3,12 +3,14 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { clearLocalUserData } from "./localData";
 
 const TOKEN_KEY = "talkcash_token";
+const REFRESH_KEY = "talkcash_refresh";
 const USER_KEY = "talkcash_user";
 
 export interface AuthUser {
   userId: string;
   fullName: string;
   token: string;
+  refreshToken?: string;
   biometricEnabled: boolean;
   hasPin: boolean;
 }
@@ -26,6 +28,9 @@ export const auth = {
 
   async save(user: AuthUser) {
     await SecureStore.setItemAsync(TOKEN_KEY, user.token);
+    if (user.refreshToken) {
+      await SecureStore.setItemAsync(REFRESH_KEY, user.refreshToken);
+    }
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
   },
 
@@ -33,15 +38,29 @@ export const auth = {
     return SecureStore.getItemAsync(TOKEN_KEY);
   },
 
+  async getRefreshToken(): Promise<string | null> {
+    return SecureStore.getItemAsync(REFRESH_KEY);
+  },
+
   async getUser(): Promise<AuthUser | null> {
     const raw = await SecureStore.getItemAsync(USER_KEY);
     return raw ? JSON.parse(raw) : null;
+  },
+
+  async updateTokens(token: string, refreshToken: string) {
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
+    const user = await this.getUser();
+    if (user) {
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify({ ...user, token, refreshToken }));
+    }
   },
 
   async clear() {
     sessionUnlocked = false;
     await clearLocalUserData();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
   },
 

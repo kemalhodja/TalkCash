@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.transaction import TransactionType
 from app.schemas.common import ORMBase
@@ -29,3 +29,10 @@ class TransactionResponse(ORMBase):
     place: str
     input_method: str
     created_at: datetime
+
+
+class TransactionUpdate(BaseModel):
+    amount: Decimal | None = Field(default=None, gt=0)
+    category: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=255)
+    place: str | None = Field(default=None, max_length=255)

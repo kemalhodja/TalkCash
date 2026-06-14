@@ -70,3 +70,27 @@ class SocialService:
 
         await db.commit()
         return record
+
+    async def update_debt(
+        self, db: AsyncSession, user_id: UUID, debt_id: UUID,
+        person_name: str | None = None, amount: Decimal | None = None, is_lent: bool | None = None,
+    ) -> DebtRecord:
+        record = await db.get(DebtRecord, debt_id)
+        if not record or record.user_id != user_id or record.is_settled:
+            raise I18nError("debt.not_found")
+        if person_name is not None:
+            record.person_name = person_name
+        if amount is not None:
+            record.amount = amount
+        if is_lent is not None:
+            record.is_lent = is_lent
+        await db.commit()
+        await db.refresh(record)
+        return record
+
+    async def delete_debt(self, db: AsyncSession, user_id: UUID, debt_id: UUID) -> None:
+        record = await db.get(DebtRecord, debt_id)
+        if not record or record.user_id != user_id:
+            raise I18nError("debt.not_found")
+        await db.delete(record)
+        await db.commit()

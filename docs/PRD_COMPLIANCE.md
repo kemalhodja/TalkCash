@@ -2,48 +2,48 @@
 
 Durum: **Tam** · **Kısmi** · **Eksik**
 
-Son güncelleme: PR #19 — kalan PRD maddeleri kapatıldı.
+Son güncelleme: PR #21 — plan eksikleri (ship readiness + UX).
 
 ---
 
-## Kapatılan maddeler (PR #19)
+## Kapatılan maddeler (PR #21)
 
-| PRD | Özellik | Durum |
-|-----|---------|--------|
-| 1.3 | OCR satır → alışveriş listesi | **Tam** — `POST /shopping/import-receipt` |
-| 2.1 | Kasa düzenle/sil | **Tam** — `PATCH/DELETE /wallets/{id}` |
-| 3.1 | Ajanda düzenle/sil + ödenen geçmiş | **Tam** — `PATCH/DELETE /agenda/{id}`, `GET /agenda/history` |
-| 4.1 | Alışveriş madde silme | **Tam** — `DELETE /shopping/{id}` |
-| 5.2 | Fiyat watchlist + push | **Tam** — `GET/POST/DELETE /ai/watchlist`, scheduler 10:00 |
-| 6.1 | Ortak kasa üye muhasebesi | **Tam** — ledger + `GET .../members` |
-| 6.2 | Offline-first okuma | **Kısmi** — sync snapshot + transfer/gelir kuyruğu (PR #20) |
+| Alan | Özellik | Durum |
+|------|---------|--------|
+| Ship | JWT refresh token + rotation | **Tam** — `POST /auth/refresh`, 60dk access / 30g refresh |
+| Ship | Hesap silme (GDPR) | **Tam** — `DELETE /auth/me` + Ayarlar UI |
+| Ship | İşlem düzenle/sil | **Tam** — `PATCH/DELETE /transactions/{id}` |
+| Ship | WS auth (query token kaldırıldı) | **Tam** — ilk mesaj `{ action: "auth", token }` |
+| Ship | Prod/staging API ayrımı | **Tam** — `EXPO_PUBLIC_APP_ENV`, EAS production URL |
+| UX | Bildirim deep link | **Tam** — metadata + push `data.url` + tap navigation |
+| UX | Onboarding wizard | **Tam** — hoş geldin + push + PIN yönlendirme |
+| UX | Ayarlarda PIN/şifre değiştir | **Tam** — `PUT /auth/pin`, `PUT /auth/password` |
+| UX | Borç CRUD | **Kısmi** — düzenle/sil + borrowed UI; settle mevcut |
+| UX | Offline kuyruk genişletme | **Kısmi** — transaction update/delete kuyruğu |
 
 ---
 
-## Kalan iyileştirmeler (düşük öncelik)
+## Kalan iyileştirmeler
 
-- Tam offline-first: tüm ekranlar + wallet push kuyruğu
+- Tam offline-first: wallet/agenda CRUD kuyruğu, tüm ekranlar
 - LLM sohbet mentoru
-- Fiyat watchlist UI ayrı ekran (dashboard’da mevcut)
-- Play Store / production release
+- Play Store production deploy (`talkcash-api-prod.fly.dev` kurulumu)
+- Shared wallet admin CRUD (üye ekle/çıkar, rename)
 
 ---
 
-## API özeti
+## Yeni API özeti
 
 ```
-PATCH  /wallets/{id}          Kasa güncelle
-DELETE /wallets/{id}          Kasa deaktive et
-PATCH  /agenda/{id}           Fatura düzenle
-DELETE /agenda/{id}           Fatura sil
-GET    /agenda/history        Ödenen geçmiş
-POST   /shopping/import-receipt  Fiş → liste
-DELETE /shopping/{id}         Liste maddesi sil
-GET    /ai/watchlist          Fiyat izleme listesi
-POST   /ai/watchlist          Ürün ekle
-DELETE /ai/watchlist/{id}     Ürün kaldır
-GET    /social/shared-wallet/{id}/members  Üye özeti
-POST   /social/shared-wallet/{id}/contribution  Katkı
+POST   /auth/refresh           Token yenile
+POST   /auth/logout            Refresh token iptal
+PUT    /auth/password          Şifre değiştir
+PUT    /auth/pin               PIN değiştir (mevcut PIN gerekli)
+DELETE /auth/me                Hesap sil (şifre gerekli)
+PATCH  /transactions/{id}      İşlem düzenle
+DELETE /transactions/{id}      İşlem sil
+PATCH  /social/debts/{id}      Borç düzenle
+DELETE /social/debts/{id}      Borç sil
 ```
 
-Migration: `004_prd_gaps.py` (paid_at, price_watch_items, shared_wallet_entries)
+Migration: `005_plan_gaps.py` (refresh_tokens, notifications.metadata_json)

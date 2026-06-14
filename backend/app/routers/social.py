@@ -40,6 +40,38 @@ async def settle_debt(debt_id: UUID, user: User = Depends(get_current_user), db:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
 
 
+@router.patch("/debts/{debt_id}")
+async def update_debt(
+    debt_id: UUID,
+    person_name: str | None = None,
+    amount: float | None = None,
+    is_lent: bool | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        record = await social_service.update_debt(
+            db, user.id, debt_id, person_name,
+            Decimal(str(amount)) if amount is not None else None,
+            is_lent,
+        )
+        return {
+            "id": str(record.id), "person": record.person_name, "amount": float(record.amount),
+            "is_lent": record.is_lent,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
+@router.delete("/debts/{debt_id}")
+async def delete_debt(debt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        await social_service.delete_debt(db, user.id, debt_id)
+        return {"deleted": True}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
 @router.post("/debt")
 async def add_debt(
     person_name: str, amount: float, is_lent: bool = True,

@@ -19,11 +19,14 @@ from app.services.agenda.service import AgendaService
 from app.services.shopping.service import ShoppingService
 from app.services.storage.service import StorageService
 from app.services.wallet.service import WalletService
+from app.schemas.transaction import TransactionUpdate
+from app.services.transaction.service import TransactionService
 from app.utils.redis_client import get_redis
 
 shopping_service = ShoppingService()
 agenda_service = AgendaService()
 wallet_service = WalletService()
+transaction_service = TransactionService()
 storage_service = StorageService()
 
 
@@ -201,6 +204,22 @@ class SyncService:
             wallet_id = UUID(op.payload["wallet_id"]) if op.payload.get("wallet_id") else None
             completed = await shopping_service.complete_item(db, user_id, item_id, price, wallet_id)
             return {"id": str(completed.id), "name": completed.name}, None
+
+        if op.type == "transaction_update":
+            tx_id = UUID(op.payload["transaction_id"])
+            data = TransactionUpdate(
+                amount=Decimal(str(op.payload["amount"])) if op.payload.get("amount") is not None else None,
+                category=op.payload.get("category"),
+                description=op.payload.get("description"),
+                place=op.payload.get("place"),
+            )
+            tx = await transaction_service.update(db, user_id, tx_id, data)
+            return {"transaction_id": str(tx.id)}, None
+
+        if op.type == "transaction_delete":
+            tx_id = UUID(op.payload["transaction_id"])
+            await transaction_service.delete(db, user_id, tx_id)
+            return {"deleted": True}, None
 
         raise ValueError(t("sync.unsupported_type", locale, type=op.type))
 

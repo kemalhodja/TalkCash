@@ -10,6 +10,7 @@ class SyncOperation(BaseModel):
     type: Literal[
         "execute", "shopping_add", "shopping_complete",
         "wallet_income", "wallet_transfer", "wallet_expense",
+        "transaction_update", "transaction_delete",
     ]
     payload: dict[str, Any]
     client_timestamp: datetime

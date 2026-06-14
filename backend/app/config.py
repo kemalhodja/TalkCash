@@ -12,7 +12,8 @@ class Settings(BaseSettings):
 
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60 * 24 * 7
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_days: int = 30
 
     allowed_origins: str = "*"
     rate_limit_enabled: bool = True

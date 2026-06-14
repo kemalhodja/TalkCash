@@ -28,6 +28,7 @@ export default function LoginScreen() {
         userId: result.user_id,
         fullName: result.full_name,
         token: result.access_token,
+        refreshToken: result.refresh_token,
         biometricEnabled: result.biometric_enabled,
         hasPin: result.has_pin,
       };
@@ -36,7 +37,7 @@ export default function LoginScreen() {
         await setLocale(result.locale);
       }
       auth.setUnlocked(false);
-      router.replace("/lock");
+      router.replace("/onboarding");
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 0) {
         setError(t.errors.network);

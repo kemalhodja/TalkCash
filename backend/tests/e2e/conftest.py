@@ -21,18 +21,14 @@ TEST_DB = os.environ.get(
 
 test_engine = create_async_engine(TEST_DB, echo=False, poolclass=NullPool)
 TestSession = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-_db_initialized = False
 
 
 @pytest_asyncio.fixture
 async def setup_database():
-    global _db_initialized
     try:
-        if not _db_initialized:
-            async with test_engine.begin() as conn:
-                await conn.run_sync(Base.metadata.drop_all)
-                await conn.run_sync(Base.metadata.create_all)
-            _db_initialized = True
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
         yield
     except Exception as e:
         pytest.skip(f"PostgreSQL not available for E2E: {e}")

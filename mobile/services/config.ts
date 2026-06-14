@@ -28,6 +28,15 @@ export function usesLocalhostApi(): boolean {
   return url.includes("localhost") || url.includes("127.0.0.1");
 }
 
+export function getAppEnv(): "development" | "staging" | "production" {
+  const env = process.env.EXPO_PUBLIC_APP_ENV || Constants.expoConfig?.extra?.appEnv;
+  if (env === "production" || env === "staging" || env === "development") return env;
+  const url = getApiBaseUrl().toLowerCase();
+  if (url.includes("localhost") || url.includes("127.0.0.1")) return "development";
+  if (url.includes("talkcash-api-prod") || url.includes("api.talkcash")) return "production";
+  return "staging";
+}
+
 export type ApiHealthResult = { ok: true; status: string } | { ok: false; error: string };
 
 export async function checkApiHealth(timeoutMs = 8000): Promise<ApiHealthResult> {

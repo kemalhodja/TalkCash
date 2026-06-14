@@ -7,6 +7,7 @@ import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { api } from "@/services/api";
 import { formatDate } from "@/utils/format";
+import { navigateFromMetadata } from "@/hooks/useNotificationLinking";
 
 export default function NotificationsScreen() {
   const { t, locale } = useI18n();
@@ -50,6 +51,7 @@ export default function NotificationsScreen() {
               await api.markNotificationRead(n.id);
               load();
             }
+            navigateFromMetadata(n.metadata);
           }}
         >
           <Text style={styles.title}>{n.title}</Text>

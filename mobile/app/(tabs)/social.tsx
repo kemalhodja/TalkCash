@@ -17,6 +17,7 @@ export default function SocialScreen() {
   const [debts, setDebts] = useState<any[]>([]);
   const [debtPerson, setDebtPerson] = useState("");
   const [debtAmount, setDebtAmount] = useState("");
+  const [debtIsLent, setDebtIsLent] = useState(true);
   const [walletName, setWalletName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [expenseWalletId, setExpenseWalletId] = useState<string | null>(null);
@@ -124,14 +125,30 @@ export default function SocialScreen() {
             <TouchableOpacity onPress={async () => { await api.settleDebt(d.id); load(); }}>
               <Text style={styles.settle}>{t.social.settle}</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              Alert.alert(t.common.delete, t.transactions.deleteConfirm, [
+                { text: t.common.cancel, style: "cancel" },
+                { text: t.common.delete, style: "destructive", onPress: async () => { await api.deleteDebt(d.id); load(); } },
+              ]);
+            }}>
+              <Text style={styles.deleteDebt}>{t.social.deleteDebt}</Text>
+            </TouchableOpacity>
           </View>
         ))}
         <TextInput style={styles.input} placeholder={t.social.personName} placeholderTextColor={Colors.textMuted}
           value={debtPerson} onChangeText={setDebtPerson} />
         <TextInput style={styles.input} placeholder={t.social.amount} placeholderTextColor={Colors.textMuted}
           keyboardType="decimal-pad" value={debtAmount} onChangeText={setDebtAmount} />
+        <View style={styles.debtTypeRow}>
+          <TouchableOpacity style={[styles.typeBtn, debtIsLent && styles.typeActive]} onPress={() => setDebtIsLent(true)}>
+            <Text style={[styles.typeText, debtIsLent && styles.typeTextActive]}>{t.social.lent}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.typeBtn, !debtIsLent && styles.typeActive]} onPress={() => setDebtIsLent(false)}>
+            <Text style={[styles.typeText, !debtIsLent && styles.typeTextActive]}>{t.social.borrowed}</Text>
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity style={styles.btn} onPress={async () => {
-          await api.addDebt(debtPerson, parseFloat(debtAmount));
+          await api.addDebt(debtPerson, parseFloat(debtAmount), debtIsLent);
           setDebtPerson(""); setDebtAmount(""); load();
         }}><Text style={styles.btnText}>{t.social.saveDebt}</Text></TouchableOpacity>
       </View>
@@ -225,6 +242,12 @@ const styles = StyleSheet.create({
   debtCard: { flexDirection: "row", justifyContent: "space-between", padding: Spacing.sm, marginBottom: 4 },
   debtText: { color: Colors.text },
   settle: { color: Colors.success },
+  deleteDebt: { color: Colors.danger, marginLeft: Spacing.sm },
+  debtTypeRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm },
+  typeBtn: { flex: 1, padding: Spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
+  typeActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
+  typeText: { color: Colors.textSecondary },
+  typeTextActive: { color: Colors.accent, fontWeight: "600" },
   walletCard: { backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
   walletRow: { flexDirection: "row", justifyContent: "space-between" },
   walletName: { color: Colors.text },
