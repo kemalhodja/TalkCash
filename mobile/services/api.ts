@@ -190,13 +190,15 @@ export const api = {
   getWallets: () => request<any[]>("/wallets/"),
   createWallet: async (name: string, walletType: string, currency = "TRY") => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
-    const payload = { name, wallet_type: walletType, currency };
+    const { newClientId } = await import("@/utils/clientId");
+    const client_wallet_id = newClientId();
+    const payload = { name, wallet_type: walletType, currency, client_wallet_id };
     try {
       return await request("/wallets/", { method: "POST", body: JSON.stringify(payload) });
     } catch (err) {
       if (shouldQueueError(err)) {
         const id = await enqueue({ type: "wallet_create", payload });
-        return { status: "queued", operation_id: id };
+        return { status: "queued", operation_id: id, client_wallet_id };
       }
       throw err;
     }
@@ -318,6 +320,8 @@ export const api = {
   },
   addBill: async (title: string, amount: number, dueDate: string, force = false, isRecurring = false) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const { newClientId } = await import("@/utils/clientId");
+    const client_item_id = newClientId();
     const url = `/agenda/bill?title=${encodeURIComponent(title)}&amount=${amount}&due_date=${dueDate}&force=${force}&is_recurring=${isRecurring}`;
     try {
       return await request<any>(url, { method: "POST" });
@@ -325,7 +329,7 @@ export const api = {
       if (shouldQueueError(err)) {
         const opId = await enqueue({
           type: "agenda_add_bill",
-          payload: { title, amount, due_date: dueDate, force, is_recurring: isRecurring },
+          payload: { title, amount, due_date: dueDate, force, is_recurring: isRecurring, client_item_id },
         });
         return { status: "queued", operation_id: opId };
       }
@@ -415,11 +419,45 @@ export const api = {
 
   // Budgets
   getBudgets: () => request<any[]>("/budgets/"),
-  createBudget: (category: string, monthlyLimit: number) =>
-    request("/budgets/", { method: "POST", body: JSON.stringify({ category, monthly_limit: monthlyLimit }) }),
-  updateBudget: (id: string, monthlyLimit: number) =>
-    request(`/budgets/${id}`, { method: "PUT", body: JSON.stringify({ monthly_limit: monthlyLimit }) }),
-  deleteBudget: (id: string) => request(`/budgets/${id}`, { method: "DELETE" }),
+  createBudget: async (category: string, monthlyLimit: number) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const { newClientId } = await import("@/utils/clientId");
+    const client_budget_id = newClientId();
+    const payload = { category, monthly_limit: monthlyLimit, client_budget_id };
+    try {
+      return await request("/budgets/", { method: "POST", body: JSON.stringify({ category, monthly_limit: monthlyLimit }) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "budget_create", payload });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  updateBudget: async (id: string, monthlyLimit: number) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/budgets/${id}`, { method: "PUT", body: JSON.stringify({ monthly_limit: monthlyLimit }) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "budget_update", payload: { budget_id: id, monthly_limit: monthlyLimit } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  deleteBudget: async (id: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/budgets/${id}`, { method: "DELETE" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "budget_delete", payload: { budget_id: id } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
 
   // AI
   getBudgetAlerts: () => request<any[]>("/ai/budget-alerts"),

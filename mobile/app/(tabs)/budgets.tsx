@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
@@ -15,6 +15,7 @@ import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { formatMoney } from "@/utils/format";
+import { isQueuedResult, showQueuedAlert } from "@/utils/apiWriteResult";
 
 export default function BudgetsScreen() {
   const { t, locale } = useI18n();
@@ -44,16 +45,26 @@ export default function BudgetsScreen() {
 
   const handleAdd = async () => {
     if (!category || !limit) return;
-    await api.createBudget(category, parseFloat(limit));
-    setCategory(""); setLimit("");
-    load();
+    try {
+      const res = await api.createBudget(category, parseFloat(limit));
+      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+      setCategory(""); setLimit("");
+      load();
+    } catch (e: any) {
+      Alert.alert(t.common.error, e.message || t.common.error);
+    }
   };
 
   const handleUpdate = async () => {
     if (!editing || !editLimit) return;
-    await api.updateBudget(editing.id, parseFloat(editLimit));
-    setEditing(null); setEditLimit("");
-    load();
+    try {
+      const res = await api.updateBudget(editing.id, parseFloat(editLimit));
+      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+      setEditing(null); setEditLimit("");
+      load();
+    } catch (e: any) {
+      Alert.alert(t.common.error, e.message || t.common.error);
+    }
   };
 
   const barColor = (percent: number) => {
@@ -91,7 +102,15 @@ export default function BudgetsScreen() {
                     </Text>
                     <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
                   </View>
-                  <TextLink label={t.common.delete} onPress={async () => { await api.deleteBudget(b.id); load(); }} danger />
+                  <TextLink label={t.common.delete} onPress={async () => {
+                    try {
+                      const res = await api.deleteBudget(b.id);
+                      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+                      load();
+                    } catch (e: any) {
+                      Alert.alert(t.common.error, e.message || t.common.error);
+                    }
+                  }} danger />
                 </View>
                 <View style={styles.progressBg}>
                   <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor(percent) }]} />

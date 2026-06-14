@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
 import type { QueuedOperation } from "./offlineQueue";
+import { newClientId } from "@/utils/clientId";
 
 const SNAPSHOT_KEY = "talkcash_cloud_snapshot";
 
@@ -56,8 +57,8 @@ export async function patchCachedSnapshot(partial: Partial<CloudSnapshot>): Prom
   }));
 }
 
-function localId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+function localId(_prefix: string) {
+  return newClientId();
 }
 
 function adjustWalletBalance(wallets: any[], walletId: string, delta: number): any[] {
@@ -127,8 +128,9 @@ export async function applyOptimisticForQueuedOp(
     }
     case "wallet_create": {
       const wallets = [...(snapshot.wallets || [])];
+      const clientId = String(payload.client_wallet_id || localId("wallet"));
       wallets.push({
-        id: localId("wallet"),
+        id: clientId,
         name: payload.name,
         wallet_type: payload.wallet_type,
         currency: payload.currency || "TRY",
@@ -204,7 +206,7 @@ export async function applyOptimisticForQueuedOp(
     case "agenda_add_bill": {
       const agenda = [...(snapshot.agenda || [])];
       agenda.unshift({
-        id: localId("agenda"),
+        id: String(payload.client_item_id || localId("agenda")),
         title: payload.title,
         amount: payload.amount,
         due_date: payload.due_date,
