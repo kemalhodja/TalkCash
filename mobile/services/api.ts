@@ -41,7 +41,33 @@ function shouldRetry(status: number): boolean {
   return status >= 500 || status === 429;
 }
 
-async function request<T>(path: string, options?: RequestInit, attempt = 0): Promise<T> {
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refresh = await auth.getRefreshToken();
+    if (!refresh) return false;
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      await auth.updateTokens(data.access_token, data.refresh_token);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, options?: RequestInit, attempt = 0, authRetry = false): Promise<T> {
   const token = await auth.getToken();
   const locale = await SecureStore.getItemAsync(LOCALE_KEY);
   const headers: Record<string, string> = {
@@ -64,6 +90,9 @@ async function request<T>(path: string, options?: RequestInit, attempt = 0): Pro
     });
 
     if (res.status === 401) {
+      if (!authRetry && await tryRefreshToken()) {
+        return request<T>(path, options, attempt, true);
+      }
       await handleUnauthorized();
       throw new ApiError("Session expired", 401);
     }
@@ -106,6 +135,31 @@ export const api = {
   setLocale: (locale: string) => request("/auth/locale", { method: "PUT", body: JSON.stringify({ locale }) }),
   setTimezone: (timezone: string) => request("/auth/timezone", { method: "PUT", body: JSON.stringify({ timezone }) }),
   getMe: () => request<any>("/auth/me"),
+  refreshSession: (refreshToken: string) =>
+    request<any>("/auth/refresh", { method: "POST", body: JSON.stringify({ refresh_token: refreshToken }) }),
+  logout: async () => {
+    const refresh = await auth.getRefreshToken();
+    if (refresh) {
+      try {
+        await request("/auth/logout", { method: "POST", body: JSON.stringify({ refresh_token: refresh }) });
+      } catch {
+        /* ignore */
+      }
+    }
+    await auth.clear();
+  },
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request("/auth/password", {
+      method: "PUT",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+  changePin: (currentPin: string, newPin: string) =>
+    request("/auth/pin", {
+      method: "PUT",
+      body: JSON.stringify({ current_pin: currentPin, new_pin: newPin }),
+    }),
+  deleteAccount: (password: string) =>
+    request("/auth/me", { method: "DELETE", body: JSON.stringify({ password }) }),
 
   // Input
   parseText: (text: string, whisperMode = false) =>
@@ -134,11 +188,43 @@ export const api = {
   // Wallets
   getNetWorth: () => request<any>("/wallets/net-worth"),
   getWallets: () => request<any[]>("/wallets/"),
-  createWallet: (name: string, walletType: string, currency = "TRY") =>
-    request("/wallets/", { method: "POST", body: JSON.stringify({ name, wallet_type: walletType, currency }) }),
-  updateWallet: (id: string, data: { name?: string; wallet_type?: string; currency?: string }) =>
-    request(`/wallets/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  deleteWallet: (id: string) => request(`/wallets/${id}`, { method: "DELETE" }),
+  createWallet: async (name: string, walletType: string, currency = "TRY") => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const payload = { name, wallet_type: walletType, currency };
+    try {
+      return await request("/wallets/", { method: "POST", body: JSON.stringify(payload) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "wallet_create", payload });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
+  updateWallet: async (id: string, data: { name?: string; wallet_type?: string; currency?: string }) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/wallets/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "wallet_update", payload: { wallet_id: id, ...data } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  deleteWallet: async (id: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/wallets/${id}`, { method: "DELETE" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "wallet_delete", payload: { wallet_id: id } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
   transfer: async (fromId: string, toId: string, amount: number, description = "") => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
     try {
@@ -178,20 +264,87 @@ export const api = {
 
   // Transactions
   getTransactions: (limit = 50) => request<any[]>(`/transactions/?limit=${limit}`),
+  updateTransaction: async (id: string, data: { amount?: number; category?: string; description?: string; place?: string }) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/transactions/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "transaction_update", payload: { transaction_id: id, ...data } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  deleteTransaction: async (id: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/transactions/${id}`, { method: "DELETE" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "transaction_delete", payload: { transaction_id: id } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
 
   // Agenda
   getAgenda: (days = 30) => request<any[]>(`/agenda/?days=${days}`),
   getAgendaHistory: (limit = 50) => request<any[]>(`/agenda/history?limit=${limit}`),
-  updateAgendaItem: (id: string, data: object) =>
-    request(`/agenda/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  deleteAgendaItem: (id: string) => request(`/agenda/${id}`, { method: "DELETE" }),
-  addBill: (title: string, amount: number, dueDate: string, force = false, isRecurring = false) =>
-    request<any>(
-      `/agenda/bill?title=${encodeURIComponent(title)}&amount=${amount}&due_date=${dueDate}&force=${force}&is_recurring=${isRecurring}`,
-      { method: "POST" },
-    ),
-  markPaid: (title: string, walletId?: string) =>
-    request(`/agenda/pay?title=${encodeURIComponent(title)}${walletId ? `&wallet_id=${walletId}` : ""}`, { method: "POST" }),
+  updateAgendaItem: async (id: string, data: object) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/agenda/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "agenda_update", payload: { item_id: id, ...data } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  deleteAgendaItem: async (id: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/agenda/${id}`, { method: "DELETE" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "agenda_delete", payload: { item_id: id } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  addBill: async (title: string, amount: number, dueDate: string, force = false, isRecurring = false) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const url = `/agenda/bill?title=${encodeURIComponent(title)}&amount=${amount}&due_date=${dueDate}&force=${force}&is_recurring=${isRecurring}`;
+    try {
+      return await request<any>(url, { method: "POST" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({
+          type: "agenda_add_bill",
+          payload: { title, amount, due_date: dueDate, force, is_recurring: isRecurring },
+        });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  markPaid: async (title: string, walletId?: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const url = `/agenda/pay?title=${encodeURIComponent(title)}${walletId ? `&wallet_id=${walletId}` : ""}`;
+    try {
+      return await request(url, { method: "POST" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "agenda_mark_paid", payload: { title, wallet_id: walletId } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
   createInstallments: (title: string, total: number, count: number) =>
     request(`/agenda/installments?title=${encodeURIComponent(title)}&total=${total}&count=${count}`, { method: "POST" }),
 
@@ -279,6 +432,9 @@ export const api = {
       body: JSON.stringify({ product_name: productName, threshold_percent: thresholdPercent }),
     }),
   removeWatchlistItem: (id: string) => request(`/ai/watchlist/${id}`, { method: "DELETE" }),
+  getChatHistory: () => request<any[]>("/ai/chat/history"),
+  sendChatMessage: (message: string) =>
+    request<any>("/ai/chat", { method: "POST", body: JSON.stringify({ message }) }),
 
   // Social
   splitBill: (total: number, personCount: number) =>
@@ -287,6 +443,14 @@ export const api = {
     request(`/social/debt?person_name=${encodeURIComponent(personName)}&amount=${amount}&is_lent=${isLent}`, { method: "POST" }),
   getDebts: () => request<any[]>("/social/debts"),
   settleDebt: (id: string) => request(`/social/debts/${id}/settle`, { method: "POST" }),
+  updateDebt: (id: string, data: { person_name?: string; amount?: number; is_lent?: boolean }) => {
+    const params = new URLSearchParams();
+    if (data.person_name) params.set("person_name", data.person_name);
+    if (data.amount != null) params.set("amount", String(data.amount));
+    if (data.is_lent != null) params.set("is_lent", String(data.is_lent));
+    return request(`/social/debts/${id}?${params}`, { method: "PATCH" });
+  },
+  deleteDebt: (id: string) => request(`/social/debts/${id}`, { method: "DELETE" }),
   getSharedWallets: () => request<any[]>("/social/shared-wallet"),
   createSharedWallet: (name: string, memberEmail?: string) => {
     let url = `/social/shared-wallet?name=${encodeURIComponent(name)}`;
@@ -298,6 +462,15 @@ export const api = {
   addSharedWalletContribution: (walletId: string, amount: number, description = "") =>
     request(`/social/shared-wallet/${walletId}/contribution?amount=${amount}&description=${encodeURIComponent(description)}`, { method: "POST" }),
   getSharedWalletMembers: (walletId: string) => request<any>(`/social/shared-wallet/${walletId}/members`),
+  renameSharedWallet: (walletId: string, name: string) =>
+    request(`/social/shared-wallet/${walletId}?name=${encodeURIComponent(name)}`, { method: "PATCH" }),
+  addSharedWalletMember: (walletId: string, memberEmail: string) =>
+    request(`/social/shared-wallet/${walletId}/members?member_email=${encodeURIComponent(memberEmail)}`, { method: "POST" }),
+  removeSharedWalletMember: (walletId: string, memberId: string) =>
+    request(`/social/shared-wallet/${walletId}/members/${memberId}`, { method: "DELETE" }),
+  transferSharedWalletOwnership: (walletId: string, memberId: string) =>
+    request(`/social/shared-wallet/${walletId}/transfer?member_id=${memberId}`, { method: "POST" }),
+  deleteSharedWallet: (walletId: string) => request(`/social/shared-wallet/${walletId}`, { method: "DELETE" }),
 
   // Notifications
   registerPushToken: (token: string) =>

@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Colors, Spacing } from "@/constants/theme";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { BottomSheetModal } from "@/components/ui/BottomSheetModal";
+import { InputField } from "@/components/ui/InputField";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
@@ -11,6 +14,18 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+function TypeChips({ values, selected, onSelect }: { values: readonly string[]; selected: string; onSelect: (v: string) => void }) {
+  return (
+    <View style={styles.chips}>
+      {values.map((v) => (
+        <TouchableOpacity key={v} style={[styles.chip, selected === v && styles.chipActive]} onPress={() => onSelect(v)}>
+          <Text style={[styles.chipText, selected === v && styles.chipTextActive]}>{v}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 }
 
 export function WalletCreateModal({ visible, onClose, onSuccess }: Props) {
@@ -37,61 +52,32 @@ export function WalletCreateModal({ visible, onClose, onSuccess }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>{t.home.createWallet}</Text>
-          <TextInput style={styles.input} placeholder={t.home.walletName} placeholderTextColor={Colors.textMuted}
-            value={name} onChangeText={setName} />
-          <View style={styles.chips}>
-            {WALLET_TYPES.map((type) => (
-              <TouchableOpacity key={type}
-                style={[styles.chip, walletType === type && styles.chipActive]}
-                onPress={() => setWalletType(type)}>
-                <Text style={styles.chipText}>{type}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Text style={styles.sectionLabel}>{t.home.walletCurrency}</Text>
-          <View style={styles.chips}>
-            {CURRENCIES.map((c) => (
-              <TouchableOpacity key={c}
-                style={[styles.chip, currency === c && styles.chipActive]}
-                onPress={() => setCurrency(c)}>
-                <Text style={styles.chipText}>{c}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelText}>{t.common.cancel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.submitBtn} onPress={handleCreate} disabled={loading}>
-              <Text style={styles.submitText}>{loading ? "..." : t.common.save}</Text>
-            </TouchableOpacity>
-          </View>
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t.home.createWallet}
+      footer={
+        <View style={styles.actions}>
+          <PrimaryButton label={t.common.cancel} onPress={onClose} variant="ghost" style={styles.btn} />
+          <PrimaryButton label={t.common.save} onPress={handleCreate} loading={loading} disabled={loading} style={styles.btn} />
         </View>
-      </View>
-    </Modal>
+      }
+    >
+      <InputField placeholder={t.home.walletName} value={name} onChangeText={setName} />
+      <TypeChips values={WALLET_TYPES} selected={walletType} onSelect={setWalletType} />
+      <Text style={styles.sectionLabel}>{t.home.walletCurrency}</Text>
+      <TypeChips values={CURRENCIES} selected={currency} onSelect={setCurrency} />
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  card: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: Spacing.lg },
-  title: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },
-  input: {
-    backgroundColor: Colors.bg, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, marginBottom: Spacing.md, borderWidth: 1, borderColor: Colors.border,
-  },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md },
   sectionLabel: { color: Colors.textSecondary, fontSize: 13, marginBottom: Spacing.sm },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: Colors.border },
-  chipActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card },
+  chipActive: { borderColor: Colors.borderStrong, backgroundColor: Colors.accentSoft },
   chipText: { color: Colors.textSecondary, fontSize: 12 },
-  actions: { flexDirection: "row", gap: Spacing.sm },
-  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  cancelText: { color: Colors.textSecondary },
-  submitBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, backgroundColor: Colors.accent, alignItems: "center" },
-  submitText: { color: Colors.bg, fontWeight: "700" },
+  chipTextActive: { color: Colors.accent, fontWeight: "600" },
+  actions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md },
+  btn: { flex: 1 },
 });

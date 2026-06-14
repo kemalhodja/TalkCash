@@ -9,6 +9,8 @@ from app.models.social import SharedWallet, DebtRecord, SplitBill, PriceWatchIte
 from app.models.notification import Notification
 from app.models.exchange_rate import ExchangeRate
 from app.models.sync_operation import SyncOperationRecord
+from app.models.refresh_token import RefreshToken
+from app.models.chat_message import ChatMessage
 
 __all__ = [
     "User",
@@ -30,4 +32,6 @@ __all__ = [
     "Notification",
     "ExchangeRate",
     "SyncOperationRecord",
+    "RefreshToken",
+    "ChatMessage",
 ]

@@ -1,7 +1,8 @@
 import { auth } from "./auth";
+import { getApiBaseUrl } from "./config";
 
 function wsBase(): string {
-  const api = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  const api = getApiBaseUrl();
   if (api.startsWith("https://")) return api.replace("https://", "wss://");
   return api.replace("http://", "ws://");
 }
@@ -25,8 +26,11 @@ export class SharedWalletWS {
     const token = await auth.getToken();
     if (!token) return;
 
-    this.ws = new WebSocket(`${wsBase()}/ws/shared-wallet/${this.walletId}?token=${token}`);
-    this.ws.onopen = () => { this.reconnectAttempt = 0; };
+    this.ws = new WebSocket(`${wsBase()}/ws/shared-wallet/${this.walletId}`);
+    this.ws.onopen = () => {
+      this.reconnectAttempt = 0;
+      this.ws?.send(JSON.stringify({ action: "auth", token }));
+    };
     this.ws.onmessage = (event) => {
       try {
         this.onMessage(JSON.parse(event.data));

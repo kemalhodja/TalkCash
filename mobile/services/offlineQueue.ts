@@ -1,12 +1,27 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { applyOptimisticForQueuedOp } from "./syncCache";
 
 const QUEUE_KEY = "talkcash_offline_queue";
 const BATCH_SIZE = 50;
 
 export type QueuedOperation = {
   id: string;
-  type: "execute" | "shopping_add" | "shopping_complete" | "wallet_income" | "wallet_transfer";
+  type:
+    | "execute"
+    | "shopping_add"
+    | "shopping_complete"
+    | "wallet_income"
+    | "wallet_transfer"
+    | "transaction_update"
+    | "transaction_delete"
+    | "wallet_create"
+    | "wallet_update"
+    | "wallet_delete"
+    | "agenda_add_bill"
+    | "agenda_update"
+    | "agenda_delete"
+    | "agenda_mark_paid";
   payload: Record<string, unknown>;
   clientTimestamp: string;
   resolveStrategy?: "local" | "server";
@@ -63,6 +78,7 @@ export async function enqueue(
   };
   queue.push(entry);
   await saveQueue(queue);
+  applyOptimisticForQueuedOp(entry.type, entry.payload).catch(() => {});
   return entry.id;
 }
 

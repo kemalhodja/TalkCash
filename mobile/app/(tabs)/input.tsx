@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { PayBillModal } from "@/components/PayBillModal";
 import { NumericKeypad } from "@/components/NumericKeypad";
 import { ReceiptScanner } from "@/components/ReceiptScanner";
 import { VoiceInput } from "@/components/VoiceInput";
-import { Colors, Spacing } from "@/constants/theme";
+import { InputField } from "@/components/ui/InputField";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Surface } from "@/components/ui/Surface";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { scheduleAgendaReminder } from "@/services/notifications";
@@ -15,6 +20,7 @@ import { formatMoney } from "@/utils/format";
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
+  const insets = useSafeAreaInsets();
   const [text, setText] = useState("");
   const [showKeypad, setShowKeypad] = useState(false);
   const [keypadValue, setKeypadValue] = useState("");
@@ -142,34 +148,47 @@ export default function InputScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.modeToggle}>
-        <TouchableOpacity style={[styles.modeBtn, !whisperMode && styles.modeActive]} onPress={() => setWhisperMode(false)}>
-          <Text style={styles.modeText}>{t.input.normal}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.modeBtn, whisperMode && styles.modeActive]} onPress={() => setWhisperMode(true)}>
-          <Text style={styles.modeText}>{t.input.whisper}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.scanBtn} onPress={() => setShowScanner(true)}>
-          <Text style={styles.modeText}>📷 {t.input.receipt}</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={[styles.container, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + 100 }]}>
+      <View style={styles.glowOrb} />
+
+      <SegmentedControl
+        options={[
+          { key: "normal", label: t.input.normal },
+          { key: "whisper", label: t.input.whisper },
+        ]}
+        value={whisperMode ? "whisper" : "normal"}
+        onChange={(k) => setWhisperMode(k === "whisper")}
+      />
+
+      <TouchableOpacity style={styles.scanBtn} onPress={() => setShowScanner(true)}>
+        <Text style={styles.scanText}>📷 {t.input.receipt}</Text>
+      </TouchableOpacity>
 
       {!aiAvailable && (
-        <View style={styles.aiBanner}>
+        <Surface variant="accent" style={styles.aiBanner}>
           <Text style={styles.aiBannerText}>{t.input.aiUnavailable}</Text>
-        </View>
+        </Surface>
       )}
-      <VoiceInput onResult={handleVoiceResult} whisperMode={whisperMode} disabled={!aiAvailable} />
+
+      <Surface variant="glass" style={styles.voicePanel}>
+        <VoiceInput onResult={handleVoiceResult} whisperMode={whisperMode} disabled={!aiAvailable} />
+      </Surface>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.divider}>
         <View style={styles.line} /><Text style={styles.dividerText}>{t.input.orType}</Text><View style={styles.line} />
       </View>
 
-      <TextInput style={[styles.input, slashMode && styles.slashInput]} placeholder={t.input.placeholder}
-        placeholderTextColor={Colors.textMuted} value={text} onChangeText={handleTextChange}
-        onSubmitEditing={handleTextSubmit} returnKeyType="done" />
+      <InputField
+        style={[styles.textInput, slashMode && styles.slashInput]}
+        placeholder={t.input.placeholder}
+        value={text}
+        onChangeText={handleTextChange}
+        onSubmitEditing={handleTextSubmit}
+        returnKeyType="done"
+        containerStyle={styles.inputWrap}
+      />
 
       {slashMode && (
         <View style={styles.slashSection}>
@@ -201,9 +220,13 @@ export default function InputScreen() {
       {showKeypad && <NumericKeypad value={keypadValue} onChange={setKeypadValue}
         onSubmit={() => { setText(keypadValue); setShowKeypad(false); }} />}
 
-      <TouchableOpacity style={[styles.submitBtn, isSubmitting && styles.submitDisabled]} onPress={handleTextSubmit} disabled={isSubmitting}>
-        {isSubmitting ? <ActivityIndicator color={Colors.text} /> : <Text style={styles.submitText}>{t.input.send}</Text>}
-      </TouchableOpacity>
+      <PrimaryButton
+        label={t.input.send}
+        onPress={handleTextSubmit}
+        disabled={isSubmitting}
+        loading={isSubmitting}
+        style={styles.submitBtn}
+      />
 
       <ConfirmationCard visible={confirmVisible} message={confirmMessage}
         onConfirm={handleConfirm} onCancel={() => setConfirmVisible(false)} />
@@ -292,33 +315,45 @@ export default function InputScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg, padding: Spacing.md },
-  modeToggle: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
-  modeBtn: { flex: 1, padding: Spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  scanBtn: { padding: Spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  modeActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
-  modeText: { color: Colors.textSecondary, fontSize: 13 },
+  container: { flex: 1, backgroundColor: Colors.bg, paddingHorizontal: Spacing.md },
+  glowOrb: {
+    position: "absolute",
+    top: -60,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: Colors.accentGlow,
+    opacity: 0.25,
+  },
+  scanBtn: {
+    alignSelf: "flex-end",
+    padding: Spacing.sm,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.card,
+  },
+  scanText: { color: Colors.textSecondary, fontSize: 13 },
+  aiBanner: { padding: Spacing.sm, marginBottom: Spacing.sm },
+  aiBannerText: { color: Colors.warning, fontSize: 13, textAlign: "center" },
+  voicePanel: { padding: Spacing.md, marginBottom: Spacing.md },
   divider: { flexDirection: "row", alignItems: "center", marginVertical: Spacing.md },
   line: { flex: 1, height: 1, backgroundColor: Colors.border },
   dividerText: { color: Colors.textMuted, marginHorizontal: Spacing.sm, fontSize: 13 },
-  input: { backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md, color: Colors.text, fontSize: 16, borderWidth: 1, borderColor: Colors.border },
-  slashInput: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.05)" },
+  inputWrap: { marginBottom: 0 },
+  textInput: { fontSize: 16 },
+  slashInput: { borderColor: Colors.borderStrong, backgroundColor: Colors.accentSoft },
   slashSection: { marginTop: Spacing.sm },
   slashLabel: { color: Colors.accent, fontSize: 12, fontWeight: "600", marginBottom: 6 },
-  slashChip: { backgroundColor: "rgba(0,212,170,0.12)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.accent },
+  slashChip: { backgroundColor: Colors.accentSoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.borderStrong },
   slashChipText: { color: Colors.accent, fontSize: 12, fontFamily: "monospace" },
   suggestions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.sm },
-  chip: { backgroundColor: Colors.card, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
+  chip: { backgroundColor: Colors.card, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border },
   chipText: { color: Colors.accent, fontSize: 13 },
   keypadToggle: { alignItems: "center", marginTop: Spacing.md },
   keypadToggleText: { color: Colors.accent, fontSize: 14 },
-  submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 12, alignItems: "center", marginTop: Spacing.md },
-  submitDisabled: { opacity: 0.6 },
-  submitText: { color: Colors.bg, fontWeight: "700", fontSize: 16 },
+  submitBtn: { marginTop: Spacing.md },
   error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
-  aiBanner: {
-    backgroundColor: "rgba(245,158,11,0.15)", borderRadius: 10, padding: Spacing.sm,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: "rgba(245,158,11,0.4)",
-  },
-  aiBannerText: { color: Colors.warning, fontSize: 13, textAlign: "center" },
 });

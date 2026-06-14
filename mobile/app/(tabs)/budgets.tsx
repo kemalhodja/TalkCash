@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ErrorState } from "@/components/ErrorState";
-import { Colors, Spacing } from "@/constants/theme";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { InputField } from "@/components/ui/InputField";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { ScreenShell } from "@/components/ui/ScreenShell";
+import { Surface } from "@/components/ui/Surface";
+import { TextLink } from "@/components/ui/TextLink";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
@@ -52,99 +60,76 @@ export default function BudgetsScreen() {
     return Colors.accent;
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
+  if (loading) return <LoadingScreen />;
   if (error && budgets.length === 0) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t.budget.title}</Text>
+    <>
+      <ScreenShell>
+        <ScreenHeader title={t.budget.title} />
 
-      <View style={styles.form}>
-        <TextInput style={styles.input} placeholder={t.budget.category} placeholderTextColor={Colors.textMuted}
-          value={category} onChangeText={setCategory} />
-        <TextInput style={styles.input} placeholder={t.budget.limit} placeholderTextColor={Colors.textMuted}
-          keyboardType="decimal-pad" value={limit} onChangeText={setLimit} />
-        <TouchableOpacity style={styles.btn} onPress={handleAdd}>
-          <Text style={styles.btnText}>{t.budget.add}</Text>
-        </TouchableOpacity>
-      </View>
+        <Surface variant="glass" style={styles.form}>
+          <InputField placeholder={t.budget.category} value={category} onChangeText={setCategory} />
+          <InputField placeholder={t.budget.limit} keyboardType="decimal-pad" value={limit} onChangeText={setLimit} />
+          <PrimaryButton label={t.budget.add} onPress={handleAdd} />
+        </Surface>
 
-      {budgets.map((b) => {
-        const percent = b.percent ?? 0;
-        const spent = b.spent ?? 0;
-        return (
-          <TouchableOpacity key={b.id} style={styles.card}
-            onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}>
-            <View style={styles.cardTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.catName}>{b.category}</Text>
-                <Text style={styles.limit}>
-                  {formatMoney(Number(spent), locale)} / {formatMoney(Number(b.monthly_limit), locale)} {t.budget.perMonth}
-                </Text>
-                <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
-              </View>
-              <TouchableOpacity onPress={async () => { await api.deleteBudget(b.id); load(); }}>
-                <Text style={styles.delete}>{t.common.delete}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.progressBg}>
-              <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor(percent) }]} />
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+        {budgets.map((b) => {
+          const percent = b.percent ?? 0;
+          const spent = b.spent ?? 0;
+          return (
+            <TouchableOpacity key={b.id} activeOpacity={0.85}
+              onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}>
+              <Surface variant="elevated" style={styles.card}>
+                <View style={styles.cardTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.catName}>{b.category}</Text>
+                    <Text style={styles.limit}>
+                      {formatMoney(Number(spent), locale)} / {formatMoney(Number(b.monthly_limit), locale)} {t.budget.perMonth}
+                    </Text>
+                    <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
+                  </View>
+                  <TextLink label={t.common.delete} onPress={async () => { await api.deleteBudget(b.id); load(); }} danger />
+                </View>
+                <View style={styles.progressBg}>
+                  <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor(percent) }]} />
+                </View>
+              </Surface>
+            </TouchableOpacity>
+          );
+        })}
 
-      {budgets.length === 0 && <Text style={styles.empty}>{t.budget.empty}</Text>}
+        {budgets.length === 0 && <EmptyState message={t.budget.empty} icon="◎" />}
+      </ScreenShell>
 
       <Modal visible={!!editing} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <Surface variant="glass" style={styles.modalCard}>
             <Text style={styles.modalTitle}>{t.budget.edit}: {editing?.category}</Text>
-            <TextInput style={styles.input} placeholder={t.budget.newLimit} placeholderTextColor={Colors.textMuted}
-              keyboardType="decimal-pad" value={editLimit} onChangeText={setEditLimit} />
+            <InputField placeholder={t.budget.newLimit} keyboardType="decimal-pad" value={editLimit} onChangeText={setEditLimit} />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditing(null)}>
-                <Text style={styles.cancelText}>{t.common.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btn} onPress={handleUpdate}>
-                <Text style={styles.btnText}>{t.common.save}</Text>
-              </TouchableOpacity>
+              <PrimaryButton label={t.common.cancel} onPress={() => setEditing(null)} variant="ghost" style={styles.modalBtn} />
+              <PrimaryButton label={t.common.save} onPress={handleUpdate} style={styles.modalBtn} />
             </View>
-          </View>
+          </Surface>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.md },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700", marginBottom: Spacing.lg },
-  form: { marginBottom: Spacing.lg },
-  input: {
-    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
-  },
-  btn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
-  btnText: { color: Colors.bg, fontWeight: "700" },
-  card: {
-    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md, marginBottom: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.border,
-  },
+  form: { padding: Spacing.md, marginBottom: Spacing.lg },
+  card: { padding: Spacing.md, marginBottom: Spacing.sm },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   catName: { color: Colors.text, fontWeight: "600" },
   limit: { color: Colors.textSecondary, marginTop: 4, fontSize: 13 },
   percentText: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
-  progressBg: { height: 6, backgroundColor: Colors.border, borderRadius: 3, marginTop: Spacing.sm, overflow: "hidden" },
-  progressFill: { height: 6, borderRadius: 3 },
-  delete: { color: Colors.danger },
-  empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: Spacing.lg },
-  modalCard: { backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg },
+  progressBg: { height: 6, backgroundColor: Colors.border, borderRadius: Radius.pill, marginTop: Spacing.sm, overflow: "hidden" },
+  progressFill: { height: 6, borderRadius: Radius.pill },
+  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
+  modalCard: { padding: Spacing.lg },
   modalTitle: { color: Colors.text, fontWeight: "700", marginBottom: Spacing.md },
   modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
-  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  cancelText: { color: Colors.textSecondary },
+  modalBtn: { flex: 1 },
 });

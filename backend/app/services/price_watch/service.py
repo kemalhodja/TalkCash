@@ -73,10 +73,12 @@ class PriceWatchService:
             msg = t(f"ai.price_{direction}", locale,
                     product=watch.product_name, percent=int(change))
             await notif_service.create_in_app(
-                db, watch.user_id, watch.product_name, msg, "price_change",
+                db, watch.user_id, watch.product_name, msg, "price_change", {"route": "/"},
             )
             if user.push_token:
-                await notif_service.send_push(user.push_token, watch.product_name, msg)
+                await notif_service.send_push(
+                    user.push_token, watch.product_name, msg, {"url": "talkcash://home"},
+                )
             watch.last_checked_at = datetime.utcnow()
             if report.get("current_avg") is not None:
                 watch.last_avg_price = Decimal(str(report["current_avg"]))

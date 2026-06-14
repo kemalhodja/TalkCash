@@ -1,0 +1,62 @@
+jest.mock("@react-native-async-storage/async-storage", () => {
+  const store: Record<string, string> = {};
+  return {
+    getItem: jest.fn((key: string) => Promise.resolve(store[key] ?? null)),
+    setItem: jest.fn((key: string, value: string) => {
+      store[key] = value;
+      return Promise.resolve();
+    }),
+    multiRemove: jest.fn((keys: string[]) => {
+      keys.forEach((k) => delete store[k]);
+      return Promise.resolve();
+    }),
+  };
+});
+
+jest.mock("@/services/api", () => ({
+  api: { syncPull: jest.fn() },
+}));
+
+import {
+  applyOptimisticForQueuedOp,
+  getCachedSnapshot,
+  patchCachedSnapshot,
+} from "@/services/syncCache";
+
+describe("syncCache optimistic", () => {
+  beforeEach(async () => {
+    await patchCachedSnapshot({
+      shopping: [{ id: "s1", name: "Süt", category: "DAIRY" }],
+      wallets: [{ id: "w1", name: "Banka", balance_try: 1000 }],
+      net_worth_total: 1000,
+      agenda: [{ id: "a1", title: "Elektrik", amount: 200, status: "pending" }],
+      transactions: [{ id: "t1", amount: 50, category: "Market" }],
+    });
+  });
+
+  it("adds shopping items optimistically", async () => {
+    await applyOptimisticForQueuedOp("shopping_add", { items: ["Ekmek"] });
+    const snap = await getCachedSnapshot();
+    expect(snap?.shopping?.length).toBe(2);
+    expect(snap?.shopping?.some((i) => i.name === "Ekmek")).toBe(true);
+  });
+
+  it("removes completed shopping item", async () => {
+    await applyOptimisticForQueuedOp("shopping_complete", { item_id: "s1" });
+    const snap = await getCachedSnapshot();
+    expect(snap?.shopping?.length).toBe(0);
+  });
+
+  it("adjusts wallet income optimistically", async () => {
+    await applyOptimisticForQueuedOp("wallet_income", { wallet_id: "w1", amount: 500 });
+    const snap = await getCachedSnapshot();
+    expect(snap?.wallets?.[0].balance_try).toBe(1500);
+    expect(snap?.net_worth_total).toBe(1500);
+  });
+
+  it("marks agenda bill paid", async () => {
+    await applyOptimisticForQueuedOp("agenda_mark_paid", { title: "Elektrik" });
+    const snap = await getCachedSnapshot();
+    expect(snap?.agenda?.[0].status).toBe("paid");
+  });
+});

@@ -25,8 +25,12 @@ async def push_budget_alerts_after_expense(
         if alert["category"].lower() != (category or "Genel").lower():
             continue
         ntype = "budget_exceeded" if alert["type"] == "budget_exceeded" else "budget_warning"
-        await notif_service.create_in_app(db, user_id, alert["category"], alert["message"], ntype)
+        await notif_service.create_in_app(
+            db, user_id, alert["category"], alert["message"], ntype, {"route": "/budget"},
+        )
         if user.push_token:
-            await notif_service.send_push(user.push_token, alert["category"], alert["message"])
+            await notif_service.send_push(
+                user.push_token, alert["category"], alert["message"], {"url": "talkcash://budget"},
+            )
         sent += 1
     return sent

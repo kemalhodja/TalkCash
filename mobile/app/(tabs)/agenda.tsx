@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { AgendaCalendar } from "@/components/AgendaCalendar";
 import { DueDatePicker } from "@/components/DueDatePicker";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { ErrorState } from "@/components/ErrorState";
 import { PayBillModal } from "@/components/PayBillModal";
-import { Colors, Spacing } from "@/constants/theme";
+import { InputField } from "@/components/ui/InputField";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { ScreenShell } from "@/components/ui/ScreenShell";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Surface } from "@/components/ui/Surface";
+import { TextLink } from "@/components/ui/TextLink";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
@@ -150,58 +158,58 @@ export default function AgendaScreen() {
     return dueDate.toDateString() === expected.toDateString();
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
+  if (loading) return <LoadingScreen />;
   if (error && items.length === 0) return <ErrorState message={error} onRetry={loadAgenda} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t.agenda.title}</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setAddMode(addMode === "installment" ? null : "installment")}>
-            <Text style={styles.addBtn}>{addMode === "installment" ? t.agenda.cancel : t.agenda.addInstallment}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setAddMode(addMode === "bill" ? null : "bill")}>
-            <Text style={styles.addBtn}>{addMode === "bill" ? t.agenda.cancel : t.agenda.addBill}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <ScreenShell>
+      <ScreenHeader
+        title={t.agenda.title}
+        actions={
+          <>
+            <TextLink
+              label={addMode === "installment" ? t.agenda.cancel : t.agenda.addInstallment}
+              onPress={() => setAddMode(addMode === "installment" ? null : "installment")}
+            />
+            <TextLink
+              label={addMode === "bill" ? t.agenda.cancel : t.agenda.addBill}
+              onPress={() => setAddMode(addMode === "bill" ? null : "bill")}
+            />
+          </>
+        }
+      />
 
-      <View style={styles.viewToggle}>
-        <TouchableOpacity style={[styles.viewBtn, listTab === "upcoming" && styles.viewBtnActive]}
-          onPress={() => setListTab("upcoming")}>
-          <Text style={styles.viewBtnText}>{t.agenda.list}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.viewBtn, listTab === "history" && styles.viewBtnActive]}
-          onPress={() => setListTab("history")}>
-          <Text style={styles.viewBtnText}>{t.agenda.history}</Text>
-        </TouchableOpacity>
-      </View>
+      <SegmentedControl
+        options={[
+          { key: "upcoming", label: t.agenda.list },
+          { key: "history", label: t.agenda.history },
+        ]}
+        value={listTab}
+        onChange={(k) => setListTab(k as ListTab)}
+      />
 
-      <View style={styles.viewToggle}>
-        <TouchableOpacity style={[styles.viewBtn, viewMode === "calendar" && styles.viewBtnActive]}
-          onPress={() => setViewMode("calendar")}>
-          <Text style={styles.viewBtnText}>{t.agenda.calendar}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.viewBtn, viewMode === "list" && styles.viewBtnActive]}
-          onPress={() => setViewMode("list")}>
-          <Text style={styles.viewBtnText}>{t.agenda.list}</Text>
-        </TouchableOpacity>
-      </View>
+      <SegmentedControl
+        options={[
+          { key: "calendar", label: t.agenda.calendar },
+          { key: "list", label: t.agenda.list },
+        ]}
+        value={viewMode}
+        onChange={(k) => setViewMode(k as ViewMode)}
+      />
 
       {viewMode === "calendar" && (
-        <AgendaCalendar items={items} onSelectItem={(item) => {
-          if (isPayableStatus(item.status)) setPayModal({ title: item.title, amount: item.amount });
-        }} />
+        <Surface variant="elevated" style={styles.calendarWrap}>
+          <AgendaCalendar items={items} onSelectItem={(item) => {
+            if (isPayableStatus(item.status)) setPayModal({ title: item.title, amount: item.amount });
+          }} />
+        </Surface>
       )}
 
       {addMode === "bill" && (
-        <View style={styles.addForm}>
+        <Surface variant="glass" style={styles.addForm}>
           <Text style={styles.formTitle}>{editing ? t.agenda.editBill : t.agenda.addBill}</Text>
-          <TextInput style={styles.input} placeholder={t.agenda.billName} placeholderTextColor={Colors.textMuted}
-            value={title} onChangeText={setTitle} />
-          <TextInput style={styles.input} placeholder={t.agenda.amount} placeholderTextColor={Colors.textMuted}
-            keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+          <InputField placeholder={t.agenda.billName} value={title} onChangeText={setTitle} />
+          <InputField placeholder={t.agenda.amount} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
 
           <View style={styles.presetRow}>
             {([
@@ -211,7 +219,7 @@ export default function AgendaScreen() {
             ] as const).map(([days, label]) => (
               <TouchableOpacity key={days} style={[styles.presetChip, isPresetActive(days) && styles.presetActive]}
                 onPress={() => applyPresetDays(days)}>
-                <Text style={styles.presetText}>{label}</Text>
+                <Text style={[styles.presetText, isPresetActive(days) && styles.presetTextActive]}>{label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -222,57 +230,52 @@ export default function AgendaScreen() {
             <Text style={styles.recurringLabel}>{t.agenda.recurring}</Text>
             <Switch value={isRecurring} onValueChange={setIsRecurring} trackColor={{ true: Colors.accent }} />
           </View>
-          <TouchableOpacity style={styles.submitBtn} onPress={() => editing ? handleSaveEdit() : handleAddBill(false)}>
-            <Text style={styles.submitText}>{editing ? t.common.save : t.agenda.add}</Text>
-          </TouchableOpacity>
+          <PrimaryButton
+            label={editing ? t.common.save : t.agenda.add}
+            onPress={() => editing ? handleSaveEdit() : handleAddBill(false)}
+          />
           {editing ? (
-            <TouchableOpacity style={styles.cancelEditBtn} onPress={() => { setEditing(null); resetForm(); }}>
-              <Text style={styles.cancelEditText}>{t.common.cancel}</Text>
-            </TouchableOpacity>
+            <TextLink label={t.common.cancel} onPress={() => { setEditing(null); resetForm(); }} style={styles.cancelEdit} />
           ) : null}
-        </View>
+        </Surface>
       )}
 
       {addMode === "installment" && (
-        <View style={styles.addForm}>
-          <TextInput style={styles.input} placeholder={t.agenda.billName} placeholderTextColor={Colors.textMuted}
-            value={title} onChangeText={setTitle} />
-          <TextInput style={styles.input} placeholder={t.agenda.totalAmount} placeholderTextColor={Colors.textMuted}
-            keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-          <TextInput style={styles.input} placeholder={t.agenda.installmentCount} placeholderTextColor={Colors.textMuted}
-            keyboardType="number-pad" value={installmentCount} onChangeText={setInstallmentCount} />
-          <TouchableOpacity style={styles.submitBtn} onPress={handleAddInstallment}>
-            <Text style={styles.submitText}>{t.agenda.add}</Text>
-          </TouchableOpacity>
-        </View>
+        <Surface variant="glass" style={styles.addForm}>
+          <InputField placeholder={t.agenda.billName} value={title} onChangeText={setTitle} />
+          <InputField placeholder={t.agenda.totalAmount} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+          <InputField placeholder={t.agenda.installmentCount} keyboardType="number-pad" value={installmentCount} onChangeText={setInstallmentCount} />
+          <PrimaryButton label={t.agenda.add} onPress={handleAddInstallment} />
+        </Surface>
       )}
 
       {viewMode === "list" && displayItems.map((item) => (
-        <TouchableOpacity key={item.id} style={[styles.card, item.status === "overdue" && styles.cardOverdue]}
+        <TouchableOpacity key={item.id} activeOpacity={0.85}
           onLongPress={() => listTab === "upcoming" && isPayableStatus(item.status) && startEdit(item)}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {item.title}{item.is_recurring ? " 🔄" : ""}
-              {item.status === "overdue" ? ` · ${t.agenda.overdue}` : ""}
-              {item.status === "paid" ? ` · ${t.agenda.paidStatus}` : ""}
+          <Surface
+            variant={item.status === "overdue" ? "accent" : "elevated"}
+            style={[styles.card, item.status === "overdue" && styles.cardOverdue]}
+          >
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>
+                {item.title}{item.is_recurring ? " 🔄" : ""}
+                {item.status === "overdue" ? ` · ${t.agenda.overdue}` : ""}
+                {item.status === "paid" ? ` · ${t.agenda.paidStatus}` : ""}
+              </Text>
+              {listTab === "upcoming" && isPayableStatus(item.status) && (
+                <View style={styles.cardActions}>
+                  <TextLink label={t.agenda.paid} onPress={() => setPayModal({ title: item.title, amount: item.amount })} />
+                  <TextLink label="✕" onPress={() => handleDeleteItem(item)} danger />
+                </View>
+              )}
+            </View>
+            <Text style={styles.amount}>{formatMoney(item.amount ?? 0, locale)}</Text>
+            <Text style={styles.date}>
+              {t.agenda.due}: {formatDate(item.due_date, locale)}
+              {item.paid_at ? ` · ${formatDate(item.paid_at, locale)}` : ""}
+              {item.installment && ` · ${t.agenda.installment} ${item.installment}`}
             </Text>
-            {listTab === "upcoming" && isPayableStatus(item.status) && (
-              <View style={styles.cardActions}>
-                <TouchableOpacity onPress={() => setPayModal({ title: item.title, amount: item.amount })}>
-                  <Text style={styles.payBtn}>{t.agenda.paid}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeleteItem(item)}>
-                  <Text style={styles.deleteBtn}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-          <Text style={styles.amount}>{formatMoney(item.amount ?? 0, locale)}</Text>
-          <Text style={styles.date}>
-            {t.agenda.due}: {formatDate(item.due_date, locale)}
-            {item.paid_at ? ` · ${formatDate(item.paid_at, locale)}` : ""}
-            {item.installment && ` · ${t.agenda.installment} ${item.installment}`}
-          </Text>
+          </Surface>
         </TouchableOpacity>
       ))}
 
@@ -295,48 +298,27 @@ export default function AgendaScreen() {
           }
         }}
         onCancel={() => { setDuplicateMsg(""); setPendingBill(null); }} />
-    </ScrollView>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.md },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
-  headerActions: { flexDirection: "row", gap: 12 },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700", flex: 1 },
-  addBtn: { color: Colors.accent, fontWeight: "600", fontSize: 13 },
-  viewToggle: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
-  viewBtn: { flex: 1, padding: Spacing.sm, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  viewBtnActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
-  viewBtnText: { color: Colors.textSecondary, fontWeight: "600" },
-  addForm: { marginBottom: Spacing.lg },
-  input: {
-    backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
-  },
-  recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
+  calendarWrap: { padding: Spacing.sm, marginBottom: Spacing.md },
+  addForm: { padding: Spacing.md, marginBottom: Spacing.lg },
+  recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
   recurringLabel: { color: Colors.textSecondary },
   presetRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm, flexWrap: "wrap" },
-  presetChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
-  presetActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
+  presetChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border },
+  presetActive: { borderColor: Colors.borderStrong, backgroundColor: Colors.accentSoft },
   presetText: { color: Colors.textSecondary, fontSize: 13 },
-  submitBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
-  submitText: { color: Colors.bg, fontWeight: "700" },
-  card: {
-    backgroundColor: Colors.card, borderRadius: 12, padding: Spacing.md,
-    marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
-  },
-  cardOverdue: { borderColor: Colors.danger, backgroundColor: "rgba(239,68,68,0.06)" },
+  presetTextActive: { color: Colors.accent },
+  card: { padding: Spacing.md, marginBottom: Spacing.sm },
+  cardOverdue: { borderColor: Colors.danger },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardActions: { flexDirection: "row", gap: 12, alignItems: "center" },
   cardTitle: { color: Colors.text, fontSize: 16, fontWeight: "600", flex: 1 },
-  payBtn: { color: Colors.success, fontWeight: "600" },
-  deleteBtn: { color: Colors.danger, fontWeight: "700", fontSize: 16 },
   formTitle: { color: Colors.textSecondary, marginBottom: Spacing.sm, fontWeight: "600" },
-  cancelEditBtn: { marginTop: Spacing.sm, alignItems: "center" },
-  cancelEditText: { color: Colors.textMuted },
+  cancelEdit: { textAlign: "center", marginTop: Spacing.sm },
   amount: { color: Colors.accent, fontSize: 20, fontWeight: "700", marginTop: 8 },
   date: { color: Colors.textMuted, fontSize: 13, marginTop: 4 },
 });

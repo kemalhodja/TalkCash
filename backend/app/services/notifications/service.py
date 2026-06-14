@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -11,27 +12,54 @@ from app.models.agenda import AgendaItem, AgendaStatus
 from app.models.notification import Notification
 from app.models.user import User
 
+ROUTE_BY_TYPE = {
+    "agenda_reminder": "/agenda",
+    "budget_warning": "/budget",
+    "budget_exceeded": "/budget",
+    "price_change": "/",
+}
+
 
 class NotificationService:
+    def _route_for(self, ntype: str, metadata: dict | None = None) -> str:
+        if metadata and metadata.get("route"):
+            return str(metadata["route"])
+        return ROUTE_BY_TYPE.get(ntype, "/notifications")
+
+    def _build_metadata(self, ntype: str, extra: dict | None = None) -> str:
+        meta = {"route": self._route_for(ntype, extra)}
+        if extra:
+            meta.update({k: v for k, v in extra.items() if k != "route"})
+        return json.dumps(meta)
+
     async def register_push_token(self, db: AsyncSession, user_id: UUID, token: str) -> None:
         user = await db.get(User, user_id)
         if user:
             user.push_token = token
             await db.commit()
 
-    async def send_push(self, push_token: str, title: str, body: str) -> bool:
+    async def send_push(
+        self, push_token: str, title: str, body: str, data: dict | None = None,
+    ) -> bool:
+        payload: dict = {"to": push_token, "title": title, "body": body, "sound": "default"}
+        if data:
+            payload["data"] = data
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                await client.post(
-                    "https://exp.host/--/api/v2/push/send",
-                    json={"to": push_token, "title": title, "body": body, "sound": "default"},
-                )
+                await client.post("https://exp.host/--/api/v2/push/send", json=payload)
             return True
         except Exception:
             return False
 
-    async def create_in_app(self, db: AsyncSession, user_id: UUID, title: str, body: str, ntype: str) -> Notification:
-        notif = Notification(user_id=user_id, title=title, body=body, notification_type=ntype)
+    async def create_in_app(
+        self, db: AsyncSession, user_id: UUID, title: str, body: str, ntype: str,
+        metadata: dict | None = None,
+    ) -> Notification:
+        meta_json = self._build_metadata(ntype, metadata)
+        notif = Notification(
+            user_id=user_id, title=title, body=body,
+            notification_type=ntype, metadata_json=meta_json,
+        )
         db.add(notif)
         await db.commit()
         await db.refresh(notif)
@@ -60,9 +88,10 @@ class NotificationService:
                 title = t("notif.agenda_today_title", locale, title=item.title)
                 body = t("notif.agenda_today_body", locale, amount=item.amount)
 
-            await self.create_in_app(db, user.id, title, body, "agenda_reminder")
+            meta = {"route": "/agenda", "agenda_id": str(item.id)}
+            await self.create_in_app(db, user.id, title, body, "agenda_reminder", meta)
             if user.push_token:
-                await self.send_push(user.push_token, title, body)
+                await self.send_push(user.push_token, title, body, {"url": "talkcash://agenda"})
             sent += 1
         return sent
 

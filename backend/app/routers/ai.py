@@ -11,17 +11,30 @@ from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error, t
 from app.models.user import User
 from app.services.ai_mentor.service import AIMentorService
+from app.services.ai_mentor.chat_service import ChatMentorService
 from app.services.price_watch.service import PriceWatchService
 from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/ai", tags=["AI Mentor"])
 ai_service = AIMentorService()
+chat_service = ChatMentorService()
 watch_service = PriceWatchService()
 
 
 class WatchlistAdd(BaseModel):
     product_name: str
     threshold_percent: float = 5.0
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatMessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: str | None = None
 
 
 @router.get("/budget-alerts")
@@ -95,3 +108,40 @@ async def remove_watchlist_item(
         return {"status": "removed"}
     except Exception as e:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
+@router.get("/chat/history")
+async def chat_history(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 30,
+):
+    items = await chat_service.list_history(db, user.id, limit=limit)
+    return [
+        ChatMessageResponse(
+            id=str(m.id), role=m.role, content=m.content,
+            created_at=m.created_at.isoformat() if m.created_at else None,
+        )
+        for m in items
+    ]
+
+
+@router.post("/chat", response_model=ChatMessageResponse)
+async def chat_mentor(
+    data: ChatRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "ai", settings.ai_rate_limit, identifier=str(user.id), strict=True)
+    locale = user_locale(user)
+    try:
+        msg = await chat_service.chat(db, user.id, data.message, locale)
+        return ChatMessageResponse(
+            id=str(msg.id), role=msg.role, content=msg.content,
+            created_at=msg.created_at.isoformat() if msg.created_at else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=resolve_error(e, locale))

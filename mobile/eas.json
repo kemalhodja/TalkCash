@@ -23,7 +23,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://talkcash-api.fly.dev/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://talkcash-api.fly.dev/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
     "preview-local": {
@@ -42,7 +43,8 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://talkcash-api.fly.dev/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://talkcash-api-prod.fly.dev/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "production"
       }
     }
   },

@@ -1,4 +1,7 @@
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { DialogModal } from "@/components/ui/DialogModal";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import type { SyncConflict } from "@/services/offlineQueue";
@@ -15,38 +18,29 @@ export function ConflictModal({ visible, conflict, onResolve, onSkip }: Props) {
   if (!conflict) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>{t.sync.conflictTitle}</Text>
-          <Text style={styles.message}>{conflict.message}</Text>
-          <Text style={styles.hint}>{t.sync.conflictHint}</Text>
+    <DialogModal
+      visible={visible}
+      title={t.sync.conflictTitle}
+      footer={
+        <>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.btn} onPress={() => onResolve("local")}>
-              <Text style={styles.btnText}>{t.sync.keepLocal}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, styles.serverBtn]} onPress={() => onResolve("server")}>
-              <Text style={styles.btnText}>{t.sync.keepServer}</Text>
-            </TouchableOpacity>
+            <PrimaryButton label={t.sync.keepLocal} onPress={() => onResolve("local")} style={styles.btn} />
+            <PrimaryButton label={t.sync.keepServer} onPress={() => onResolve("server")} variant="secondary" style={styles.btn} />
           </View>
-          <TouchableOpacity onPress={onSkip}>
-            <Text style={styles.skip}>{t.sync.skip}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+          <TextLink label={t.sync.skip} onPress={onSkip} style={styles.skip} />
+        </>
+      }
+    >
+      <Text style={styles.message}>{conflict.message}</Text>
+      <Text style={styles.hint}>{t.sync.conflictHint}</Text>
+    </DialogModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: Spacing.lg },
-  card: { backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
-  title: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
-  message: { color: Colors.textSecondary, fontSize: 14, marginBottom: Spacing.sm },
-  hint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.md },
-  actions: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm },
-  btn: { flex: 1, backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10, alignItems: "center" },
-  serverBtn: { backgroundColor: Colors.warning },
-  btnText: { color: Colors.bg, fontWeight: "700" },
-  skip: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.sm },
+  message: { color: Colors.textSecondary, fontSize: 14, marginBottom: Spacing.sm, textAlign: "center" },
+  hint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.md, textAlign: "center" },
+  actions: { flexDirection: "row", gap: 8, width: "100%" },
+  btn: { flex: 1 },
+  skip: { marginTop: Spacing.sm, textAlign: "center" },
 });

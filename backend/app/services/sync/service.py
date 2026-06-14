@@ -14,16 +14,20 @@ from app.models.transaction import Transaction
 from app.routers.execute import _dispatch
 from app.schemas.common import ParsedInput
 from app.schemas.sync import SyncConflict, SyncOperation, SyncPushResponse, SyncPullResponse
-from app.schemas.wallet import TransferRequest
+from app.schemas.wallet import TransferRequest, WalletCreate, WalletUpdate
+from app.models.wallet import WalletType
 from app.services.agenda.service import AgendaService
 from app.services.shopping.service import ShoppingService
 from app.services.storage.service import StorageService
 from app.services.wallet.service import WalletService
+from app.schemas.transaction import TransactionUpdate
+from app.services.transaction.service import TransactionService
 from app.utils.redis_client import get_redis
 
 shopping_service = ShoppingService()
 agenda_service = AgendaService()
 wallet_service = WalletService()
+transaction_service = TransactionService()
 storage_service = StorageService()
 
 
@@ -201,6 +205,72 @@ class SyncService:
             wallet_id = UUID(op.payload["wallet_id"]) if op.payload.get("wallet_id") else None
             completed = await shopping_service.complete_item(db, user_id, item_id, price, wallet_id)
             return {"id": str(completed.id), "name": completed.name}, None
+
+        if op.type == "transaction_update":
+            tx_id = UUID(op.payload["transaction_id"])
+            data = TransactionUpdate(
+                amount=Decimal(str(op.payload["amount"])) if op.payload.get("amount") is not None else None,
+                category=op.payload.get("category"),
+                description=op.payload.get("description"),
+                place=op.payload.get("place"),
+            )
+            tx = await transaction_service.update(db, user_id, tx_id, data)
+            return {"transaction_id": str(tx.id)}, None
+
+        if op.type == "transaction_delete":
+            tx_id = UUID(op.payload["transaction_id"])
+            await transaction_service.delete(db, user_id, tx_id)
+            return {"deleted": True}, None
+
+        if op.type == "wallet_create":
+            data = WalletCreate(
+                name=op.payload["name"],
+                wallet_type=WalletType(op.payload.get("wallet_type", "cash")),
+                currency=op.payload.get("currency", "TRY"),
+            )
+            w = await wallet_service.create_wallet(db, user_id, data)
+            return {"wallet_id": str(w.id), "name": w.name}, None
+
+        if op.type == "wallet_update":
+            wallet_id = UUID(op.payload["wallet_id"])
+            data = WalletUpdate(
+                name=op.payload.get("name"),
+                wallet_type=WalletType(op.payload["wallet_type"]) if op.payload.get("wallet_type") else None,
+                currency=op.payload.get("currency"),
+            )
+            w = await wallet_service.update_wallet(db, user_id, wallet_id, data)
+            return {"wallet_id": str(w.id)}, None
+
+        if op.type == "wallet_delete":
+            await wallet_service.deactivate_wallet(db, user_id, UUID(op.payload["wallet_id"]))
+            return {"deleted": True}, None
+
+        if op.type == "agenda_add_bill":
+            due = datetime.fromisoformat(op.payload["due_date"].replace("Z", ""))
+            item = await agenda_service.add_bill(
+                db, user_id, op.payload["title"], Decimal(str(op.payload["amount"])),
+                due, op.payload.get("is_recurring", False), op.payload.get("force", False),
+            )
+            return {"id": str(item.id), "title": item.title}, None
+
+        if op.type == "agenda_update":
+            item = await agenda_service.update_item(
+                db, user_id, UUID(op.payload["item_id"]),
+                title=op.payload.get("title"),
+                amount=Decimal(str(op.payload["amount"])) if op.payload.get("amount") is not None else None,
+                due_date=datetime.fromisoformat(op.payload["due_date"].replace("Z", "")) if op.payload.get("due_date") else None,
+                is_recurring=op.payload.get("is_recurring"),
+            )
+            return {"id": str(item.id)}, None
+
+        if op.type == "agenda_delete":
+            await agenda_service.delete_item(db, user_id, UUID(op.payload["item_id"]))
+            return {"deleted": True}, None
+
+        if op.type == "agenda_mark_paid":
+            wallet_id = UUID(op.payload["wallet_id"]) if op.payload.get("wallet_id") else None
+            item = await agenda_service.mark_paid(db, user_id, op.payload["title"], wallet_id)
+            return {"id": str(item.id), "title": item.title}, None
 
         raise ValueError(t("sync.unsupported_type", locale, type=op.type))
 

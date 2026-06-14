@@ -1,4 +1,6 @@
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { DialogModal } from "@/components/ui/DialogModal";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 
@@ -13,35 +15,25 @@ export function DuplicateBillDialog({ visible, message, onConfirm, onCancel }: P
   const { t } = useI18n();
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.icon}>⚠️</Text>
-          <Text style={styles.title}>{t.duplicate.title}</Text>
-          <Text style={styles.message}>{message}</Text>
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-              <Text style={styles.cancelText}>{t.common.cancel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.confirmBtn} onPress={onConfirm}>
-              <Text style={styles.confirmText}>{t.duplicate.confirmAnyway}</Text>
-            </TouchableOpacity>
-          </View>
+    <DialogModal
+      visible={visible}
+      icon="⚠️"
+      title={t.duplicate.title}
+      accent
+      footer={
+        <View style={styles.actions}>
+          <PrimaryButton label={t.common.cancel} onPress={onCancel} variant="ghost" style={styles.btn} />
+          <PrimaryButton label={t.duplicate.confirmAnyway} onPress={onConfirm} variant="secondary" style={styles.btn} />
         </View>
-      </View>
-    </Modal>
+      }
+    >
+      <Text style={styles.message}>{message}</Text>
+    </DialogModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: Spacing.lg },
-  card: { backgroundColor: Colors.card, borderRadius: 16, padding: Spacing.lg, alignItems: "center" },
-  icon: { fontSize: 36, marginBottom: Spacing.sm },
-  title: { color: Colors.warning, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
   message: { color: Colors.textSecondary, textAlign: "center", lineHeight: 22, marginBottom: Spacing.lg },
   actions: { flexDirection: "row", gap: Spacing.sm, width: "100%" },
-  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  cancelText: { color: Colors.textSecondary },
-  confirmBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, backgroundColor: Colors.warning, alignItems: "center" },
-  confirmText: { color: Colors.bg, fontWeight: "700" },
+  btn: { flex: 1 },
 });

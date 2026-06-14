@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Linking from "expo-linking";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { PayBillModal } from "@/components/PayBillModal";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { Surface } from "@/components/ui/Surface";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
@@ -145,18 +147,21 @@ export default function AssistantCommandScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={Colors.accent} size="large" />
-        <Text style={styles.hint}>{t.assistant.processing}</Text>
-        {sourceLabel ? <Text style={styles.source}>{sourceLabel}</Text> : null}
-      </View>
-    );
+    return <LoadingScreen hint={t.assistant.processing} />;
   }
 
   return (
     <View style={styles.container}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {sourceLabel ? (
+        <Surface variant="accent" style={styles.sourceCard}>
+          <Text style={styles.source}>{sourceLabel}</Text>
+        </Surface>
+      ) : null}
+      {error ? (
+        <Surface variant="glass" style={styles.errorCard}>
+          <Text style={styles.error}>{error}</Text>
+        </Surface>
+      ) : null}
       <ConfirmationCard visible={confirmVisible} message={confirmMessage}
         onConfirm={handleConfirm} onCancel={() => router.replace("/(tabs)")} />
       <DuplicateBillDialog
@@ -194,9 +199,9 @@ export default function AssistantCommandScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg, padding: Spacing.md },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  hint: { color: Colors.textSecondary, marginTop: Spacing.md },
-  source: { color: Colors.accent, marginTop: Spacing.sm, fontSize: 13 },
-  error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.xl },
+  container: { flex: 1, backgroundColor: Colors.bg, padding: Spacing.md, justifyContent: "center" },
+  sourceCard: { padding: Spacing.md, marginBottom: Spacing.md, alignItems: "center" },
+  source: { color: Colors.accent, fontSize: 13, fontWeight: "600" },
+  errorCard: { padding: Spacing.lg, alignItems: "center" },
+  error: { color: Colors.danger, textAlign: "center" },
 });

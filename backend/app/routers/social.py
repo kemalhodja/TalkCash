@@ -40,6 +40,38 @@ async def settle_debt(debt_id: UUID, user: User = Depends(get_current_user), db:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
 
 
+@router.patch("/debts/{debt_id}")
+async def update_debt(
+    debt_id: UUID,
+    person_name: str | None = None,
+    amount: float | None = None,
+    is_lent: bool | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        record = await social_service.update_debt(
+            db, user.id, debt_id, person_name,
+            Decimal(str(amount)) if amount is not None else None,
+            is_lent,
+        )
+        return {
+            "id": str(record.id), "person": record.person_name, "amount": float(record.amount),
+            "is_lent": record.is_lent,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
+@router.delete("/debts/{debt_id}")
+async def delete_debt(debt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        await social_service.delete_debt(db, user.id, debt_id)
+        return {"deleted": True}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
 @router.post("/debt")
 async def add_debt(
     person_name: str, amount: float, is_lent: bool = True,
@@ -80,7 +112,78 @@ async def create_shared_wallet(
 @router.get("/shared-wallet")
 async def list_shared_wallets(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     wallets = await shared_service.list_for_user(db, user.id)
-    return [{"id": str(w.id), "name": w.name, "balance": float(w.balance)} for w in wallets]
+    return [
+        {
+            "id": str(w.id), "name": w.name, "balance": float(w.balance),
+            "owner_id": str(w.owner_id), "is_owner": w.owner_id == user.id,
+        }
+        for w in wallets
+    ]
+
+
+@router.patch("/shared-wallet/{wallet_id}")
+async def rename_shared_wallet(
+    wallet_id: UUID, name: str,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        wallet = await shared_service.rename(db, wallet_id, user.id, name)
+        return {"id": str(wallet.id), "name": wallet.name}
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=resolve_error(e, user_locale(user)))
+
+
+@router.post("/shared-wallet/{wallet_id}/members")
+async def add_shared_wallet_member(
+    wallet_id: UUID, member_email: str,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        wallet = await shared_service.add_member(db, wallet_id, user.id, member_email)
+        return {"id": str(wallet.id), "name": wallet.name}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, user_locale(user)))
+
+
+@router.delete("/shared-wallet/{wallet_id}/members/{member_id}")
+async def remove_shared_wallet_member(
+    wallet_id: UUID, member_id: UUID,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        wallet = await shared_service.remove_member(db, wallet_id, user.id, member_id)
+        return {"id": str(wallet.id), "members_removed": str(member_id)}
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=resolve_error(e, user_locale(user)))
+
+
+@router.post("/shared-wallet/{wallet_id}/transfer")
+async def transfer_shared_wallet_ownership(
+    wallet_id: UUID, member_id: UUID,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        wallet = await shared_service.transfer_ownership(db, wallet_id, user.id, member_id)
+        return {
+            "id": str(wallet.id),
+            "owner_id": str(wallet.owner_id),
+            "name": wallet.name,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=resolve_error(e, user_locale(user)))
+
+
+@router.delete("/shared-wallet/{wallet_id}")
+async def delete_shared_wallet(
+    wallet_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await shared_service.delete_wallet(db, wallet_id, user.id)
+        return {"deleted": True}
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=resolve_error(e, user_locale(user)))
 
 
 @router.post("/shared-wallet/{wallet_id}/expense")

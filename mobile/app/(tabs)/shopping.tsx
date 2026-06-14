@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
 import { VoiceInput } from "@/components/VoiceInput";
-import { Colors, Spacing } from "@/constants/theme";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { InputField } from "@/components/ui/InputField";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { ScreenShell } from "@/components/ui/ScreenShell";
+import { Surface } from "@/components/ui/Surface";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
@@ -38,6 +44,7 @@ export default function ShoppingScreen() {
     if (!newItem.trim()) return;
     const res: any = await api.addShoppingItems([newItem.trim()]);
     if (res?.status === "queued") {
+      setGrouped(groupShoppingFromSnapshot((await getCachedSnapshot())?.shopping));
       Alert.alert(t.common.confirm, t.common.offlineQueued);
     }
     setNewItem("");
@@ -47,34 +54,42 @@ export default function ShoppingScreen() {
   const categoryLabel = (key: string) =>
     (t.shopping.categories as Record<string, string>)[key] || key;
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
+  if (loading) return <LoadingScreen />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t.shopping.title}</Text>
+    <ScreenShell>
+      <ScreenHeader title={t.shopping.title} />
 
-      <View style={styles.addRow}>
-        <TextInput style={styles.input} placeholder={t.shopping.addPlaceholder} placeholderTextColor={Colors.textMuted}
-          value={newItem} onChangeText={setNewItem} onSubmitEditing={handleAdd} />
-        <View style={styles.voiceWrap}>
-          <VoiceInput compact whisperMode={false} onResult={async (_text, result) => {
-            let res: any;
-            if (result?.parsed?.intent === "add_shopping" && result.parsed.items?.length) {
-              res = await api.addShoppingItems(result.parsed.items);
-            } else if (result?.parsed?.description) {
-              res = await api.addShoppingItems([result.parsed.description]);
-            }
-            if (res?.status === "queued") {
-              Alert.alert(t.common.confirm, t.common.offlineQueued);
-            }
-            loadList();
-          }} />
+      <Surface variant="glass" style={styles.addPanel}>
+        <View style={styles.addRow}>
+          <InputField
+            containerStyle={styles.inputWrap}
+            style={styles.input}
+            placeholder={t.shopping.addPlaceholder}
+            value={newItem}
+            onChangeText={setNewItem}
+            onSubmitEditing={handleAdd}
+          />
+          <View style={styles.voiceWrap}>
+            <VoiceInput compact whisperMode={false} onResult={async (_text, result) => {
+              let res: any;
+              if (result?.parsed?.intent === "add_shopping" && result.parsed.items?.length) {
+                res = await api.addShoppingItems(result.parsed.items);
+              } else if (result?.parsed?.description) {
+                res = await api.addShoppingItems([result.parsed.description]);
+              }
+              if (res?.status === "queued") {
+                Alert.alert(t.common.confirm, t.common.offlineQueued);
+              }
+              loadList();
+            }} />
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
+            <Text style={styles.addBtnText}>+</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-          <Text style={styles.addBtnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.voiceHint}>{t.shopping.voiceHint}</Text>
+        <Text style={styles.voiceHint}>{t.shopping.voiceHint}</Text>
+      </Surface>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -82,7 +97,7 @@ export default function ShoppingScreen() {
         <View key={category} style={styles.category}>
           <Text style={styles.categoryTitle}>{categoryLabel(category)}</Text>
           {items.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.item}
+            <TouchableOpacity key={item.id} activeOpacity={0.85}
               onPress={() => setBuyModal({ id: item.id, name: item.name })}
               onLongPress={() => {
                 if (item.is_routine) {
@@ -99,54 +114,54 @@ export default function ShoppingScreen() {
                   ]);
                 }
               }}>
-              <View style={styles.checkbox} />
-              <Text style={styles.itemName}>
-                {item.name}{item.is_routine && (
-                  <Text style={styles.routine}>
-                    {item.routine_type === "weekly" ? " 📅" : " 🔄"}
-                  </Text>
-                )}
-              </Text>
+              <Surface variant="elevated" style={styles.item}>
+                <View style={styles.checkbox} />
+                <Text style={styles.itemName}>
+                  {item.name}{item.is_routine && (
+                    <Text style={styles.routine}>
+                      {item.routine_type === "weekly" ? " 📅" : " 🔄"}
+                    </Text>
+                  )}
+                </Text>
+              </Surface>
             </TouchableOpacity>
           ))}
         </View>
       ))}
 
       {Object.keys(grouped).length === 0 && !error && (
-        <Text style={styles.empty}>{t.shopping.empty}</Text>
+        <EmptyState message={t.shopping.empty} icon="🛒" />
       )}
 
       {buyModal && (
         <BuyToSpendModal visible={!!buyModal} itemId={buyModal.id} itemName={buyModal.name}
           onComplete={() => { setBuyModal(null); loadList(); }} onCancel={() => setBuyModal(null)} />
       )}
-    </ScrollView>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
-  content: { padding: Spacing.md },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700", marginBottom: Spacing.md },
-  addRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
-  input: {
-    flex: 1, backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, borderWidth: 1, borderColor: Colors.border,
-  },
+  addPanel: { padding: Spacing.md, marginBottom: Spacing.lg },
+  addRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  inputWrap: { flex: 1, marginBottom: 0 },
+  input: { marginBottom: 0 },
   voiceWrap: { justifyContent: "center" },
-  voiceHint: { color: Colors.textMuted, fontSize: 12, marginTop: -8, marginBottom: Spacing.sm },
-  addBtn: { backgroundColor: Colors.accent, width: 48, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  voiceHint: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm },
+  addBtn: {
+    backgroundColor: Colors.accent,
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   addBtnText: { color: Colors.bg, fontSize: 24, fontWeight: "700" },
   category: { marginBottom: Spacing.lg },
-  categoryTitle: { color: Colors.textSecondary, fontSize: 15, fontWeight: "600", marginBottom: Spacing.sm },
-  item: {
-    flexDirection: "row", alignItems: "center", backgroundColor: Colors.card,
-    borderRadius: 10, padding: Spacing.md, marginBottom: 6, borderWidth: 1, borderColor: Colors.border,
-  },
+  categoryTitle: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600", marginBottom: Spacing.sm, letterSpacing: 0.5, textTransform: "uppercase" },
+  item: { flexDirection: "row", alignItems: "center", padding: Spacing.md, marginBottom: 6 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.accent, marginRight: Spacing.md },
-  itemName: { color: Colors.text, fontSize: 16 },
+  itemName: { color: Colors.text, fontSize: 16, flex: 1 },
   routine: { fontSize: 12 },
-  empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
   error: { color: Colors.danger, marginBottom: Spacing.md },
 });

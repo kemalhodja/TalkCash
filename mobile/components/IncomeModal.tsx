@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Colors, Spacing } from "@/constants/theme";
+import { Alert, StyleSheet, View } from "react-native";
+import { BottomSheetModal } from "@/components/ui/BottomSheetModal";
+import { ChipPicker } from "@/components/ui/ChipPicker";
+import { InputField } from "@/components/ui/InputField";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
@@ -50,54 +54,30 @@ export function IncomeModal({ visible, onClose, onSuccess }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>{t.home.addIncome}</Text>
-          <Text style={styles.label}>{t.home.incomeWallet}</Text>
-          <View style={styles.chips}>
-            {wallets.map((w) => (
-              <TouchableOpacity key={w.id}
-                style={[styles.chip, selectedWallet === w.id && styles.chipActive]}
-                onPress={() => setSelectedWallet(w.id)}>
-                <Text style={styles.chipText}>{w.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TextInput style={styles.input} placeholder={t.home.incomeAmount} placeholderTextColor={Colors.textMuted}
-            keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
-          <TextInput style={styles.input} placeholder={t.home.incomeDesc} placeholderTextColor={Colors.textMuted}
-            value={description} onChangeText={setDescription} />
-          <View style={styles.actions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelText}>{t.common.cancel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
-              <Text style={styles.submitText}>{loading ? "..." : t.home.incomeSubmit}</Text>
-            </TouchableOpacity>
-          </View>
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      title={t.home.addIncome}
+      footer={
+        <View style={styles.actions}>
+          <PrimaryButton label={t.common.cancel} onPress={onClose} variant="ghost" style={styles.btn} />
+          <PrimaryButton label={t.home.incomeSubmit} onPress={handleSubmit} loading={loading} disabled={loading} style={styles.btn} />
         </View>
-      </View>
-    </Modal>
+      }
+    >
+      <ChipPicker
+        label={t.home.incomeWallet}
+        options={wallets.map((w) => ({ id: w.id, label: w.name }))}
+        value={selectedWallet}
+        onChange={setSelectedWallet}
+      />
+      <InputField placeholder={t.home.incomeAmount} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
+      <InputField placeholder={t.home.incomeDesc} value={description} onChangeText={setDescription} />
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  card: { backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: Spacing.lg },
-  title: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },
-  label: { color: Colors.textSecondary, marginBottom: Spacing.sm },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: Colors.border },
-  chipActive: { borderColor: Colors.accent, backgroundColor: "rgba(0,212,170,0.1)" },
-  chipText: { color: Colors.textSecondary, fontSize: 13 },
-  input: {
-    backgroundColor: Colors.bg, borderRadius: 10, padding: Spacing.md,
-    color: Colors.text, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Colors.border,
-  },
-  actions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
-  cancelBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  cancelText: { color: Colors.textSecondary },
-  submitBtn: { flex: 1, padding: Spacing.md, borderRadius: 10, backgroundColor: Colors.success, alignItems: "center" },
-  submitText: { color: Colors.bg, fontWeight: "700" },
+  actions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md },
+  btn: { flex: 1 },
 });
