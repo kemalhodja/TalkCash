@@ -13,7 +13,14 @@ export type QueuedOperation = {
     | "wallet_income"
     | "wallet_transfer"
     | "transaction_update"
-    | "transaction_delete";
+    | "transaction_delete"
+    | "wallet_create"
+    | "wallet_update"
+    | "wallet_delete"
+    | "agenda_add_bill"
+    | "agenda_update"
+    | "agenda_delete"
+    | "agenda_mark_paid";
   payload: Record<string, unknown>;
   clientTimestamp: string;
   resolveStrategy?: "local" | "server";

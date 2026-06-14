@@ -27,6 +27,9 @@ export default function SocialScreen() {
   const [expenseDesc, setExpenseDesc] = useState("");
   const [memberSummaries, setMemberSummaries] = useState<Record<string, any>>({});
   const [expandedWallet, setExpandedWallet] = useState<string | null>(null);
+  const [adminWalletId, setAdminWalletId] = useState<string | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const wsMap = useRef<Map<string, SharedWalletWS>>(new Map());
 
@@ -210,6 +213,46 @@ export default function SocialScreen() {
                 </TouchableOpacity>
               </View>
             )}
+            {w.is_owner && (
+              <>
+                <TouchableOpacity onPress={() => {
+                  setAdminWalletId(adminWalletId === w.id ? null : w.id);
+                  setRenameName(w.name);
+                  setInviteEmail("");
+                }}>
+                  <Text style={styles.expenseLink}>{t.social.adminTitle}</Text>
+                </TouchableOpacity>
+                {adminWalletId === w.id && (
+                  <View style={styles.expenseForm}>
+                    <TextInput style={styles.input} placeholder={t.social.renameWallet} placeholderTextColor={Colors.textMuted}
+                      value={renameName} onChangeText={setRenameName} />
+                    <TouchableOpacity style={styles.btn} onPress={async () => {
+                      await api.renameSharedWallet(w.id, renameName);
+                      load();
+                    }}><Text style={styles.btnText}>{t.social.renameWallet}</Text></TouchableOpacity>
+                    <TextInput style={styles.input} placeholder={t.social.inviteEmail} placeholderTextColor={Colors.textMuted}
+                      keyboardType="email-address" autoCapitalize="none" value={inviteEmail} onChangeText={setInviteEmail} />
+                    <TouchableOpacity style={styles.btn} onPress={async () => {
+                      if (!inviteEmail) return;
+                      await api.addSharedWalletMember(w.id, inviteEmail);
+                      Alert.alert(t.social.inviteMember);
+                      setInviteEmail("");
+                      load();
+                    }}><Text style={styles.btnText}>{t.social.inviteMember}</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.btn, styles.dangerBtn]} onPress={() => {
+                      Alert.alert(t.common.delete, t.social.deleteWallet, [
+                        { text: t.common.cancel, style: "cancel" },
+                        { text: t.common.delete, style: "destructive", onPress: async () => {
+                          await api.deleteSharedWallet(w.id);
+                          setAdminWalletId(null);
+                          load();
+                        }},
+                      ]);
+                    }}><Text style={[styles.btnText, styles.dangerText]}>{t.social.deleteWallet}</Text></TouchableOpacity>
+                  </View>
+                )}
+              </>
+            )}
           </View>
         ))}
         <TextInput style={styles.input} placeholder={t.social.walletName} placeholderTextColor={Colors.textMuted}
@@ -256,4 +299,6 @@ const styles = StyleSheet.create({
   expenseForm: { marginTop: Spacing.sm },
   emptyHint: { color: Colors.textMuted, marginBottom: Spacing.sm },
   memberRow: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
+  dangerBtn: { backgroundColor: "transparent", borderColor: Colors.danger, borderWidth: 1 },
+  dangerText: { color: Colors.danger },
 });

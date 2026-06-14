@@ -1,0 +1,30 @@
+name: Deploy Production (Fly.io)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "production" to confirm deploy'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.repository == 'kemalhodja/eduai-sale' && github.event.inputs.confirm == 'production'
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: talkcash-api-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Preflight
+        run: bash scripts/preflight-production.sh
+
+      - name: Deploy to Fly.io production
+        working-directory: backend
+        run: flyctl deploy --remote-only -a "$FLY_APP" --config fly.prod.toml
+
+      - name: Smoke test production API
+        run: API_URL="https://${FLY_APP}.fly.dev" python3 scripts/smoke_test.py

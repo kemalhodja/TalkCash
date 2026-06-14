@@ -11,6 +11,7 @@ from app.models.agenda import AgendaItem
 from app.models.budget import BudgetLimit
 from app.models.notification import Notification
 from app.models.receipt import Receipt
+from app.models.chat_message import ChatMessage
 from app.models.refresh_token import RefreshToken
 from app.models.shopping import ShoppingItem
 from app.models.social import DebtRecord, PriceWatchItem, SharedWallet, SharedWalletEntry, SplitBill
@@ -156,7 +157,7 @@ class AuthService:
         for model in (
             SyncOperationRecord, Notification, PriceWatchItem, SharedWalletEntry,
             DebtRecord, SplitBill, ShoppingItem, AgendaItem, BudgetLimit,
-            Transaction, Receipt, Wallet, RefreshToken,
+            Transaction, Receipt, Wallet, RefreshToken, ChatMessage,
         ):
             await db.execute(delete(model).where(model.user_id == user_id))
 

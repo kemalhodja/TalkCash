@@ -32,6 +32,7 @@ export default function TabLayout() {
       <Tabs.Screen name="agenda" options={{ title: t.tabs.agenda, tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} /> }} />
       <Tabs.Screen name="input" options={{ title: t.tabs.input, tabBarIcon: ({ color, size }) => <Ionicons name="mic" size={size} color={color} /> }} />
       <Tabs.Screen name="budgets" options={{ title: t.tabs.budget, tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart" size={size} color={color} /> }} />
+      <Tabs.Screen name="mentor" options={{ title: t.tabs.mentor, tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" size={size} color={color} /> }} />
       <Tabs.Screen name="social" options={{ title: t.tabs.social, tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
       <Tabs.Screen name="settings" options={{
         title: t.tabs.settings,

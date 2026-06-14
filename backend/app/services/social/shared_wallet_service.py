@@ -63,6 +63,70 @@ class SharedWalletService:
         members = json.loads(wallet.member_ids or "[]")
         return str(user_id) in members
 
+    async def is_owner(self, db: AsyncSession, wallet_id: UUID, user_id: UUID) -> bool:
+        wallet = await self.get(db, wallet_id)
+        return bool(wallet and wallet.owner_id == user_id)
+
+    def _require_owner(self, wallet: SharedWallet, user_id: UUID) -> None:
+        if wallet.owner_id != user_id:
+            raise I18nError("social.not_owner")
+
+    async def rename(self, db: AsyncSession, wallet_id: UUID, user_id: UUID, name: str) -> SharedWallet:
+        wallet = await self.get(db, wallet_id)
+        if not wallet:
+            raise I18nError("social.wallet_not_found")
+        self._require_owner(wallet, user_id)
+        wallet.name = clamp_text(name, max_len=100)
+        await db.commit()
+        await db.refresh(wallet)
+        return wallet
+
+    async def add_member(self, db: AsyncSession, wallet_id: UUID, owner_id: UUID, member_email: str) -> SharedWallet:
+        wallet = await self.get(db, wallet_id)
+        if not wallet:
+            raise I18nError("social.wallet_not_found")
+        self._require_owner(wallet, owner_id)
+        from sqlalchemy import select as sa_select
+        result = await db.execute(sa_select(User).where(User.email == member_email.strip().lower()))
+        user = result.scalars().first()
+        if not user:
+            raise I18nError("auth.user_not_found")
+        members = json.loads(wallet.member_ids or "[]")
+        uid = str(user.id)
+        if uid not in members:
+            members.append(uid)
+            wallet.member_ids = json.dumps(members)
+            await db.commit()
+            await db.refresh(wallet)
+        return wallet
+
+    async def remove_member(self, db: AsyncSession, wallet_id: UUID, owner_id: UUID, member_id: UUID) -> SharedWallet:
+        wallet = await self.get(db, wallet_id)
+        if not wallet:
+            raise I18nError("social.wallet_not_found")
+        self._require_owner(wallet, owner_id)
+        if member_id == wallet.owner_id:
+            raise I18nError("social.cannot_remove_owner")
+        members = json.loads(wallet.member_ids or "[]")
+        uid = str(member_id)
+        if uid in members:
+            members = [m for m in members if m != uid]
+            wallet.member_ids = json.dumps(members)
+            await db.commit()
+            await db.refresh(wallet)
+        return wallet
+
+    async def delete_wallet(self, db: AsyncSession, wallet_id: UUID, owner_id: UUID) -> None:
+        wallet = await self.get(db, wallet_id)
+        if not wallet:
+            raise I18nError("social.wallet_not_found")
+        self._require_owner(wallet, owner_id)
+        await db.execute(
+            SharedWalletEntry.__table__.delete().where(SharedWalletEntry.wallet_id == wallet_id)
+        )
+        await db.delete(wallet)
+        await db.commit()
+
     async def add_expense(
         self, db: AsyncSession, wallet_id: UUID, amount: Decimal,
         description: str, user_name: str, user_id: UUID | None = None,

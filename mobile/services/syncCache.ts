@@ -45,3 +45,12 @@ export async function getCachedSnapshot(): Promise<CloudSnapshot | null> {
   const raw = await AsyncStorage.getItem(SNAPSHOT_KEY);
   return raw ? JSON.parse(raw) : null;
 }
+
+export async function patchCachedSnapshot(partial: Partial<CloudSnapshot>): Promise<void> {
+  const current = (await getCachedSnapshot()) || {};
+  await AsyncStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+    ...current,
+    ...partial,
+    cached_at: new Date().toISOString(),
+  }));
+}

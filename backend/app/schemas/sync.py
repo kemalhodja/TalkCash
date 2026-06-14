@@ -11,6 +11,8 @@ class SyncOperation(BaseModel):
         "execute", "shopping_add", "shopping_complete",
         "wallet_income", "wallet_transfer", "wallet_expense",
         "transaction_update", "transaction_delete",
+        "wallet_create", "wallet_update", "wallet_delete",
+        "agenda_add_bill", "agenda_update", "agenda_delete", "agenda_mark_paid",
     ]
     payload: dict[str, Any]
     client_timestamp: datetime
