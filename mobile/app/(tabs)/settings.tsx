@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import {
-  Alert, Modal, StyleSheet, Switch, Text, TouchableOpacity, View,
+  Alert, Linking, Modal, StyleSheet, Switch, Text, TouchableOpacity, View,
 } from "react-native";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -14,6 +14,7 @@ import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { PRIVACY_POLICY_URL } from "@/constants/links";
 import { useI18n, Locale } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
@@ -244,6 +245,15 @@ export default function SettingsScreen() {
         <PrimaryButton label={t.settings.exportPdf} onPress={() => handleExport("pdf")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
         <PrimaryButton label={t.settings.exportExcel} onPress={() => handleExport("excel")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
 
+        <SectionTitle>{t.settings.about}</SectionTitle>
+        <Text style={styles.versionLabel}>{t.settings.version}: 1.0.0</Text>
+        <PrimaryButton
+          label={t.settings.privacyPolicy}
+          onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          variant="ghost"
+          style={styles.actionBtn}
+        />
+
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutText}>{t.settings.logout}</Text>
         </TouchableOpacity>
@@ -305,6 +315,7 @@ const styles = StyleSheet.create({
   },
   label: { color: Colors.text, fontSize: 16 },
   actionBtn: { marginTop: Spacing.sm },
+  versionLabel: { color: Colors.textMuted, fontSize: 13, marginBottom: Spacing.sm },
   logoutBtn: { marginTop: Spacing.xl, marginBottom: Spacing.lg, padding: Spacing.md, alignItems: "center" },
   logoutText: { color: Colors.danger, fontWeight: "600" },
   pendingHint: { color: Colors.warning, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },

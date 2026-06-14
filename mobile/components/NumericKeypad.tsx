@@ -1,5 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Colors, Spacing } from "@/constants/theme";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { Surface } from "@/components/ui/Surface";
+import { Colors, Radius, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 
 interface Props {
@@ -19,38 +21,32 @@ export function NumericKeypad({ value, onChange, onSubmit }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <Surface variant="glass" style={styles.container}>
       <Text style={styles.display}>{value || "0"}</Text>
       <View style={styles.grid}>
         {KEYS.map((key) => (
-          <TouchableOpacity key={key} style={styles.key} onPress={() => handleKey(key)}>
+          <TouchableOpacity key={key} style={styles.key} onPress={() => handleKey(key)} activeOpacity={0.85}>
             <Text style={styles.keyText}>{key}</Text>
           </TouchableOpacity>
         ))}
       </View>
-      <TouchableOpacity style={styles.submitBtn} onPress={onSubmit}>
-        <Text style={styles.submitText}>{t.common.save}</Text>
-      </TouchableOpacity>
-    </View>
+      <PrimaryButton label={t.common.save} onPress={onSubmit} style={styles.submitBtn} />
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: Spacing.md },
+  container: { padding: Spacing.md, marginTop: Spacing.sm },
   display: {
     color: Colors.text, fontSize: 32, fontWeight: "700",
     textAlign: "center", marginBottom: Spacing.md,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 },
   key: {
-    width: "30%", aspectRatio: 2, backgroundColor: Colors.card,
-    borderRadius: 10, justifyContent: "center", alignItems: "center",
+    width: "30%", aspectRatio: 2, backgroundColor: Colors.cardElevated,
+    borderRadius: Radius.md, justifyContent: "center", alignItems: "center",
     borderWidth: 1, borderColor: Colors.border,
   },
   keyText: { color: Colors.text, fontSize: 20, fontWeight: "600" },
-  submitBtn: {
-    marginTop: Spacing.md, backgroundColor: Colors.accent,
-    padding: Spacing.md, borderRadius: 10, alignItems: "center",
-  },
-  submitText: { color: Colors.bg, fontWeight: "700", fontSize: 16 },
+  submitBtn: { marginTop: Spacing.md },
 });

@@ -122,6 +122,9 @@ export default {
     passwordChanged: "Şifre güncellendi",
     accountDeleted: "Hesap silindi",
     appEnv: "Ortam",
+    about: "Hakkında",
+    version: "Sürüm",
+    privacyPolicy: "Gizlilik Politikası",
   },
   onboarding: {
     welcomeTitle: "TalkCash'e hoş geldiniz",
