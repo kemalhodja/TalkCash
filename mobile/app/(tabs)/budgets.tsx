@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { ErrorState } from "@/components/ErrorState";
+import { BudgetProgressCard } from "@/components/ui/BudgetProgressCard";
+import { DialogModal } from "@/components/ui/DialogModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InsightChip } from "@/components/ui/InsightChip";
 import { InputField } from "@/components/ui/InputField";
@@ -8,15 +10,14 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
+import { SectionBlock } from "@/components/ui/SectionBlock";
 import { Surface } from "@/components/ui/Surface";
-import { TextLink } from "@/components/ui/TextLink";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { getCachedSnapshot } from "@/services/syncCache";
-import { formatMoney } from "@/utils/format";
 import { isQueuedResult, showQueuedAlert } from "@/utils/apiWriteResult";
 
 export default function BudgetsScreen() {
@@ -75,10 +76,14 @@ export default function BudgetsScreen() {
     }
   };
 
-  const barColor = (percent: number) => {
-    if (percent >= 100) return Colors.danger;
-    if (percent >= 80) return Colors.warning;
-    return Colors.accent;
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await api.deleteBudget(id);
+      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
+      load();
+    } catch (e: any) {
+      Alert.alert(t.common.error, e.message || t.common.error);
+    }
   };
 
   if (loading) return <LoadingScreen />;
@@ -90,76 +95,56 @@ export default function BudgetsScreen() {
         <ScreenHeader title={t.budget.title} />
         {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
 
-        <Surface variant="glass" style={styles.form}>
-          <InputField placeholder={t.budget.category} value={category} onChangeText={setCategory} />
-          <InputField placeholder={t.budget.limit} keyboardType="decimal-pad" value={limit} onChangeText={setLimit} />
-          <PrimaryButton label={t.budget.add} onPress={handleAdd} />
-        </Surface>
+        <SectionBlock title={t.budget.add} bare>
+          <Surface variant="glass" style={styles.form}>
+            <InputField placeholder={t.budget.category} value={category} onChangeText={setCategory} />
+            <InputField placeholder={t.budget.limit} keyboardType="decimal-pad" value={limit} onChangeText={setLimit} />
+            <PrimaryButton label={t.budget.add} onPress={handleAdd} />
+          </Surface>
+        </SectionBlock>
 
-        {budgets.map((b) => {
-          const percent = b.percent ?? 0;
-          const spent = b.spent ?? 0;
-          return (
-            <TouchableOpacity key={b.id} activeOpacity={0.85}
-              onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}>
-              <Surface variant="elevated" style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.catName}>{b.category}</Text>
-                    <Text style={styles.limit}>
-                      {formatMoney(Number(spent), locale)} / {formatMoney(Number(b.monthly_limit), locale)} {t.budget.perMonth}
-                    </Text>
-                    <Text style={styles.percentText}>{percent}% {t.budget.used}</Text>
-                  </View>
-                  <TextLink label={t.common.delete} onPress={async () => {
-                    try {
-                      const res = await api.deleteBudget(b.id);
-                      if (isQueuedResult(res)) showQueuedAlert(t.common.confirm, t.common.offlineQueued);
-                      load();
-                    } catch (e: any) {
-                      Alert.alert(t.common.error, e.message || t.common.error);
-                    }
-                  }} danger />
-                </View>
-                <View style={styles.progressBg}>
-                  <View style={[styles.progressFill, { width: `${Math.min(percent, 100)}%`, backgroundColor: barColor(percent) }]} />
-                </View>
-              </Surface>
-            </TouchableOpacity>
-          );
-        })}
-
-        {budgets.length === 0 && <EmptyState message={t.budget.empty} icon="◎" />}
+        <SectionBlock title={t.budget.title} bare>
+          {budgets.map((b) => {
+            const percent = b.percent ?? 0;
+            const spent = b.spent ?? 0;
+            return (
+              <BudgetProgressCard
+                key={b.id}
+                category={b.category}
+                spent={Number(spent)}
+                limit={Number(b.monthly_limit)}
+                percent={percent}
+                locale={locale}
+                usedLabel={t.budget.used}
+                perMonthLabel={t.budget.perMonth}
+                deleteLabel={t.common.delete}
+                onLongPress={() => { setEditing(b); setEditLimit(String(b.monthly_limit)); }}
+                onDelete={() => handleDelete(b.id)}
+              />
+            );
+          })}
+          {budgets.length === 0 && <EmptyState message={t.budget.empty} icon="◎" />}
+        </SectionBlock>
       </ScreenShell>
 
-      <Modal visible={!!editing} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <Surface variant="glass" style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t.budget.edit}: {editing?.category}</Text>
-            <InputField placeholder={t.budget.newLimit} keyboardType="decimal-pad" value={editLimit} onChangeText={setEditLimit} />
-            <View style={styles.modalActions}>
-              <PrimaryButton label={t.common.cancel} onPress={() => setEditing(null)} variant="ghost" style={styles.modalBtn} />
-              <PrimaryButton label={t.common.save} onPress={handleUpdate} style={styles.modalBtn} />
-            </View>
-          </Surface>
-        </View>
-      </Modal>
+      <DialogModal
+        visible={!!editing}
+        title={`${t.budget.edit}: ${editing?.category ?? ""}`}
+        footer={
+          <View style={styles.modalActions}>
+            <PrimaryButton label={t.common.cancel} onPress={() => setEditing(null)} variant="ghost" style={styles.modalBtn} />
+            <PrimaryButton label={t.common.save} onPress={handleUpdate} style={styles.modalBtn} />
+          </View>
+        }
+      >
+        <InputField placeholder={t.budget.newLimit} keyboardType="decimal-pad" value={editLimit} onChangeText={setEditLimit} />
+      </DialogModal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { padding: Spacing.md, marginBottom: Spacing.lg },
-  card: { padding: Spacing.md, marginBottom: Spacing.sm },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  catName: { color: Colors.text, fontWeight: "600" },
-  limit: { color: Colors.textSecondary, marginTop: 4, fontSize: 13 },
-  percentText: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
-  progressBg: { height: 6, backgroundColor: Colors.border, borderRadius: Radius.pill, marginTop: Spacing.sm, overflow: "hidden" },
-  progressFill: { height: 6, borderRadius: Radius.pill },
-  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
-  modalCard: { padding: Spacing.lg },
-  modalTitle: { color: Colors.text, fontWeight: "700", marginBottom: Spacing.md },
-  modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
+  form: { padding: Spacing.md },
+  modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md, width: "100%" },
   modalBtn: { flex: 1 },
 });

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ListRow } from "@/components/ui/ListRow";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenShell } from "@/components/ui/ScreenShell";
-import { Surface } from "@/components/ui/Surface";
+import { SectionBlock } from "@/components/ui/SectionBlock";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -39,44 +40,37 @@ export default function NotificationsScreen() {
   return (
     <ScreenShell bottomInset={false}>
       <Stack.Screen options={{ title: t.settings.notifications, headerStyle: { backgroundColor: Colors.bg }, headerTintColor: Colors.text }} />
-      {unread > 0 ? (
-        <TouchableOpacity style={styles.markAllBtn} onPress={async () => { await api.markAllNotificationsRead(); load(); }}>
-          <Text style={styles.markAllText}>{t.settings.markAllRead}</Text>
-        </TouchableOpacity>
-      ) : null}
-      {items.map((n) => (
-        <TouchableOpacity
-          key={n.id}
-          activeOpacity={0.85}
-          onPress={async () => {
-            if (!n.is_read) {
-              await api.markNotificationRead(n.id);
-              load();
-            }
-            navigateFromMetadata(n.metadata);
-          }}
-        >
-          <Surface variant={!n.is_read ? "accent" : "elevated"} style={styles.card}>
-            <Text style={styles.title}>{n.title}</Text>
-            <Text style={styles.body}>{n.body}</Text>
-            {n.created_at ? (
-              <Text style={styles.date}>{formatDate(n.created_at, locale)}</Text>
-            ) : null}
-          </Surface>
-        </TouchableOpacity>
-      ))}
-      {items.length === 0 && (
-        <EmptyState message={t.settings.noNotifications} icon="🔔" />
-      )}
+      <SectionBlock
+        title={t.settings.notifications}
+        actionLabel={unread > 0 ? t.settings.markAllRead : undefined}
+        onAction={unread > 0 ? async () => { await api.markAllNotificationsRead(); load(); } : undefined}
+        bare
+      >
+        {items.map((n) => (
+          <ListRow
+            key={n.id}
+            title={n.title}
+            subtitle={n.body}
+            value={n.created_at ? formatDate(n.created_at, locale) : undefined}
+            valueTone={!n.is_read ? "accent" : "default"}
+            onPress={async () => {
+              if (!n.is_read) {
+                await api.markNotificationRead(n.id);
+                load();
+              }
+              navigateFromMetadata(n.metadata);
+            }}
+            style={!n.is_read ? styles.unread : undefined}
+          />
+        ))}
+        {items.length === 0 && (
+          <EmptyState message={t.settings.noNotifications} icon="🔔" />
+        )}
+      </SectionBlock>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  markAllBtn: { alignSelf: "flex-end", marginBottom: Spacing.sm },
-  markAllText: { color: Colors.accent, fontWeight: "600" },
-  card: { padding: Spacing.md, marginBottom: Spacing.sm },
-  title: { color: Colors.text, fontWeight: "600", fontSize: 16 },
-  body: { color: Colors.textSecondary, marginTop: 4 },
-  date: { color: Colors.textMuted, fontSize: 12, marginTop: 8 },
+  unread: { backgroundColor: Colors.accentSoft, borderRadius: 8, marginBottom: Spacing.xs },
 });

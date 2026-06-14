@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
+import { ListRow } from "@/components/ui/ListRow";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -134,18 +135,23 @@ export default function SocialScreen() {
           <EmptyState message={t.social.debtEmpty} icon="🤝" />
         ) : null}
         {debts.map((d) => (
-          <View key={d.id} style={styles.debtCard}>
-            <Text style={styles.debtText}>{d.is_lent ? t.social.lent : t.social.borrowed}: {d.person} — {formatMoney(d.amount, locale)}</Text>
-            <View style={styles.debtActions}>
-              <TextLink label={t.social.settle} onPress={async () => { await api.settleDebt(d.id); load(); }} />
-              <TextLink label={t.social.deleteDebt} onPress={() => {
-                Alert.alert(t.common.delete, t.transactions.deleteConfirm, [
-                  { text: t.common.cancel, style: "cancel" },
-                  { text: t.common.delete, style: "destructive", onPress: async () => { await api.deleteDebt(d.id); load(); } },
-                ]);
-              }} danger />
-            </View>
-          </View>
+          <ListRow
+            key={d.id}
+            title={`${d.is_lent ? t.social.lent : t.social.borrowed}: ${d.person}`}
+            value={formatMoney(d.amount, locale)}
+            valueTone="accent"
+            trailing={
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TextLink label={t.social.settle} onPress={async () => { await api.settleDebt(d.id); load(); }} />
+                <TextLink label={t.social.deleteDebt} onPress={() => {
+                  Alert.alert(t.common.delete, t.transactions.deleteConfirm, [
+                    { text: t.common.cancel, style: "cancel" },
+                    { text: t.common.delete, style: "destructive", onPress: async () => { await api.deleteDebt(d.id); load(); } },
+                  ]);
+                }} danger />
+              </View>
+            }
+          />
         ))}
         <InputField placeholder={t.social.personName} value={debtPerson} onChangeText={setDebtPerson} />
         <InputField placeholder={t.social.amount} keyboardType="decimal-pad" value={debtAmount} onChangeText={setDebtAmount} />
@@ -284,9 +290,6 @@ const styles = StyleSheet.create({
   resultText: { color: Colors.accent, fontSize: 18, fontWeight: "700", marginBottom: Spacing.sm },
   whatsappBtn: { backgroundColor: "#25D366", padding: Spacing.sm, borderRadius: Radius.sm, alignItems: "center" },
   whatsappText: { color: "#fff", fontWeight: "600" },
-  debtCard: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  debtText: { color: Colors.text, flex: 1 },
-  debtActions: { flexDirection: "row", gap: Spacing.sm },
   walletCard: { padding: Spacing.md, marginBottom: Spacing.sm },
   walletRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.xs },
   walletName: { color: Colors.text, fontWeight: "600" },

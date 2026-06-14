@@ -10,6 +10,7 @@ import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletEditModal } from "@/components/WalletEditModal";
 import { WalletCard } from "@/components/WalletCard";
 import { AppBrandHeader } from "@/components/ui/AppBrandHeader";
+import { ChipPicker } from "@/components/ui/ChipPicker";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HeroNetWorth } from "@/components/ui/HeroNetWorth";
 import { InputField } from "@/components/ui/InputField";
@@ -185,17 +186,15 @@ export default function DashboardScreen() {
       >
         {toolsOpen ? (
           <Surface variant="elevated" style={styles.toolsPanel}>
-            <View style={styles.toolLinks}>
-              {[
-                { label: t.tabs.budget, route: "/budgets" },
-                { label: t.tabs.mentor, route: "/mentor" },
-                { label: t.tabs.social, route: "/social" },
-              ].map((item) => (
-                <TouchableOpacity key={item.route} style={styles.toolLink} onPress={() => router.push(item.route as any)}>
-                  <Text style={styles.toolLinkText}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ChipPicker
+              options={[
+                { id: "/budgets", label: t.tabs.budget },
+                { id: "/mentor", label: t.tabs.mentor },
+                { id: "/social", label: t.tabs.social },
+              ]}
+              value={null}
+              onChange={(route) => router.push(route as any)}
+            />
 
             <Text style={styles.miniTitle}>{t.home.watchlist}</Text>
             {watchlist.map((w) => (
@@ -276,16 +275,6 @@ const styles = StyleSheet.create({
   walletScroll: { marginHorizontal: -Spacing.md, paddingHorizontal: Spacing.md },
   insights: { gap: Spacing.sm },
   toolsPanel: { padding: Spacing.md },
-  toolLinks: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.md },
-  toolLink: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: 999,
-    backgroundColor: Colors.accentSoft,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
-  },
-  toolLinkText: { color: Colors.accent, fontWeight: "700", fontSize: 12 },
   miniTitle: { color: Colors.textSecondary, fontSize: 12, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: Spacing.sm, marginTop: Spacing.sm },
   priceRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.sm, alignItems: "center" },
   flexInput: { flex: 1, marginBottom: 0 },
