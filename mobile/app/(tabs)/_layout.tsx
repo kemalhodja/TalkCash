@@ -1,11 +1,19 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { ConflictModal } from "@/components/ConflictModal";
-import { Colors, Radius, Shadow, Spacing } from "@/constants/theme";
+import { Colors, Layout, Radius, Shadow, Spacing } from "@/constants/theme";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { useI18n } from "@/i18n";
+
+function TabIcon({ name, color, focused }: { name: keyof typeof Ionicons.glyphMap; color: string; focused: boolean }) {
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <Ionicons name={name} size={focused ? 22 : 20} color={color} />
+    </View>
+  );
+}
 
 export default function TabLayout() {
   const { t } = useI18n();
@@ -27,15 +35,28 @@ export default function TabLayout() {
       tabBarInactiveTintColor: Colors.textMuted,
       tabBarLabelStyle: styles.tabLabel,
       tabBarItemStyle: styles.tabItem,
+      tabBarBackground: () => <View style={styles.tabBarBg} />,
     }}>
-      <Tabs.Screen name="index" options={{ title: t.tabs.home, tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }} />
-      <Tabs.Screen name="transactions" options={{ title: t.tabs.transactions, tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} /> }} />
-      <Tabs.Screen name="shopping" options={{ title: t.tabs.shopping, tabBarIcon: ({ color, size }) => <Ionicons name="cart" size={size} color={color} /> }} />
-      <Tabs.Screen name="agenda" options={{ title: t.tabs.agenda, tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} /> }} />
+      <Tabs.Screen name="index" options={{
+        title: t.tabs.home,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "home" : "home-outline"} color={color} focused={focused} />,
+      }} />
+      <Tabs.Screen name="transactions" options={{
+        title: t.tabs.transactions,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "list" : "list-outline"} color={color} focused={focused} />,
+      }} />
+      <Tabs.Screen name="shopping" options={{
+        title: t.tabs.shopping,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "cart" : "cart-outline"} color={color} focused={focused} />,
+      }} />
+      <Tabs.Screen name="agenda" options={{
+        title: t.tabs.agenda,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "calendar" : "calendar-outline"} color={color} focused={focused} />,
+      }} />
       <Tabs.Screen name="settings" options={{
         title: t.tabs.settings,
         tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-        tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "settings" : "settings-outline"} color={color} focused={focused} />,
       }} />
       <Tabs.Screen name="input" options={{ href: null }} />
       <Tabs.Screen name="budgets" options={{ href: null }} />
@@ -51,17 +72,34 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: Spacing.md,
     right: Spacing.md,
-    bottom: Platform.OS === "ios" ? 24 : 16,
-    height: 68,
+    bottom: Platform.OS === "ios" ? 24 : Layout.tabBarBottom,
+    height: Layout.tabBarHeight,
     borderRadius: Radius.xl,
-    backgroundColor: Colors.cardElevated,
+    backgroundColor: "transparent",
     borderTopWidth: 0,
-    borderWidth: 1,
-    borderColor: Colors.borderStrong,
+    borderWidth: 0,
     paddingBottom: 6,
     paddingTop: 8,
+    elevation: 0,
+  },
+  tabBarBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.cardElevated,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
     ...Shadow.card,
   },
-  tabLabel: { fontSize: 10, fontWeight: "600", marginTop: 2 },
+  tabLabel: { fontSize: 10, fontWeight: "700", marginTop: 2 },
   tabItem: { paddingVertical: 4 },
+  iconWrap: {
+    width: 32,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: Radius.sm,
+  },
+  iconWrapActive: {
+    backgroundColor: Colors.accentSoft,
+  },
 });

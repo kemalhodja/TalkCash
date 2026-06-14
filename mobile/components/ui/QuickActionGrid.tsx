@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Shadow, Spacing } from "@/constants/theme";
 
 type Action = {
   key: string;
@@ -18,7 +18,7 @@ export function QuickActionGrid({ actions }: { actions: Action[] }) {
           key={a.key}
           style={[styles.btn, a.primary && styles.btnPrimary]}
           onPress={a.onPress}
-          activeOpacity={0.85}
+          activeOpacity={0.82}
         >
           <View style={[styles.iconWrap, a.primary && styles.iconWrapPrimary]}>
             <Ionicons name={a.icon} size={18} color={a.primary ? Colors.bg : Colors.accent} />
@@ -26,6 +26,7 @@ export function QuickActionGrid({ actions }: { actions: Action[] }) {
           <Text style={[styles.label, a.primary && styles.labelPrimary]} numberOfLines={2}>
             {a.label}
           </Text>
+          {a.primary ? <View style={styles.primaryGlow} /> : null}
         </TouchableOpacity>
       ))}
     </View>
@@ -43,15 +44,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: "hidden",
+    ...Shadow.card,
   },
   btnPrimary: {
     backgroundColor: Colors.accentSoft,
     borderColor: Colors.borderStrong,
+    ...Shadow.glow,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: Colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
@@ -60,4 +64,14 @@ const styles = StyleSheet.create({
   iconWrapPrimary: { backgroundColor: Colors.accent },
   label: { color: Colors.textSecondary, fontSize: 11, fontWeight: "600", textAlign: "center" },
   labelPrimary: { color: Colors.accent },
+  primaryGlow: {
+    position: "absolute",
+    top: -20,
+    right: -20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.accentGlow,
+    opacity: 0.35,
+  },
 });

@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Spacing } from "@/constants/theme";
+import { Colors, Shadow, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
@@ -18,6 +18,30 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const pulse = useRef(new Animated.Value(1)).current;
+  const glow = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!recording) {
+      pulse.setValue(1);
+      glow.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.12, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(glow, { toValue: 1, duration: 700, useNativeDriver: true }),
+          Animated.timing(glow, { toValue: 0.35, duration: 700, useNativeDriver: true }),
+        ]),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [recording, pulse, glow]);
 
   const startRecording = async () => {
     if (disabled) {
@@ -69,35 +93,66 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
         ? t.input.whisperMode
         : t.input.voiceCommand;
 
-  const btnSize = compact ? 48 : 64;
+  const btnSize = compact ? 48 : 72;
   const iconSize = compact ? 22 : 28;
 
   return (
     <View style={[styles.container, compact && styles.compact]}>
-      <TouchableOpacity
-        style={[styles.micBtn, { width: btnSize, height: btnSize, borderRadius: btnSize / 2 }, recording && styles.micActive, disabled && styles.micDisabled]}
-        onPress={handlePress}
-        disabled={processing || disabled}
-      >
-        {processing ? (
-          <ActivityIndicator color={Colors.bg} />
-        ) : (
-          <Ionicons name={recording ? "stop" : "mic"} size={iconSize} color={Colors.bg} />
-        )}
-      </TouchableOpacity>
-      {!compact && <Text style={styles.hint}>{hint}</Text>}
+      {recording ? (
+        <Animated.View
+          style={[
+            styles.pulseRing,
+            {
+              width: btnSize + 24,
+              height: btnSize + 24,
+              borderRadius: (btnSize + 24) / 2,
+              opacity: glow,
+              transform: [{ scale: pulse }],
+            },
+          ]}
+        />
+      ) : null}
+      <Animated.View style={{ transform: [{ scale: recording ? pulse : 1 }] }}>
+        <TouchableOpacity
+          style={[
+            styles.micBtn,
+            { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
+            recording && styles.micActive,
+            disabled && styles.micDisabled,
+            recording && Shadow.glowStrong,
+          ]}
+          onPress={handlePress}
+          disabled={processing || disabled}
+          activeOpacity={0.85}
+        >
+          {processing ? (
+            <ActivityIndicator color={Colors.bg} />
+          ) : (
+            <Ionicons name={recording ? "stop" : "mic"} size={iconSize} color={Colors.bg} />
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+      {!compact && <Text style={[styles.hint, recording && styles.hintActive]}>{hint}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: "center", padding: Spacing.md },
+  container: { alignItems: "center", padding: Spacing.md, justifyContent: "center" },
+  pulseRing: {
+    position: "absolute",
+    backgroundColor: Colors.accentGlow,
+    borderWidth: 2,
+    borderColor: Colors.borderStrong,
+  },
   micBtn: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: Colors.accent, justifyContent: "center", alignItems: "center",
+    backgroundColor: Colors.accent,
+    justifyContent: "center",
+    alignItems: "center",
   },
   micActive: { backgroundColor: Colors.danger },
   micDisabled: { opacity: 0.4 },
-  compact: { padding: 0, alignItems: "center", justifyContent: "center" },
+  compact: { padding: 0 },
   hint: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
+  hintActive: { color: Colors.danger, fontWeight: "600" },
 });

@@ -53,6 +53,7 @@ export default {
     offlineCache: "Offline cache",
     moreTools: "Tools & tracking",
     allWallets: "All wallets",
+    insights: "Insights",
   },
   login: {
     title: "TalkCash",

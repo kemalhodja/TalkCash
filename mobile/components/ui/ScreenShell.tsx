@@ -8,7 +8,8 @@ import {
   ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Spacing } from "@/constants/theme";
+import { Colors, Layout, Spacing } from "@/constants/theme";
+import { AmbientBackground } from "./AmbientBackground";
 
 type Props = {
   children: ReactNode;
@@ -18,6 +19,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   bottomInset?: boolean;
+  ambient?: boolean | "subtle";
 };
 
 export function ScreenShell({
@@ -28,14 +30,25 @@ export function ScreenShell({
   style,
   contentStyle,
   bottomInset = true,
+  ambient = false,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const padBottom = bottomInset ? insets.bottom + 88 : insets.bottom + Spacing.md;
+  const padBottom = bottomInset
+    ? insets.bottom + Layout.tabBarClearance
+    : insets.bottom + Spacing.md;
+  const ambientVariant = ambient === "subtle" ? "subtle" : "default";
+
+  const shell = (
+    <>
+      {ambient ? <AmbientBackground variant={ambientVariant} /> : null}
+      {children}
+    </>
+  );
 
   if (!scroll) {
     return (
       <View style={[styles.root, { paddingTop: insets.top + Spacing.sm }, style]}>
-        {children}
+        {shell}
       </View>
     );
   }
@@ -60,12 +73,12 @@ export function ScreenShell({
         ) : undefined
       }
     >
-      {children}
+      {shell}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  content: { paddingHorizontal: Spacing.md },
+  content: { paddingHorizontal: Layout.screenPadding },
 });

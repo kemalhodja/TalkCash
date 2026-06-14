@@ -60,4 +60,27 @@ export const Shadow = {
     shadowRadius: 24,
     elevation: 12,
   },
+  glowStrong: {
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 32,
+    elevation: 16,
+  },
+};
+
+export const Layout = {
+  screenPadding: Spacing.md,
+  tabBarHeight: 68,
+  tabBarBottom: 16,
+  tabBarClearance: 100,
+  sectionGap: Spacing.lg,
+  cardGap: Spacing.sm,
+  maxContentWidth: 480,
+};
+
+export const Gradients = {
+  accent: ["rgba(0,212,170,0.35)", "rgba(0,212,170,0.05)"] as const,
+  hero: ["rgba(0,212,170,0.18)", "rgba(59,130,246,0.08)", "transparent"] as const,
+  card: ["rgba(20,28,43,0.95)", "rgba(15,21,32,0.88)"] as const,
 };
