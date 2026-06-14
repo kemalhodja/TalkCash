@@ -51,6 +51,8 @@ export default {
     watchlist: "Price watchlist",
     addWatch: "Add to watchlist",
     offlineCache: "Offline cache",
+    moreTools: "Tools & tracking",
+    allWallets: "All wallets",
   },
   login: {
     title: "TalkCash",

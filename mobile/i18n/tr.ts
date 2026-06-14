@@ -51,6 +51,8 @@ export default {
     watchlist: "Fiyat izleme listesi",
     addWatch: "İzlemeye ekle",
     offlineCache: "Çevrimdışı önbellek",
+    moreTools: "Araçlar & izleme",
+    allWallets: "Tüm kasalar",
   },
   login: {
     title: "TalkCash",

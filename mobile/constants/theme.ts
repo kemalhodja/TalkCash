@@ -1,16 +1,22 @@
 export const Colors = {
-  bg: "#0A0E17",
-  card: "#111827",
-  cardHover: "#1A2332",
+  bg: "#06080F",
+  bgElevated: "#0A0E17",
+  card: "#0F1520",
+  cardElevated: "#141C2B",
+  cardHover: "#1A2438",
   accent: "#00D4AA",
-  accentBlue: "#00A3FF",
-  text: "#F0F4F8",
+  accentSoft: "rgba(0,212,170,0.12)",
+  accentGlow: "rgba(0,212,170,0.35)",
+  accentBlue: "#3B82F6",
+  text: "#F4F7FB",
   textSecondary: "#94A3B8",
   textMuted: "#64748B",
-  border: "rgba(255,255,255,0.08)",
-  danger: "#EF4444",
-  warning: "#F59E0B",
-  success: "#10B981",
+  border: "rgba(255,255,255,0.07)",
+  borderStrong: "rgba(0,212,170,0.25)",
+  danger: "#F87171",
+  warning: "#FBBF24",
+  success: "#34D399",
+  overlay: "rgba(6,8,15,0.92)",
 };
 
 export const Spacing = {
@@ -19,4 +25,39 @@ export const Spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 48,
+};
+
+export const Radius = {
+  sm: 10,
+  md: 16,
+  lg: 22,
+  xl: 28,
+  pill: 999,
+};
+
+export const Typography = {
+  hero: { fontSize: 40, fontWeight: "800" as const, letterSpacing: -1.2 },
+  title: { fontSize: 22, fontWeight: "700" as const, letterSpacing: -0.4 },
+  subtitle: { fontSize: 15, fontWeight: "500" as const },
+  label: { fontSize: 12, fontWeight: "600" as const, letterSpacing: 0.8, textTransform: "uppercase" as const },
+  body: { fontSize: 15, fontWeight: "400" as const },
+  caption: { fontSize: 12, fontWeight: "500" as const },
+};
+
+export const Shadow = {
+  card: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  glow: {
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 12,
+  },
 };

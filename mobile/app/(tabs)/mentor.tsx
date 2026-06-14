@@ -3,7 +3,8 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
-import { Colors, Spacing } from "@/constants/theme";
+import { Surface } from "@/components/ui/Surface";
+import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
@@ -57,14 +58,23 @@ export default function MentorScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <Text style={styles.brand}>TalkCash</Text>
       <Text style={styles.title}>{t.mentor.title}</Text>
       <Text style={styles.subtitle}>{t.mentor.subtitle}</Text>
       <ScrollView ref={scrollRef} style={styles.chat} contentContainerStyle={styles.chatContent}>
-        {messages.length === 0 && <Text style={styles.empty}>{t.mentor.empty}</Text>}
+        {messages.length === 0 && (
+          <Surface variant="accent" style={styles.emptyCard}>
+            <Text style={styles.empty}>{t.mentor.empty}</Text>
+          </Surface>
+        )}
         {messages.map((m) => (
-          <View key={m.id} style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.aiBubble]}>
+          <Surface
+            key={m.id}
+            variant={m.role === "user" ? "accent" : "elevated"}
+            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.aiBubble]}
+          >
             <Text style={styles.bubbleText}>{m.content}</Text>
-          </View>
+          </Surface>
         ))}
       </ScrollView>
       <View style={styles.inputRow}>
@@ -87,20 +97,22 @@ export default function MentorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg, padding: Spacing.md },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  title: { color: Colors.text, fontSize: 22, fontWeight: "700" },
+  brand: { color: Colors.accent, ...Typography.label, marginBottom: 4 },
+  title: { color: Colors.text, ...Typography.title },
   subtitle: { color: Colors.textSecondary, marginBottom: Spacing.md },
   chat: { flex: 1 },
   chatContent: { paddingBottom: Spacing.md },
-  empty: { color: Colors.textMuted, textAlign: "center", marginTop: Spacing.xl },
-  bubble: { borderRadius: 12, padding: Spacing.md, marginBottom: Spacing.sm, maxWidth: "85%" },
-  userBubble: { alignSelf: "flex-end", backgroundColor: "rgba(0,212,170,0.15)", borderColor: Colors.accent, borderWidth: 1 },
-  aiBubble: { alignSelf: "flex-start", backgroundColor: Colors.card, borderColor: Colors.border, borderWidth: 1 },
-  bubbleText: { color: Colors.text },
+  emptyCard: { padding: Spacing.lg },
+  empty: { color: Colors.textSecondary, textAlign: "center" },
+  bubble: { padding: Spacing.md, marginBottom: Spacing.sm, maxWidth: "85%" },
+  userBubble: { alignSelf: "flex-end" },
+  aiBubble: { alignSelf: "flex-start" },
+  bubbleText: { color: Colors.text, lineHeight: 20 },
   inputRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
   input: {
-    flex: 1, backgroundColor: Colors.card, borderRadius: 10, padding: Spacing.md,
+    flex: 1, backgroundColor: Colors.cardElevated, borderRadius: Radius.md, padding: Spacing.md,
     color: Colors.text, borderWidth: 1, borderColor: Colors.border, maxHeight: 100,
   },
-  sendBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: 10 },
+  sendBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: Radius.md },
   sendText: { color: Colors.bg, fontWeight: "700" },
 });
