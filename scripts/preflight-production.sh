@@ -19,7 +19,11 @@ fi
 
 if command -v flyctl >/dev/null 2>&1; then
   if ! flyctl auth whoami >/dev/null 2>&1; then
-    fail "Not logged in to Fly.io. Run: flyctl auth login"
+    if [ -n "${FLY_API_TOKEN:-}" ]; then
+      fail "FLY_API_TOKEN is set but flyctl auth failed — check token scope"
+    else
+      fail "Not logged in to Fly.io. Run: flyctl auth login  OR  export FLY_API_TOKEN=..."
+    fi
   else
     echo "  OK  flyctl authenticated ($(flyctl auth whoami 2>/dev/null | head -1))"
   fi

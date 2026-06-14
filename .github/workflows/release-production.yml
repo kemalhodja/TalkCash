@@ -1,0 +1,146 @@
+name: Release Production (Full Pipeline)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "release" to run deploy + build + Play submit'
+        required: true
+      skip_deploy:
+        description: "Skip Fly.io deploy (API already live)"
+        type: boolean
+        default: false
+      skip_build:
+        description: "Skip EAS build (submit latest AAB only)"
+        type: boolean
+        default: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    if: github.repository == 'kemalhodja/eduai-sale' && github.event.inputs.confirm == 'release'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Backend tests
+        working-directory: backend
+        env:
+          RATE_LIMIT_ENABLED: "false"
+          SCHEDULER_ENABLED: "false"
+        run: python3 -m pytest tests/ -q
+
+      - name: Mobile tests + typecheck
+        working-directory: mobile
+        run: |
+          npm install
+          npm test -- --watchAll=false
+          npx tsc --noEmit
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: verify
+    if: github.repository == 'kemalhodja/eduai-sale' && github.event.inputs.confirm == 'release' && github.event.inputs.skip_deploy != 'true'
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP: talkcash-api-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Preflight production
+        run: bash scripts/preflight-production.sh
+
+      - name: Deploy to Fly.io production
+        working-directory: backend
+        run: flyctl deploy --remote-only -a "$FLY_APP" --config fly.prod.toml
+
+      - name: Smoke test production API
+        run: API_URL="https://${FLY_APP}.fly.dev" python3 scripts/smoke_test.py
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [verify, deploy]
+    if: |
+      always() &&
+      github.repository == 'kemalhodja/eduai-sale' &&
+      github.event.inputs.confirm == 'release' &&
+      github.event.inputs.skip_build != 'true' &&
+      needs.verify.result == 'success' &&
+      (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Expo / EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Validate build env
+        run: |
+          if [ -z "${{ vars.EXPO_PUBLIC_API_URL }}" ]; then
+            echo "Set repository variable EXPO_PUBLIC_API_URL"
+            exit 1
+          fi
+          if [ -z "${{ vars.EAS_PROJECT_ID }}" ]; then
+            echo "Set repository variable EAS_PROJECT_ID"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install
+
+      - name: Production Android AAB build
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+        run: eas build --profile production --platform android --non-interactive --wait
+
+  submit:
+    runs-on: ubuntu-latest
+    needs: [verify, build]
+    if: |
+      always() &&
+      github.repository == 'kemalhodja/eduai-sale' &&
+      github.event.inputs.confirm == 'release' &&
+      needs.verify.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Expo / EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install
+
+      - name: Submit to Play Console (internal track)
+        working-directory: mobile
+        env:
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+        run: eas submit --profile production --platform android --latest --non-interactive
+
+      - name: Release summary
+        run: |
+          echo "Production release pipeline finished."
+          echo "API: https://talkcash-api-prod.fly.dev/api/v1"
+          echo "Check Play Console → Internal testing for review status."

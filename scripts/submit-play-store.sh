@@ -5,15 +5,23 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/mobile"
 
-if [ -z "${EXPO_TOKEN:-}" ] && ! eas whoami >/dev/null 2>&1; then
-  echo "Run: eas login  OR  export EXPO_TOKEN=..."
-  exit 1
+EAS_CMD=(npx --yes eas-cli)
+
+if [ -z "${EXPO_TOKEN:-}" ]; then
+  if ! "${EAS_CMD[@]}" whoami >/dev/null 2>&1; then
+    echo "Authenticate first:"
+    echo "  eas login"
+    echo "  OR  export EXPO_TOKEN=...   # https://expo.dev/settings/access-tokens"
+    exit 1
+  fi
+else
+  export EXPO_TOKEN
 fi
 
 echo "==> Production Android build (AAB)..."
-eas build --profile production --platform android --non-interactive
+"${EAS_CMD[@]}" build --profile production --platform android --non-interactive --wait
 
 echo "==> Submit latest build to Play Console (internal track)..."
-eas submit --profile production --platform android --latest --non-interactive
+"${EAS_CMD[@]}" submit --profile production --platform android --latest --non-interactive
 
 echo "Done. Check Play Console → Internal testing for review status."

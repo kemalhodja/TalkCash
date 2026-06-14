@@ -87,11 +87,35 @@ Otomatik kontrol (test + verify + typecheck):
 ./scripts/release.sh --checklist
 ```
 
-Ardından production pipeline:
+### Tek tık — GitHub Actions (önerilen)
+
+Repo secret'ları hazırsa: **Actions → Release Production (Full Pipeline)**
+
+| Input | Değer |
+|-------|--------|
+| `confirm` | `release` |
+| `skip_deploy` | API zaten canlıysa ✓ |
+| `skip_build` | Sadece Play submit için ✓ |
+
+Sıra: test → Fly prod deploy + smoke → EAS AAB build → Play internal track submit.
+
+Gerekli **secrets**: `FLY_API_TOKEN`, `EXPO_TOKEN`  
+Gerekli **variables**: `EXPO_PUBLIC_API_URL`, `EAS_PROJECT_ID`
+
+### Yerel komut satırı
+
+Token'lar shell'de export edilmişse:
 
 ```bash
-./scripts/release.sh --production    # Fly prod + EAS AAB
-./scripts/release.sh --submit-play     # Play Console
+./scripts/release.sh --checklist
+FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production --submit-play
+```
+
+İlk kurulum:
+
+```bash
+./scripts/setup-fly-prod.sh
+./scripts/preflight-production.sh
 ```
 
 ### API

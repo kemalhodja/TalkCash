@@ -66,7 +66,7 @@ check "Version in app.json" bash -c 'grep -q "\"version\"" mobile/app.json'
 
 echo ""
 echo "--- Production config (manual if missing) ---"
-warn_check "Fly prod app exists" bash -c 'command -v fly >/dev/null && fly apps list 2>/dev/null | grep -q talkcash-api-prod'
+warn_check "Fly prod app exists" bash -c 'export PATH="${HOME}/.fly/bin:${PATH}"; command -v flyctl >/dev/null && flyctl apps list 2>/dev/null | grep -q talkcash-api-prod'
 warn_check "PRODUCTION.md present" test -f docs/PRODUCTION.md
 warn_check "PLAY_STORE_LISTING.md present" test -f docs/PLAY_STORE_LISTING.md
 warn_check "SMOKE_TEST.md present" test -f docs/SMOKE_TEST.md
@@ -80,7 +80,7 @@ if [ "$fail" -gt 0 ]; then
   exit 1
 fi
 echo "Ready for release pipeline:"
-echo "  1. ./scripts/release.sh --production    # deploy API + build AAB"
-echo "  2. ./scripts/release.sh --submit-play   # Play Console upload"
-echo "  3. Manual smoke on device (see docs/SMOKE_TEST.md)"
+echo "  GitHub: Actions → Release Production (Full Pipeline) → confirm: release"
+echo "  Local:  FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production --submit-play"
+echo "  Device: manual smoke (docs/SMOKE_TEST.md)"
 exit 0
