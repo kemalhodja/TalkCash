@@ -157,6 +157,22 @@ async def remove_shared_wallet_member(
         raise HTTPException(status_code=403, detail=resolve_error(e, user_locale(user)))
 
 
+@router.post("/shared-wallet/{wallet_id}/transfer")
+async def transfer_shared_wallet_ownership(
+    wallet_id: UUID, member_id: UUID,
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):
+    try:
+        wallet = await shared_service.transfer_ownership(db, wallet_id, user.id, member_id)
+        return {
+            "id": str(wallet.id),
+            "owner_id": str(wallet.owner_id),
+            "name": wallet.name,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=resolve_error(e, user_locale(user)))
+
+
 @router.delete("/shared-wallet/{wallet_id}")
 async def delete_shared_wallet(
     wallet_id: UUID,

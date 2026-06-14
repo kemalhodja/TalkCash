@@ -116,6 +116,23 @@ class SharedWalletService:
             await db.refresh(wallet)
         return wallet
 
+    async def transfer_ownership(
+        self, db: AsyncSession, wallet_id: UUID, owner_id: UUID, new_owner_id: UUID,
+    ) -> SharedWallet:
+        wallet = await self.get(db, wallet_id)
+        if not wallet:
+            raise I18nError("social.wallet_not_found")
+        self._require_owner(wallet, owner_id)
+        if new_owner_id == wallet.owner_id:
+            raise I18nError("social.already_owner")
+        members = json.loads(wallet.member_ids or "[]")
+        if str(new_owner_id) not in members:
+            raise I18nError("social.member_not_in_wallet")
+        wallet.owner_id = new_owner_id
+        await db.commit()
+        await db.refresh(wallet)
+        return wallet
+
     async def delete_wallet(self, db: AsyncSession, wallet_id: UUID, owner_id: UUID) -> None:
         wallet = await self.get(db, wallet_id)
         if not wallet:

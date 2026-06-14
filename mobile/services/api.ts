@@ -468,6 +468,8 @@ export const api = {
     request(`/social/shared-wallet/${walletId}/members?member_email=${encodeURIComponent(memberEmail)}`, { method: "POST" }),
   removeSharedWalletMember: (walletId: string, memberId: string) =>
     request(`/social/shared-wallet/${walletId}/members/${memberId}`, { method: "DELETE" }),
+  transferSharedWalletOwnership: (walletId: string, memberId: string) =>
+    request(`/social/shared-wallet/${walletId}/transfer?member_id=${memberId}`, { method: "POST" }),
   deleteSharedWallet: (walletId: string) => request(`/social/shared-wallet/${walletId}`, { method: "DELETE" }),
 
   // Notifications

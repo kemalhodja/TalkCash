@@ -20,6 +20,8 @@
   "social.wallet_not_member": "Bu ortak kasaya erişim yetkiniz yok",
   "social.not_owner": "Bu işlem için kasa sahibi olmalısınız",
   "social.cannot_remove_owner": "Kasa sahibi çıkarılamaz",
+  "social.already_owner": "Bu üye zaten kasa sahibi",
+  "social.member_not_in_wallet": "Üye bu ortak kasada değil",
   "execute.unsupported_intent": "Desteklenmeyen işlem: {intent}",
   "execute.amount_required": "Tutar belirlenemedi",
   "execute.item_required": "Ürün belirlenemedi",

@@ -310,6 +310,8 @@ export default {
     inviteEmail: "Email",
     removeMember: "Remove member",
     removeMemberConfirm: "Remove {name} from this shared wallet?",
+    transferOwnership: "Transfer ownership",
+    transferOwnershipConfirm: "Make {name} the wallet owner?",
   },
   mentor: {
     title: "AI Finance Mentor",

@@ -310,6 +310,8 @@ export default {
     inviteEmail: "E-posta",
     removeMember: "Üyeyi çıkar",
     removeMemberConfirm: "{name} ortak kasadan çıkarılsın mı?",
+    transferOwnership: "Sahipliği devret",
+    transferOwnershipConfirm: "{name} kasa sahibi olsun mu?",
   },
   mentor: {
     title: "AI Finans Mentoru",

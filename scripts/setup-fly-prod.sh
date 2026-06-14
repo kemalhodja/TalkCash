@@ -47,12 +47,17 @@ fi
 
 echo
 echo "==> Required production secrets:"
-echo "  fly secrets set REDIS_URL='redis://...' -a $APP"
+echo "  fly secrets set REDIS_URL='redis://...' -a $APP    # Upstash: https://upstash.com"
 echo "  fly secrets set OPENAI_API_KEY='sk-...' -a $APP"
 echo "  fly secrets set S3_ENABLED=true S3_ENDPOINT=... S3_ACCESS_KEY=... S3_SECRET_KEY=... S3_BUCKET=talkcash-prod S3_REGION=auto -a $APP"
 echo "  fly secrets set ALLOWED_ORIGINS='https://your-domain.com' -a $APP"
 echo
+echo "==> Verify secrets before first deploy:"
+echo "  ./scripts/preflight-production.sh"
+echo
 echo "==> Deploy when ready:"
 echo "  ./scripts/deploy-production.sh"
 echo
-echo "Mobile production build uses EXPO_PUBLIC_API_URL=https://${APP}.fly.dev/api/v1 (see mobile/eas.json)"
+echo "==> Play Store release:"
+echo "  ./scripts/submit-play-store.sh   # or GitHub Actions → EAS Submit"
+echo "  Listing text: docs/PLAY_STORE_LISTING.md"

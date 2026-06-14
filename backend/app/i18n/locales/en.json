@@ -20,6 +20,8 @@
   "social.wallet_not_member": "You are not a member of this shared wallet",
   "social.not_owner": "You must be the wallet owner for this action",
   "social.cannot_remove_owner": "Cannot remove the wallet owner",
+  "social.already_owner": "This member is already the wallet owner",
+  "social.member_not_in_wallet": "Member is not part of this shared wallet",
   "execute.unsupported_intent": "Unsupported action: {intent}",
   "execute.amount_required": "Amount could not be determined",
   "execute.item_required": "Product could not be determined",

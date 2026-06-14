@@ -196,17 +196,29 @@ export default function SocialScreen() {
                   {m.name}: {t.social.memberSpent} {formatMoney(m.spent, locale)} · {t.social.memberContributed} {formatMoney(m.contributed, locale)} · {t.social.memberNet} {formatMoney(m.net, locale)}
                 </Text>
                 {w.is_owner && m.user_id !== w.owner_id && adminWalletId === w.id && (
-                  <TextLink label={t.social.removeMember} danger onPress={() => {
-                    Alert.alert(t.social.removeMember, t.social.removeMemberConfirm.replace("{name}", m.name), [
-                      { text: t.common.cancel, style: "cancel" },
-                      { text: t.social.removeMember, style: "destructive", onPress: async () => {
-                        await api.removeSharedWalletMember(w.id, m.user_id);
-                        const summary = await api.getSharedWalletMembers(w.id);
-                        setMemberSummaries((prev) => ({ ...prev, [w.id]: summary }));
-                        load();
-                      }},
-                    ]);
-                  }} />
+                  <View style={styles.memberActions}>
+                    <TextLink label={t.social.transferOwnership} onPress={() => {
+                      Alert.alert(t.social.transferOwnership, t.social.transferOwnershipConfirm.replace("{name}", m.name), [
+                        { text: t.common.cancel, style: "cancel" },
+                        { text: t.common.confirm, onPress: async () => {
+                          await api.transferSharedWalletOwnership(w.id, m.user_id);
+                          setAdminWalletId(null);
+                          load();
+                        }},
+                      ]);
+                    }} />
+                    <TextLink label={t.social.removeMember} danger onPress={() => {
+                      Alert.alert(t.social.removeMember, t.social.removeMemberConfirm.replace("{name}", m.name), [
+                        { text: t.common.cancel, style: "cancel" },
+                        { text: t.social.removeMember, style: "destructive", onPress: async () => {
+                          await api.removeSharedWalletMember(w.id, m.user_id);
+                          const summary = await api.getSharedWalletMembers(w.id);
+                          setMemberSummaries((prev) => ({ ...prev, [w.id]: summary }));
+                          load();
+                        }},
+                      ]);
+                    }} />
+                  </View>
                 )}
               </View>
             ))}
@@ -288,4 +300,5 @@ const styles = StyleSheet.create({
   expenseForm: { marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border },
   memberRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginTop: 4, gap: Spacing.sm },
   memberText: { color: Colors.textMuted, fontSize: 12, flex: 1 },
+  memberActions: { flexDirection: "row", gap: Spacing.sm, flexShrink: 0 },
 });

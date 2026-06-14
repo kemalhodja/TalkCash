@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { applyOptimisticForQueuedOp } from "./syncCache";
 
 const QUEUE_KEY = "talkcash_offline_queue";
 const BATCH_SIZE = 50;
@@ -77,6 +78,7 @@ export async function enqueue(
   };
   queue.push(entry);
   await saveQueue(queue);
+  applyOptimisticForQueuedOp(entry.type, entry.payload).catch(() => {});
   return entry.id;
 }
 
