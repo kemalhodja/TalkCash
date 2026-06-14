@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SettingSwitchRow } from "@/components/ui/SettingSwitchRow";
 import { ChipPicker } from "@/components/ui/ChipPicker";
 import { AgendaCalendar } from "@/components/AgendaCalendar";
 import { DueDatePicker } from "@/components/DueDatePicker";
@@ -189,7 +190,7 @@ export default function AgendaScreen() {
 
       <SegmentedControl
         options={[
-          { key: "upcoming", label: t.agenda.list },
+          { key: "upcoming", label: t.agenda.upcoming },
           { key: "history", label: t.agenda.history },
         ]}
         value={listTab}
@@ -234,10 +235,7 @@ export default function AgendaScreen() {
 
           <DueDatePicker value={dueDate} onChange={setDueDate} />
 
-          <View style={styles.recurringRow}>
-            <Text style={styles.recurringLabel}>{t.agenda.recurring}</Text>
-            <Switch value={isRecurring} onValueChange={setIsRecurring} trackColor={{ true: Colors.accent }} />
-          </View>
+          <SettingSwitchRow label={t.agenda.recurring} value={isRecurring} onValueChange={setIsRecurring} />
           <PrimaryButton
             label={editing ? t.common.save : t.agenda.add}
             onPress={() => editing ? handleSaveEdit() : handleAddBill(false)}
@@ -320,8 +318,6 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   calendarWrap: { padding: Spacing.sm, marginBottom: Spacing.md },
   addForm: { padding: Spacing.md, marginBottom: Spacing.lg },
-  recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
-  recurringLabel: { color: Colors.textSecondary },
   card: { padding: Spacing.md, marginBottom: Spacing.sm },
   cardOverdue: { borderColor: Colors.danger },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

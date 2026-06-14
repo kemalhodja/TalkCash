@@ -1,22 +1,5 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
-from uuid import UUID
-
-import bcrypt
-from jose import JWTError, jwt
-
-from app.config import settings
-
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
-
-
 import uuid
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -57,5 +40,5 @@ def decode_token(token: str) -> UUID | None:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         return UUID(payload["sub"])
-    except (JWTError, ValueError):
+    except (JWTError, ValueError, KeyError):
         return None

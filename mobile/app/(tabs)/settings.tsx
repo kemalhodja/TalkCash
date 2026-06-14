@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Alert, Linking, Modal, StyleSheet, Switch, Text, View,
+  Alert, Linking, Modal, StyleSheet, Text, View,
 } from "react-native";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -14,6 +14,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { SectionBlock } from "@/components/ui/SectionBlock";
+import { SettingSwitchRow } from "@/components/ui/SettingSwitchRow";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing } from "@/constants/theme";
@@ -39,15 +40,6 @@ const LANGUAGE_OPTIONS = [
   { id: "tr", label: "🇹🇷 Türkçe" },
   { id: "en", label: "🇬🇧 English" },
 ];
-
-function SettingSwitchRow({ label, value, onValueChange }: { label: string; value: boolean; onValueChange: (v: boolean) => void }) {
-  return (
-    <ListRow
-      title={label}
-      trailing={<Switch value={value} onValueChange={onValueChange} trackColor={{ true: Colors.accent }} />}
-    />
-  );
-}
 
 export default function SettingsScreen() {
   const { t, locale, setLocale } = useI18n();
@@ -219,11 +211,11 @@ export default function SettingsScreen() {
           />
         </SectionBlock>
 
-        <Surface variant="elevated" style={styles.prefsPanel}>
+        <SectionBlock title={t.settings.preferences} variant="elevated">
           <SettingSwitchRow label={t.settings.ttsBudget} value={ttsBudget} onValueChange={toggleTtsBudget} />
           <SettingSwitchRow label={t.settings.biometric} value={biometric} onValueChange={toggleBiometric} />
           <SettingSwitchRow label={t.settings.geofence} value={geofence} onValueChange={toggleGeofence} />
-        </Surface>
+        </SectionBlock>
 
         <AssistantSetup />
 
@@ -245,8 +237,14 @@ export default function SettingsScreen() {
           {pendingCount > 0 && (
             <Text style={styles.pendingHint}>{t.settings.pendingOps.replace("{count}", String(pendingCount))}</Text>
           )}
+        </SectionBlock>
+
+        <SectionBlock title={t.settings.notifications} bare>
           <PrimaryButton label={t.settings.push} onPress={() => registerForPushNotifications()} variant="ghost" style={styles.actionBtn} />
           <PrimaryButton label={t.settings.viewNotifications} onPress={() => router.push("/notifications")} variant="ghost" style={styles.actionBtn} />
+        </SectionBlock>
+
+        <SectionBlock title={t.settings.viewReceipts} bare>
           <PrimaryButton label={t.settings.viewReceipts} onPress={() => router.push("/receipts")} variant="ghost" style={styles.actionBtn} />
         </SectionBlock>
 
@@ -263,6 +261,9 @@ export default function SettingsScreen() {
             variant="ghost"
             style={styles.actionBtn}
           />
+        </SectionBlock>
+
+        <SectionBlock title={t.settings.account} bare>
           <PrimaryButton label={t.settings.logout} onPress={handleLogout} variant="danger" style={styles.actionBtn} />
         </SectionBlock>
       </ScreenShell>
@@ -310,7 +311,6 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  prefsPanel: { paddingHorizontal: Spacing.sm, marginBottom: Spacing.sm },
   actionBtn: { marginTop: Spacing.sm },
   pendingHint: { color: Colors.warning, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
   modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },

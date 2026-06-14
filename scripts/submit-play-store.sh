@@ -18,6 +18,16 @@ else
   export EXPO_TOKEN
 fi
 
+if [ -z "${EAS_PROJECT_ID:-}" ]; then
+  echo "Set EAS_PROJECT_ID (Expo dashboard project UUID)"
+  exit 1
+fi
+if [ "$EAS_PROJECT_ID" = "00000000-0000-0000-0000-000000000000" ]; then
+  echo "EAS_PROJECT_ID cannot be the nil UUID placeholder"
+  exit 1
+fi
+export EAS_PROJECT_ID
+
 echo "==> Production Android build (AAB)..."
 "${EAS_CMD[@]}" build --profile production --platform android --non-interactive --wait
 

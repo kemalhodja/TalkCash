@@ -53,7 +53,7 @@ if command -v flyctl >/dev/null 2>&1; then
       echo "  OK  secret S3_ENABLED"
     fi
     if ! flyctl secrets list -a "$APP" 2>/dev/null | grep -q "ALLOWED_ORIGINS"; then
-      fail "ALLOWED_ORIGINS not set — set explicit CORS origins for production"
+      fail "ALLOWED_ORIGINS not set — set CORS origins for staging (e.g. fly secrets set ALLOWED_ORIGINS='*' -a $APP)"
     else
       echo "  OK  secret ALLOWED_ORIGINS"
     fi

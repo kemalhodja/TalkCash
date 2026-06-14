@@ -59,7 +59,7 @@ check "Mobile unit tests" bash -c 'cd mobile && npm test -- --passWithNoTests --
 
 echo ""
 echo "--- Release artifacts ---"
-check "verify-release.sh" ./scripts/verify-release.sh
+check "verify-release (smoke + typecheck)" bash -c 'SKIP_TESTS=1 ./scripts/verify-release.sh'
 check "Mobile typecheck" bash -c 'cd mobile && npx tsc --noEmit'
 check "EAS production profile" bash -c 'grep -q production mobile/eas.json'
 check "Version in app.json" bash -c 'grep -q "\"version\"" mobile/app.json'

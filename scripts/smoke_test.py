@@ -9,7 +9,7 @@ import sys
 import urllib.error
 import urllib.request
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def request(method: str, url: str, data: dict | None = None, headers: dict | None = None) -> tuple[int, dict | list]:
@@ -104,7 +104,7 @@ def main() -> int:
                     "currency": "TRY",
                     "client_wallet_id": client_wallet_id,
                 },
-                "client_timestamp": datetime.utcnow().isoformat(),
+                "client_timestamp": datetime.now(timezone.utc).isoformat(),
             },
             {
                 "id": str(uuid.uuid4()),
@@ -114,7 +114,7 @@ def main() -> int:
                     "amount": 100,
                     "description": "smoke income",
                 },
-                "client_timestamp": datetime.utcnow().isoformat(),
+                "client_timestamp": datetime.now(timezone.utc).isoformat(),
             },
         ],
     }, headers=auth)
