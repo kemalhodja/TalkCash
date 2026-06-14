@@ -356,11 +356,13 @@ export const api = {
   getShoppingList: () => request<any>("/shopping/"),
   addShoppingItems: async (items: string[]) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const { newClientId } = await import("@/utils/clientId");
+    const client_item_ids = items.map(() => newClientId());
     try {
       return await request("/shopping/add", { method: "POST", body: JSON.stringify({ items }) });
     } catch (err) {
       if (shouldQueueError(err)) {
-        const id = await enqueue({ type: "shopping_add", payload: { items } });
+        const id = await enqueue({ type: "shopping_add", payload: { items, client_item_ids } });
         return { status: "queued", operation_id: id };
       }
       throw err;

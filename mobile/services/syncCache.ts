@@ -10,6 +10,7 @@ export type CloudSnapshot = {
   agenda?: any[];
   agenda_history?: any[];
   wallets?: any[];
+  budgets?: any[];
   net_worth_total?: number;
   transactions?: any[];
   receipts?: any[];
@@ -83,13 +84,12 @@ function findWalletByName(wallets: any[], name?: string): any | undefined {
 }
 
 /** Optimistically append shopping items when an offline queue entry is created. */
-export async function optimisticAddShopping(names: string[]): Promise<void> {
+export async function optimisticAddShopping(names: string[], clientIds?: string[]): Promise<void> {
   const snapshot = (await getCachedSnapshot()) || {};
   const shopping = [...(snapshot.shopping || [])];
-  const stamp = Date.now();
   for (let i = 0; i < names.length; i++) {
     shopping.push({
-      id: `local-${stamp}-${i}`,
+      id: clientIds?.[i] || newClientId(),
       name: names[i],
       category: "OTHER",
     });
@@ -106,7 +106,9 @@ export async function applyOptimisticForQueuedOp(
 
   switch (type) {
     case "shopping_add": {
-      await optimisticAddShopping((payload.items as string[]) || []);
+      const items = (payload.items as string[]) || [];
+      const clientIds = (payload.client_item_ids as string[]) || [];
+      await optimisticAddShopping(items, clientIds);
       return;
     }
     case "shopping_complete": {
@@ -348,6 +350,35 @@ export async function applyOptimisticForQueuedOp(
         return;
       }
 
+      return;
+    }
+    case "budget_create": {
+      const budgets = [...(snapshot.budgets || [])];
+      budgets.push({
+        id: String(payload.client_budget_id || newClientId()),
+        category: payload.category,
+        monthly_limit: payload.monthly_limit,
+        spent: 0,
+        percent: 0,
+        currency: "TRY",
+      });
+      await patchCachedSnapshot({ budgets });
+      return;
+    }
+    case "budget_update": {
+      const budgetId = String(payload.budget_id);
+      await patchCachedSnapshot({
+        budgets: (snapshot.budgets || []).map((b) =>
+          b.id === budgetId ? { ...b, monthly_limit: payload.monthly_limit } : b,
+        ),
+      });
+      return;
+    }
+    case "budget_delete": {
+      const budgetId = String(payload.budget_id);
+      await patchCachedSnapshot({
+        budgets: (snapshot.budgets || []).filter((b) => b.id !== budgetId),
+      });
       return;
     }
     default:

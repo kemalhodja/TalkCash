@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InsightChip } from "@/components/ui/InsightChip";
 import { InputField } from "@/components/ui/InputField";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -14,6 +15,7 @@ import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { getCachedSnapshot } from "@/services/syncCache";
 import { formatMoney } from "@/utils/format";
 import { isQueuedResult, showQueuedAlert } from "@/utils/apiWriteResult";
 
@@ -29,10 +31,16 @@ export default function BudgetsScreen() {
 
   const load = useCallback(async () => {
     setError("");
+    let cachedCount = 0;
     try {
+      const snapshot = await getCachedSnapshot();
+      if (snapshot?.budgets?.length) {
+        cachedCount = snapshot.budgets.length;
+        setBudgets(snapshot.budgets);
+      }
       setBudgets(await api.getBudgets());
     } catch (e: any) {
-      setBudgets([]);
+      if (!cachedCount) setBudgets([]);
       setError(e.message || t.common.error);
     } finally {
       setLoading(false);
@@ -80,6 +88,7 @@ export default function BudgetsScreen() {
     <>
       <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
         <ScreenHeader title={t.budget.title} />
+        {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
 
         <Surface variant="glass" style={styles.form}>
           <InputField placeholder={t.budget.category} value={category} onChangeText={setCategory} />

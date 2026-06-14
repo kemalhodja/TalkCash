@@ -34,11 +34,23 @@ describe("syncCache optimistic", () => {
     });
   });
 
-  it("adds shopping items optimistically", async () => {
-    await applyOptimisticForQueuedOp("shopping_add", { items: ["Ekmek"] });
+  it("adds shopping items with client ids", async () => {
+    await applyOptimisticForQueuedOp("shopping_add", {
+      items: ["Ekmek"],
+      client_item_ids: ["client-shop-1"],
+    });
     const snap = await getCachedSnapshot();
-    expect(snap?.shopping?.length).toBe(2);
-    expect(snap?.shopping?.some((i) => i.name === "Ekmek")).toBe(true);
+    expect(snap?.shopping?.some((i) => i.id === "client-shop-1" && i.name === "Ekmek")).toBe(true);
+  });
+
+  it("applies budget create optimistically", async () => {
+    await applyOptimisticForQueuedOp("budget_create", {
+      category: "Market",
+      monthly_limit: 2000,
+      client_budget_id: "client-budget-1",
+    });
+    const snap = await getCachedSnapshot();
+    expect(snap?.budgets?.some((b) => b.id === "client-budget-1" && b.category === "Market")).toBe(true);
   });
 
   it("removes completed shopping item", async () => {

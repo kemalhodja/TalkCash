@@ -69,6 +69,16 @@ export async function registerRemapFromResult(
     await registerMapping(String(op.payload.client_budget_id), String(result.budget_id));
     changed = true;
   }
+  if (op.type === "shopping_add" && Array.isArray(result.added) && Array.isArray(op.payload.client_item_ids)) {
+    const clientIds = op.payload.client_item_ids as string[];
+    for (let i = 0; i < clientIds.length; i++) {
+      const entry = (result.added as Record<string, unknown>[])[i];
+      if (entry?.id) {
+        await registerMapping(String(clientIds[i]), String(entry.id));
+        changed = true;
+      }
+    }
+  }
   return changed;
 }
 
@@ -86,6 +96,7 @@ export async function remapSnapshotWithMap(map: IdMap): Promise<void> {
       wallet_id: tx.wallet_id ? rw(tx.wallet_id) : tx.wallet_id,
     })),
     shopping: snapshot.shopping?.map((s) => ({ ...s, id: rw(s.id) })),
+    budgets: snapshot.budgets?.map((b) => ({ ...b, id: rw(b.id) })),
   });
 }
 

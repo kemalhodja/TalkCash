@@ -30,7 +30,8 @@ talkcash/
 - Uygulama ön plana gelince `useOfflineSync` kuyruğu boşaltır; Ayarlar’dan manuel sync de mümkün.
 - Oturum süresi dolunca kuyruk korunur; çıkış yaparken bekleyen işlem varsa uyarı gösterilir.
 - Zincirli offline işlemler (kasa oluştur → gelir ekle) client/server ID remapping ile senkronize edilir.
-- Bütçe CRUD çevrimdışı kuyruğa alınabilir (`budget_create/update/delete`).
+- Bütçe CRUD çevrimdışı kuyruğa alınabilir (`budget_create/update/delete`); snapshot'ta optimistic güncelleme.
+- Alışveriş ekleme + tamamlama zinciri `client_item_ids` ile aynı batch'te senkronize edilir.
 - Push bildirim + deep link + geofencing
 - PDF/Excel export
 - **Çoklu dil**: Türkçe + English

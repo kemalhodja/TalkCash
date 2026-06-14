@@ -51,6 +51,12 @@ def _register_batch_remap(op: SyncOperation, result: dict, id_map: dict[str, str
         id_map[str(op.payload["client_item_id"])] = str(result["id"])
     if op.type == "budget_create" and op.payload.get("client_budget_id") and result.get("budget_id"):
         id_map[str(op.payload["client_budget_id"])] = str(result["budget_id"])
+    if op.type == "shopping_add":
+        client_ids = op.payload.get("client_item_ids") or []
+        added = result.get("added") or []
+        for i, client_id in enumerate(client_ids):
+            if i < len(added) and isinstance(added[i], dict) and added[i].get("id"):
+                id_map[str(client_id)] = str(added[i]["id"])
 
 
 class SyncService:
@@ -89,6 +95,7 @@ class SyncService:
         agenda = await agenda_service.list_upcoming(db, user_id, days=60)
         agenda_history = await agenda_service.list_paid(db, user_id, limit=50)
         nw = await wallet_service.get_net_worth(db, user_id)
+        budget_rows = await budget_service.list_with_usage(db, user_id)
 
         tx_result = await db.execute(
             select(Transaction).where(Transaction.user_id == user_id)
@@ -154,6 +161,17 @@ class SyncService:
                 for w in nw.wallets
             ],
             net_worth_total=float(nw.total_try),
+            budgets=[
+                {
+                    "id": str(b["id"]),
+                    "category": b["category"],
+                    "monthly_limit": float(b["monthly_limit"]),
+                    "spent": float(b["spent"]),
+                    "percent": b["percent"],
+                    "currency": b.get("currency", "TRY"),
+                }
+                for b in budget_rows
+            ],
             transactions=transactions,
             receipts=receipts,
             server_timestamp=datetime.utcnow(),
@@ -203,7 +221,7 @@ class SyncService:
         if op.type == "shopping_add":
             items = op.payload.get("items", [])
             created = await shopping_service.add_items(db, user_id, items)
-            return {"added": [i.name for i in created]}, None
+            return {"added": [{"id": str(i.id), "name": i.name} for i in created]}, None
 
         if op.type == "shopping_complete":
             item_id = UUID(op.payload["item_id"])

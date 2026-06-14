@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { AmbientBackground } from "@/components/ui/AmbientBackground";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
@@ -56,7 +57,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.lg }]}>
-      <View style={styles.glowOrb} />
+      <AmbientBackground variant="auth" />
       <View style={styles.brandRow}>
         <View style={styles.logoDot} />
         <Text style={styles.brand}>TalkCash</Text>
@@ -81,17 +82,6 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg, justifyContent: "center", padding: Spacing.lg },
-  glowOrb: {
-    position: "absolute",
-    top: "15%",
-    left: "50%",
-    marginLeft: -120,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: Colors.accentGlow,
-    opacity: 0.2,
-  },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: Spacing.xl },
   logoDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent },
   brand: { color: Colors.textMuted, ...Typography.label },

@@ -45,6 +45,7 @@ class SyncPullResponse(BaseModel):
     agenda_history: list[dict[str, Any]] = Field(default_factory=list)
     wallets: list[dict[str, Any]]
     net_worth_total: float = 0
+    budgets: list[dict[str, Any]] = Field(default_factory=list)
     transactions: list[dict[str, Any]]
     receipts: list[dict[str, Any]]
     server_timestamp: datetime
