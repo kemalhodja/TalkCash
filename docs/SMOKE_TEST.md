@@ -43,6 +43,31 @@ Deploy script'i smoke test'i otomatik çalıştırır: `./scripts/deploy-staging
 ### Çevrimdışı
 - [ ] Uçak modu → harcama ekle → "çevrimdışı kuyruk" mesajı
 - [ ] Bağlantı gelince Ayarlar → Senkronize
+- [ ] Zincirli sync: yeni kasa oluştur → gelir ekle (tek batch'te ID eşleşmesi)
+- [ ] Alışveriş çakışması: sunucuda tamamlanmış ürün → sync çakışma diyaloğu → sunucuyu koru
+- [ ] Bekleyen işlem varken çıkış → uyarı diyaloğu
+- [ ] 401 oturum süresi dolunca kuyruk korunuyor (yeniden giriş → sync)
+
+### Otomatik offline E2E
+
+```bash
+# Backend: zincir sync, bütçe pull, alışveriş çakışması
+cd backend && python3 -m pytest tests/e2e/test_offline_sync.py -q
+
+# Mobil: flushQueue ID remap + ağ hatasında kuyruk koruma
+cd mobile && npm test -- --testPathPattern=offlineIntegration
+
+# API smoke (wallet_create + wallet_income zinciri + sync/pull budgets)
+python3 scripts/smoke_test.py
+```
+
+### Play Store öncesi
+
+```bash
+./scripts/release.sh --checklist   # tüm testler + verify-release
+./scripts/release.sh --production  # Fly prod + EAS AAB
+./scripts/release.sh --submit-play # Play Console yükleme
+```
 
 ### Fiş (S3 açık olmalı)
 - [ ] Fiş tara → görsel Fiş Arşivi'nde görünüyor

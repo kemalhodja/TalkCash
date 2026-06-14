@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { ChipPicker } from "@/components/ui/ChipPicker";
 import { AgendaCalendar } from "@/components/AgendaCalendar";
 import { DueDatePicker } from "@/components/DueDatePicker";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
@@ -14,7 +15,7 @@ import { ScreenShell } from "@/components/ui/ScreenShell";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
 import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
@@ -218,18 +219,18 @@ export default function AgendaScreen() {
           <InputField placeholder={t.agenda.billName} value={title} onChangeText={setTitle} />
           <InputField placeholder={t.agenda.amount} keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
 
-          <View style={styles.presetRow}>
-            {([
-              [7, t.agenda.duePresets.week],
-              [14, t.agenda.duePresets.twoWeeks],
-              [30, t.agenda.duePresets.month],
-            ] as const).map(([days, label]) => (
-              <TouchableOpacity key={days} style={[styles.presetChip, isPresetActive(days) && styles.presetActive]}
-                onPress={() => applyPresetDays(days)}>
-                <Text style={[styles.presetText, isPresetActive(days) && styles.presetTextActive]}>{label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <ChipPicker
+            label={t.agenda.due}
+            options={[
+              { id: "7", label: t.agenda.duePresets.week },
+              { id: "14", label: t.agenda.duePresets.twoWeeks },
+              { id: "30", label: t.agenda.duePresets.month },
+            ]}
+            value={
+              ([7, 14, 30].find((days) => isPresetActive(days))?.toString()) ?? null
+            }
+            onChange={(id) => applyPresetDays(parseInt(id, 10))}
+          />
 
           <DueDatePicker value={dueDate} onChange={setDueDate} />
 
@@ -321,11 +322,6 @@ const styles = StyleSheet.create({
   addForm: { padding: Spacing.md, marginBottom: Spacing.lg },
   recurringRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.md },
   recurringLabel: { color: Colors.textSecondary },
-  presetRow: { flexDirection: "row", gap: 8, marginBottom: Spacing.sm, flexWrap: "wrap" },
-  presetChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border },
-  presetActive: { borderColor: Colors.borderStrong, backgroundColor: Colors.accentSoft },
-  presetText: { color: Colors.textSecondary, fontSize: 13 },
-  presetTextActive: { color: Colors.accent },
   card: { padding: Spacing.md, marginBottom: Spacing.sm },
   cardOverdue: { borderColor: Colors.danger },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

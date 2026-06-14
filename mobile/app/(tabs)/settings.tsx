@@ -1,19 +1,22 @@
-import { ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Alert, Linking, Modal, StyleSheet, Switch, Text, TouchableOpacity, View,
+  Alert, Linking, Modal, StyleSheet, Switch, Text, View,
 } from "react-native";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import { AssistantSetup } from "@/components/AssistantSetup";
 import { ApiConnectionCard } from "@/components/ApiConnectionCard";
+import { ChipPicker } from "@/components/ui/ChipPicker";
 import { InputField } from "@/components/ui/InputField";
+import { ListRow } from "@/components/ui/ListRow";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
+import { SectionBlock } from "@/components/ui/SectionBlock";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
 import { PRIVACY_POLICY_URL } from "@/constants/links";
 import { useI18n, Locale } from "@/i18n";
 import { api } from "@/services/api";
@@ -25,16 +28,24 @@ import { flushQueue, getPendingCount } from "@/services/offlineQueue";
 import { pullAndCacheSnapshot } from "@/services/syncCache";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
-function SectionTitle({ children }: { children: string }) {
-  return <Text style={styles.sectionTitle}>{children}</Text>;
-}
+const TIMEZONES = [
+  { id: "Europe/Istanbul", label: "🇹🇷 Istanbul" },
+  { id: "Europe/London", label: "🇬🇧 London" },
+  { id: "America/New_York", label: "🇺🇸 New York" },
+  { id: "Asia/Tokyo", label: "🇯🇵 Tokyo" },
+];
 
-function SettingRow({ label, children }: { label: string; children: ReactNode }) {
+const LANGUAGE_OPTIONS = [
+  { id: "tr", label: "🇹🇷 Türkçe" },
+  { id: "en", label: "🇬🇧 English" },
+];
+
+function SettingSwitchRow({ label, value, onValueChange }: { label: string; value: boolean; onValueChange: (v: boolean) => void }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
-    </View>
+    <ListRow
+      title={label}
+      trailing={<Switch value={value} onValueChange={onValueChange} trackColor={{ true: Colors.accent }} />}
+    />
   );
 }
 
@@ -50,13 +61,6 @@ export default function SettingsScreen() {
   const [securityModal, setSecurityModal] = useState<"pin" | "password" | "delete" | null>(null);
   const [field1, setField1] = useState("");
   const [field2, setField2] = useState("");
-
-  const TIMEZONES = [
-    { id: "Europe/Istanbul", label: "🇹🇷 Istanbul" },
-    { id: "Europe/London", label: "🇬🇧 London" },
-    { id: "America/New_York", label: "🇺🇸 New York" },
-    { id: "Asia/Tokyo", label: "🇯🇵 Tokyo" },
-  ];
 
   useEffect(() => {
     isBudgetTtsEnabled().then(setTtsBudget);
@@ -199,78 +203,68 @@ export default function SettingsScreen() {
 
         <ApiConnectionCard />
 
-        <SectionTitle>{t.settings.language}</SectionTitle>
-        <View style={styles.chipRow}>
-          {(["tr", "en"] as Locale[]).map((l) => (
-            <TouchableOpacity key={l} style={[styles.chip, locale === l && styles.chipActive]}
-              onPress={() => setLocale(l)}>
-              <Text style={[styles.chipText, locale === l && styles.chipTextActive]}>
-                {l === "tr" ? "🇹🇷 Türkçe" : "🇬🇧 English"}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SectionBlock title={t.settings.language} bare>
+          <ChipPicker
+            options={LANGUAGE_OPTIONS}
+            value={locale}
+            onChange={(id) => setLocale(id as Locale)}
+          />
+        </SectionBlock>
 
-        <SectionTitle>{t.settings.timezone}</SectionTitle>
-        <View style={styles.chipRow}>
-          {TIMEZONES.map((tz) => (
-            <TouchableOpacity key={tz.id} style={[styles.chip, timezone === tz.id && styles.chipActive]}
-              onPress={() => selectTimezone(tz.id)}>
-              <Text style={[styles.chipText, timezone === tz.id && styles.chipTextActive]}>{tz.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SectionBlock title={t.settings.timezone} bare>
+          <ChipPicker
+            options={TIMEZONES}
+            value={timezone}
+            onChange={selectTimezone}
+          />
+        </SectionBlock>
 
-        <Surface variant="elevated" style={styles.panel}>
-          <SettingRow label={t.settings.ttsBudget}>
-            <Switch value={ttsBudget} onValueChange={toggleTtsBudget} trackColor={{ true: Colors.accent }} />
-          </SettingRow>
-          <SettingRow label={t.settings.biometric}>
-            <Switch value={biometric} onValueChange={toggleBiometric} trackColor={{ true: Colors.accent }} />
-          </SettingRow>
-          <SettingRow label={t.settings.geofence}>
-            <Switch value={geofence} onValueChange={toggleGeofence} trackColor={{ true: Colors.accent }} />
-          </SettingRow>
+        <Surface variant="elevated" style={styles.prefsPanel}>
+          <SettingSwitchRow label={t.settings.ttsBudget} value={ttsBudget} onValueChange={toggleTtsBudget} />
+          <SettingSwitchRow label={t.settings.biometric} value={biometric} onValueChange={toggleBiometric} />
+          <SettingSwitchRow label={t.settings.geofence} value={geofence} onValueChange={toggleGeofence} />
         </Surface>
 
         <AssistantSetup />
 
-        <SectionTitle>{t.settings.security}</SectionTitle>
-        <PrimaryButton label={t.settings.changePin} onPress={() => setSecurityModal("pin")} variant="secondary" style={styles.actionBtn} />
-        <PrimaryButton label={t.settings.changePassword} onPress={() => setSecurityModal("password")} variant="secondary" style={styles.actionBtn} />
-        <PrimaryButton label={t.settings.deleteAccount} onPress={() => setSecurityModal("delete")} variant="danger" style={styles.actionBtn} />
+        <SectionBlock title={t.settings.security} bare>
+          <PrimaryButton label={t.settings.changePin} onPress={() => setSecurityModal("pin")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.settings.changePassword} onPress={() => setSecurityModal("password")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.settings.deleteAccount} onPress={() => setSecurityModal("delete")} variant="danger" style={styles.actionBtn} />
+        </SectionBlock>
 
-        <SectionTitle>{t.settings.sync}</SectionTitle>
-        <PrimaryButton
-          label={`${syncing ? t.common.loading : t.settings.syncNow}${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
-          onPress={handleSync}
-          variant="secondary"
-          disabled={syncing}
-          loading={syncing}
-          style={styles.actionBtn}
-        />
-        {pendingCount > 0 && (
-          <Text style={styles.pendingHint}>{t.settings.pendingOps.replace("{count}", String(pendingCount))}</Text>
-        )}
+        <SectionBlock title={t.settings.sync} bare>
+          <PrimaryButton
+            label={`${syncing ? t.common.loading : t.settings.syncNow}${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
+            onPress={handleSync}
+            variant="secondary"
+            disabled={syncing}
+            loading={syncing}
+            style={styles.actionBtn}
+          />
+          {pendingCount > 0 && (
+            <Text style={styles.pendingHint}>{t.settings.pendingOps.replace("{count}", String(pendingCount))}</Text>
+          )}
+          <PrimaryButton label={t.settings.push} onPress={() => registerForPushNotifications()} variant="ghost" style={styles.actionBtn} />
+          <PrimaryButton label={t.settings.viewNotifications} onPress={() => router.push("/notifications")} variant="ghost" style={styles.actionBtn} />
+          <PrimaryButton label={t.settings.viewReceipts} onPress={() => router.push("/receipts")} variant="ghost" style={styles.actionBtn} />
+        </SectionBlock>
 
-        <PrimaryButton label={t.settings.push} onPress={() => registerForPushNotifications()} variant="ghost" style={styles.actionBtn} />
-        <PrimaryButton label={t.settings.viewNotifications} onPress={() => router.push("/notifications")} variant="ghost" style={styles.actionBtn} />
-        <PrimaryButton label={t.settings.viewReceipts} onPress={() => router.push("/receipts")} variant="ghost" style={styles.actionBtn} />
+        <SectionBlock title={t.settings.export} bare>
+          <PrimaryButton label={t.settings.exportPdf} onPress={() => handleExport("pdf")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
+          <PrimaryButton label={t.settings.exportExcel} onPress={() => handleExport("excel")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
+        </SectionBlock>
 
-        <SectionTitle>{t.settings.export}</SectionTitle>
-        <PrimaryButton label={t.settings.exportPdf} onPress={() => handleExport("pdf")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
-        <PrimaryButton label={t.settings.exportExcel} onPress={() => handleExport("excel")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
-
-        <SectionTitle>{t.settings.about}</SectionTitle>
-        <Text style={styles.versionLabel}>{t.settings.version}: 1.0.0</Text>
-        <PrimaryButton
-          label={t.settings.privacyPolicy}
-          onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
-          variant="ghost"
-          style={styles.actionBtn}
-        />
-
-        <PrimaryButton label={t.settings.logout} onPress={handleLogout} variant="danger" style={styles.actionBtn} />
+        <SectionBlock title={t.settings.about} bare>
+          <ListRow title={`${t.settings.version}: 1.0.0`} />
+          <PrimaryButton
+            label={t.settings.privacyPolicy}
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+            variant="ghost"
+            style={styles.actionBtn}
+          />
+          <PrimaryButton label={t.settings.logout} onPress={handleLogout} variant="danger" style={styles.actionBtn} />
+        </SectionBlock>
       </ScreenShell>
 
       <Modal visible={securityModal !== null} transparent animationType="slide" onRequestClose={closeSecurity}>
@@ -316,22 +310,8 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase", marginTop: Spacing.lg, marginBottom: Spacing.sm },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: Spacing.md },
-  chip: { flex: 1, minWidth: "45%", padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, alignItems: "center", backgroundColor: Colors.card },
-  chipActive: { borderColor: Colors.borderStrong, backgroundColor: Colors.accentSoft },
-  chipText: { color: Colors.textSecondary, fontSize: 14 },
-  chipTextActive: { color: Colors.accent, fontWeight: "600" },
-  panel: { paddingHorizontal: Spacing.md, marginBottom: Spacing.sm },
-  row: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  label: { color: Colors.text, fontSize: 16 },
+  prefsPanel: { paddingHorizontal: Spacing.sm, marginBottom: Spacing.sm },
   actionBtn: { marginTop: Spacing.sm },
-  versionLabel: { color: Colors.textMuted, fontSize: 13, marginBottom: Spacing.sm },
-  logoutBtn: { marginTop: Spacing.xl, marginBottom: Spacing.lg, padding: Spacing.md, alignItems: "center" },
-  logoutText: { color: Colors.danger, fontWeight: "600" },
   pendingHint: { color: Colors.warning, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
   modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
   modalCard: { padding: Spacing.lg },
