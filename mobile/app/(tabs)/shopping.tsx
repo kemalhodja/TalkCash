@@ -9,6 +9,7 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
+import { SectionBlock } from "@/components/ui/SectionBlock";
 import { Surface } from "@/components/ui/Surface";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { usePullRefresh } from "@/hooks/usePullRefresh";
@@ -96,8 +97,7 @@ export default function ShoppingScreen() {
       {error ? <InsightChip tone="warning" text={error} /> : null}
 
       {Object.entries(grouped).map(([category, items]) => (
-        <View key={category} style={styles.category}>
-          <Text style={styles.categoryTitle}>{categoryLabel(category)}</Text>
+        <SectionBlock key={category} title={categoryLabel(category)} bare>
           {items.map((item) => (
             <TouchableOpacity key={item.id} activeOpacity={0.85}
               onPress={() => setBuyModal({ id: item.id, name: item.name })}
@@ -128,7 +128,7 @@ export default function ShoppingScreen() {
               </Surface>
             </TouchableOpacity>
           ))}
-        </View>
+        </SectionBlock>
       ))}
 
       {Object.keys(grouped).length === 0 && !error && (
@@ -159,8 +159,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addBtnText: { color: Colors.bg, fontSize: 24, fontWeight: "700" },
-  category: { marginBottom: Spacing.lg },
-  categoryTitle: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600", marginBottom: Spacing.sm, letterSpacing: 0.5, textTransform: "uppercase" },
   item: { flexDirection: "row", alignItems: "center", padding: Spacing.md, marginBottom: 6 },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.accent, marginRight: Spacing.md },
   itemName: { color: Colors.text, fontSize: 16, flex: 1 },

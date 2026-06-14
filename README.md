@@ -61,12 +61,11 @@ CI: GitHub Actions `main` branch push'ta otomatik çalışır.
 
 ## Release
 
-**İlk kurulum (secret'lar eksikse):** [docs/SETUP_RELEASE.md](docs/SETUP_RELEASE.md)
+**İlk kurulum:** [docs/SETUP_RELEASE.md](docs/SETUP_RELEASE.md) · [.github/RELEASE_SECRETS_CHECKLIST.md](.github/RELEASE_SECRETS_CHECKLIST.md)
 
 ```bash
-./scripts/setup-github-release.sh      # Fly + GitHub komutları
-./scripts/validate-release-config.sh   # secret/variable kontrolü
-./scripts/release.sh --checklist
+./scripts/complete-release-setup.sh   # validate + checklist + GitHub links
+./scripts/setup-github-release.sh     # Fly bootstrap (interactive)
 ```
 
 GitHub → **Actions** → **Release Production (Full Pipeline)** → `confirm`: `release`

@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InsightChip } from "@/components/ui/InsightChip";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenShell } from "@/components/ui/ScreenShell";
+import { SectionBlock } from "@/components/ui/SectionBlock";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing } from "@/constants/theme";
@@ -52,32 +53,34 @@ export default function ReceiptsScreen() {
     <ScreenShell bottomInset={false} ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
       <Stack.Screen options={{ title: t.receipts.title, headerStyle: { backgroundColor: Colors.bg }, headerTintColor: Colors.text }} />
       {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
-      {receipts.map((r) => (
-        <Surface key={r.id} variant="elevated" style={styles.card}>
-          {r.image_url ? (
-            <AuthImage path={r.image_url} style={styles.image} />
-          ) : null}
-          <Text style={styles.merchant}>{r.merchant || t.common.noData}</Text>
-          <Text style={styles.amount}>
-            {r.total_amount != null ? formatMoney(Number(r.total_amount), locale) : t.common.noData}
-          </Text>
-          <Text style={styles.meta}>
-            {r.date ? formatDate(r.date, locale) : t.common.noData} ·{" "}
-            {r.verified ? t.receipts.verified : t.receipts.unverified}
-          </Text>
-          <TextLink label={t.scanner.addToList} onPress={async () => {
-            try {
-              const res: any = await api.importReceiptToShopping(r.id);
-              Alert.alert(t.common.confirm, t.scanner.itemsImported.replace("{count}", String(res.added)));
-            } catch (e: any) {
-              Alert.alert(t.common.error, e.message);
-            }
-          }} style={styles.importLink} />
-        </Surface>
-      ))}
-      {receipts.length === 0 && (
-        <EmptyState message={t.receipts.empty} icon="🧾" />
-      )}
+      <SectionBlock title={t.receipts.title} bare>
+        {receipts.map((r) => (
+          <Surface key={r.id} variant="elevated" style={styles.card}>
+            {r.image_url ? (
+              <AuthImage path={r.image_url} style={styles.image} />
+            ) : null}
+            <Text style={styles.merchant}>{r.merchant || t.common.noData}</Text>
+            <Text style={styles.amount}>
+              {r.total_amount != null ? formatMoney(Number(r.total_amount), locale) : t.common.noData}
+            </Text>
+            <Text style={styles.meta}>
+              {r.date ? formatDate(r.date, locale) : t.common.noData} ·{" "}
+              {r.verified ? t.receipts.verified : t.receipts.unverified}
+            </Text>
+            <TextLink label={t.scanner.addToList} onPress={async () => {
+              try {
+                const res: any = await api.importReceiptToShopping(r.id);
+                Alert.alert(t.common.confirm, t.scanner.itemsImported.replace("{count}", String(res.added)));
+              } catch (e: any) {
+                Alert.alert(t.common.error, e.message);
+              }
+            }} style={styles.importLink} />
+          </Surface>
+        ))}
+        {receipts.length === 0 && (
+          <EmptyState message={t.receipts.empty} icon="🧾" />
+        )}
+      </SectionBlock>
     </ScreenShell>
   );
 }
