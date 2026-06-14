@@ -11,6 +11,10 @@ install_flyctl() {
   if command -v flyctl >/dev/null 2>&1; then
     return 0
   fi
+  if [ -x "${HOME}/.fly/bin/flyctl" ]; then
+    export PATH="${HOME}/.fly/bin:${PATH}"
+    return 0
+  fi
   echo "==> Installing flyctl..."
   curl -L https://fly.io/install.sh | sh
   export PATH="${HOME}/.fly/bin:${PATH}"
@@ -28,8 +32,12 @@ echo "    App: $APP  DB: $DB  Region: $REGION"
 echo
 
 if ! flyctl auth whoami >/dev/null 2>&1; then
-  echo "Log in to Fly.io (browser opens):"
-  flyctl auth login
+  if [ -z "${FLY_API_TOKEN:-}" ]; then
+    echo "Log in to Fly.io (browser opens):"
+    flyctl auth login
+  else
+    echo "Using FLY_API_TOKEN from environment"
+  fi
 fi
 
 if ! flyctl apps list 2>/dev/null | grep -q "$APP"; then
