@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
 import { VoiceInput } from "@/components/VoiceInput";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InsightChip } from "@/components/ui/InsightChip";
 import { InputField } from "@/components/ui/InputField";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
@@ -22,7 +25,7 @@ export default function ShoppingScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadList = async () => {
+  const loadList = useCallback(async () => {
     try {
       setError("");
       const snapshot = await getCachedSnapshot();
@@ -35,10 +38,11 @@ export default function ShoppingScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadList(); }, []);
+  useEffect(() => { loadList(); }, [loadList]);
   useRefreshOnFocus(loadList);
+  const { refreshing, onRefresh } = usePullRefresh(loadList);
 
   const handleAdd = async () => {
     if (!newItem.trim()) return;
@@ -57,7 +61,7 @@ export default function ShoppingScreen() {
   if (loading) return <LoadingScreen />;
 
   return (
-    <ScreenShell>
+    <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title={t.shopping.title} />
 
       <Surface variant="glass" style={styles.addPanel}>
@@ -84,14 +88,12 @@ export default function ShoppingScreen() {
               loadList();
             }} />
           </View>
-          <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-            <Text style={styles.addBtnText}>+</Text>
-          </TouchableOpacity>
+          <PrimaryButton label="+" onPress={handleAdd} compact style={styles.addBtn} />
         </View>
         <Text style={styles.voiceHint}>{t.shopping.voiceHint}</Text>
       </Surface>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <InsightChip tone="warning" text={error} /> : null}
 
       {Object.entries(grouped).map(([category, items]) => (
         <View key={category} style={styles.category}>

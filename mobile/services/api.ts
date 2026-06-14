@@ -28,7 +28,7 @@ function parseErrorDetail(body: unknown, status: number): string {
 }
 
 async function handleUnauthorized(): Promise<void> {
-  await auth.clear();
+  await auth.clear({ preserveOffline: true });
   try {
     const { router } = await import("expo-router");
     router.replace("/login");

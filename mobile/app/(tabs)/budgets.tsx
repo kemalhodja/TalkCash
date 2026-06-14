@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -10,6 +10,7 @@ import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
@@ -25,7 +26,7 @@ export default function BudgetsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setError("");
     try {
       setBudgets(await api.getBudgets());
@@ -35,10 +36,11 @@ export default function BudgetsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t.common.error]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
   useRefreshOnFocus(load);
+  const { refreshing, onRefresh } = usePullRefresh(load);
 
   const handleAdd = async () => {
     if (!category || !limit) return;
@@ -65,7 +67,7 @@ export default function BudgetsScreen() {
 
   return (
     <>
-      <ScreenShell>
+      <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
         <ScreenHeader title={t.budget.title} />
 
         <Surface variant="glass" style={styles.form}>

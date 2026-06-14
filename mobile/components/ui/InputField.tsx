@@ -13,6 +13,7 @@ export function InputField({ label, containerStyle, style, ...props }: Props) {
       <TextInput
         style={[styles.input, style]}
         placeholderTextColor={Colors.textMuted}
+        accessibilityLabel={label || props.placeholder}
         {...props}
       />
     </View>

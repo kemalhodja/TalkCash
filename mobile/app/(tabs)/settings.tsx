@@ -22,6 +22,7 @@ import { getAppEnv } from "@/services/config";
 import { isGeofencingEnabled, restoreGeofencingIfEnabled, setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
 import { flushQueue, getPendingCount } from "@/services/offlineQueue";
+import { pullAndCacheSnapshot } from "@/services/syncCache";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
 function SectionTitle({ children }: { children: string }) {
@@ -103,6 +104,7 @@ export default function SettingsScreen() {
           { text: t.sync.skip, style: "cancel", onPress: () => resolve("skip") },
         ]);
       }));
+      await pullAndCacheSnapshot();
       setPendingCount(await getPendingCount());
       Alert.alert(
         t.settings.sync,
@@ -171,14 +173,28 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await api.logout();
-    router.replace("/login");
+  const handleLogout = () => {
+    const doLogout = async () => {
+      await api.logout();
+      router.replace("/login");
+    };
+    if (pendingCount > 0) {
+      Alert.alert(
+        t.settings.logoutPendingTitle,
+        t.settings.logoutPendingMessage.replace("{count}", String(pendingCount)),
+        [
+          { text: t.common.cancel, style: "cancel" },
+          { text: t.settings.logoutConfirm, style: "destructive", onPress: doLogout },
+        ],
+      );
+      return;
+    }
+    doLogout();
   };
 
   return (
     <>
-      <ScreenShell>
+      <ScreenShell ambient="subtle">
         <ScreenHeader title={t.settings.title} subtitle={`${t.settings.appEnv}: ${getAppEnv()}`} />
 
         <ApiConnectionCard />
@@ -254,9 +270,7 @@ export default function SettingsScreen() {
           style={styles.actionBtn}
         />
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>{t.settings.logout}</Text>
-        </TouchableOpacity>
+        <PrimaryButton label={t.settings.logout} onPress={handleLogout} variant="danger" style={styles.actionBtn} />
       </ScreenShell>
 
       <Modal visible={securityModal !== null} transparent animationType="slide" onRequestClose={closeSecurity}>

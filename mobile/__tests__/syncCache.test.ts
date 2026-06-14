@@ -59,4 +59,26 @@ describe("syncCache optimistic", () => {
     const snap = await getCachedSnapshot();
     expect(snap?.agenda?.[0].status).toBe("paid");
   });
+
+  it("deducts wallet on shopping complete with price", async () => {
+    await applyOptimisticForQueuedOp("shopping_complete", {
+      item_id: "s1",
+      price: 120,
+      wallet_id: "w1",
+    });
+    const snap = await getCachedSnapshot();
+    expect(snap?.shopping?.length).toBe(0);
+    expect(snap?.wallets?.[0].balance_try).toBe(880);
+    expect(snap?.net_worth_total).toBe(880);
+  });
+
+  it("applies execute add_expense optimistically", async () => {
+    await applyOptimisticForQueuedOp("execute", {
+      parsed: { intent: "add_expense", amount: 75, wallet_name: "Banka", category: "Market", description: "Kahve" },
+    });
+    const snap = await getCachedSnapshot();
+    expect(snap?.transactions?.length).toBe(2);
+    expect(snap?.wallets?.[0].balance_try).toBe(925);
+    expect(snap?.net_worth_total).toBe(925);
+  });
 });

@@ -11,6 +11,7 @@ type Props = {
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  accessibilityLabel?: string;
 };
 
 const variantStyles: Record<Variant, ViewStyle> = {
@@ -35,6 +36,7 @@ export function PrimaryButton({
   loading,
   style,
   compact,
+  accessibilityLabel,
 }: Props) {
   return (
     <TouchableOpacity
@@ -49,6 +51,9 @@ export function PrimaryButton({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || label}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
     >
       {loading ? (
         <ActivityIndicator color={variant === "primary" ? Colors.bg : Colors.accent} />

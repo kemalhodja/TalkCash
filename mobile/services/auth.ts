@@ -56,9 +56,11 @@ export const auth = {
     }
   },
 
-  async clear() {
+  async clear(options?: { preserveOffline?: boolean }) {
     sessionUnlocked = false;
-    await clearLocalUserData();
+    if (!options?.preserveOffline) {
+      await clearLocalUserData();
+    }
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(REFRESH_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);

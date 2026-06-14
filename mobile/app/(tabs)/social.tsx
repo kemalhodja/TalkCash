@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
@@ -6,25 +6,18 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
+import { SectionBlock } from "@/components/ui/SectionBlock";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { formatMoney } from "@/utils/format";
 import { SharedWalletWS } from "@/services/websocket";
-
-function SectionBlock({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Surface variant="elevated" style={styles.sectionCard}>{children}</Surface>
-    </View>
-  );
-}
 
 export default function SocialScreen() {
   const { t, locale } = useI18n();
@@ -84,6 +77,7 @@ export default function SocialScreen() {
     return () => { wsMap.current.forEach((ws) => ws.disconnect()); };
   }, []);
   useRefreshOnFocus(load);
+  const { refreshing, onRefresh } = usePullRefresh(load);
 
   const handleSplit = async () => {
     if (!total) return;
@@ -118,7 +112,7 @@ export default function SocialScreen() {
   if (loading) return <LoadingScreen />;
 
   return (
-    <ScreenShell>
+    <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title={t.social.title} />
 
       <SectionBlock title={t.social.split}>
@@ -136,6 +130,9 @@ export default function SocialScreen() {
       </SectionBlock>
 
       <SectionBlock title={t.social.debtBook}>
+        {debts.length === 0 ? (
+          <EmptyState message={t.social.debtEmpty} icon="🤝" />
+        ) : null}
         {debts.map((d) => (
           <View key={d.id} style={styles.debtCard}>
             <Text style={styles.debtText}>{d.is_lent ? t.social.lent : t.social.borrowed}: {d.person} — {formatMoney(d.amount, locale)}</Text>

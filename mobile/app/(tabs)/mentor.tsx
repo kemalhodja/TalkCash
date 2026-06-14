@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, View,
+  KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from "react-native";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { InputField } from "@/components/ui/InputField";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
-import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
+import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 
@@ -29,6 +35,7 @@ export default function MentorScreen() {
   };
 
   useEffect(() => { load(); }, []);
+  const { refreshing, onRefresh } = usePullRefresh(load);
 
   const send = async () => {
     const text = input.trim();
@@ -52,67 +59,68 @@ export default function MentorScreen() {
     }
   };
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <Text style={styles.brand}>TalkCash</Text>
-      <Text style={styles.title}>{t.mentor.title}</Text>
-      <Text style={styles.subtitle}>{t.mentor.subtitle}</Text>
-      <ScrollView ref={scrollRef} style={styles.chat} contentContainerStyle={styles.chatContent}>
-        {messages.length === 0 && (
-          <Surface variant="accent" style={styles.emptyCard}>
-            <Text style={styles.empty}>{t.mentor.empty}</Text>
-          </Surface>
-        )}
-        {messages.map((m) => (
-          <Surface
-            key={m.id}
-            variant={m.role === "user" ? "accent" : "elevated"}
-            style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.aiBubble]}
-          >
-            <Text style={styles.bubbleText}>{m.content}</Text>
-          </Surface>
-        ))}
-      </ScrollView>
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder={t.mentor.placeholder}
-          placeholderTextColor={Colors.textMuted}
-          value={input}
-          onChangeText={setInput}
-          multiline
-        />
-        <TouchableOpacity style={styles.sendBtn} onPress={send} disabled={sending}>
-          <Text style={styles.sendText}>{sending ? "..." : t.mentor.send}</Text>
-        </TouchableOpacity>
-      </View>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScreenShell scroll={false} ambient="subtle" bottomInset={false} style={styles.flex}>
+        <ScreenHeader title={t.mentor.title} subtitle={t.mentor.subtitle} />
+
+        <ScrollView
+          ref={scrollRef}
+          style={styles.chat}
+          contentContainerStyle={styles.chatContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} />
+          }
+        >
+          {messages.length === 0 ? (
+            <EmptyState message={t.mentor.empty} icon="💬" />
+          ) : null}
+          {messages.map((m) => (
+            <Surface
+              key={m.id}
+              variant={m.role === "user" ? "accent" : "elevated"}
+              style={[styles.bubble, m.role === "user" ? styles.userBubble : styles.aiBubble]}
+            >
+              <Text style={styles.bubbleText}>{m.content}</Text>
+            </Surface>
+          ))}
+        </ScrollView>
+
+        <View style={styles.inputRow}>
+          <InputField
+            placeholder={t.mentor.placeholder}
+            value={input}
+            onChangeText={setInput}
+            multiline
+            containerStyle={styles.inputWrap}
+            style={styles.input}
+          />
+          <PrimaryButton
+            label={sending ? t.mentor.sending : t.mentor.send}
+            onPress={send}
+            disabled={sending || !input.trim()}
+            loading={sending}
+            compact
+            style={styles.sendBtn}
+          />
+        </View>
+      </ScreenShell>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg, padding: Spacing.md },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.bg },
-  brand: { color: Colors.accent, ...Typography.label, marginBottom: 4 },
-  title: { color: Colors.text, ...Typography.title },
-  subtitle: { color: Colors.textSecondary, marginBottom: Spacing.md },
+  flex: { flex: 1 },
   chat: { flex: 1 },
-  chatContent: { paddingBottom: Spacing.md },
-  emptyCard: { padding: Spacing.lg },
-  empty: { color: Colors.textSecondary, textAlign: "center" },
+  chatContent: { paddingBottom: Spacing.md, flexGrow: 1 },
   bubble: { padding: Spacing.md, marginBottom: Spacing.sm, maxWidth: "85%" },
   userBubble: { alignSelf: "flex-end" },
   aiBubble: { alignSelf: "flex-start" },
   bubbleText: { color: Colors.text, lineHeight: 20 },
-  inputRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  input: {
-    flex: 1, backgroundColor: Colors.cardElevated, borderRadius: Radius.md, padding: Spacing.md,
-    color: Colors.text, borderWidth: 1, borderColor: Colors.border, maxHeight: 100,
-  },
-  sendBtn: { backgroundColor: Colors.accent, padding: Spacing.md, borderRadius: Radius.md },
-  sendText: { color: Colors.bg, fontWeight: "700" },
+  inputRow: { flexDirection: "row", gap: Spacing.sm, alignItems: "flex-end", paddingBottom: Spacing.md },
+  inputWrap: { flex: 1, marginBottom: 0 },
+  input: { maxHeight: 100 },
+  sendBtn: { minWidth: 88 },
 });

@@ -102,7 +102,14 @@ export async function flushQueue(
       resolve_strategy: op.resolveStrategy ?? null,
     }));
 
-    const result = await api.syncPush(batch);
+    let result: Awaited<ReturnType<typeof api.syncPush>>;
+    try {
+      result = await api.syncPush(batch);
+    } catch {
+      failed += chunk.length;
+      break;
+    }
+
     const nextQueue: QueuedOperation[] = [...rest];
     let chunkApplied = 0;
     let chunkConflicts = 0;
@@ -139,6 +146,10 @@ export async function flushQueue(
     applied += chunkApplied;
     conflicts += chunkConflicts;
     failed += result.failed.length;
+
+    if (chunkConflicts > 0 && !onConflict) {
+      break;
+    }
 
     if (nextQueue.some((op) => op.resolveStrategy) && onConflict) {
       const retry = await flushQueue(onConflict);

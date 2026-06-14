@@ -66,6 +66,8 @@ export function ListRow({
         onPress={onPress}
         onLongPress={onLongPress}
         activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       >
         {content}
       </TouchableOpacity>

@@ -21,7 +21,14 @@ talkcash/
 - Çoklu cüzdan + döviz kuru sync
 - Bütçe, ajanda, alışveriş, AI mentor (LLM chat)
 - Sosyal (borç, split, ortak kasa WS, sahiplik devri)
-- Offline kuyruk + optimistic snapshot
+- Offline kuyruk + optimistic snapshot (cüzdan, işlem, ajanda, alışveriş, sesli komut)
+
+### Çevrimdışı senkron
+
+- Yazma işlemleri ağ/5xx hatasında `mobile/services/offlineQueue.ts` kuyruğuna alınır.
+- Anında UI güncellemesi için `mobile/services/syncCache.ts` optimistic snapshot kullanır.
+- Uygulama ön plana gelince `useOfflineSync` kuyruğu boşaltır; Ayarlar’dan manuel sync de mümkün.
+- Oturum süresi dolunca kuyruk korunur; çıkış yaparken bekleyen işlem varsa uyarı gösterilir.
 - Push bildirim + deep link + geofencing
 - PDF/Excel export
 - **Çoklu dil**: Türkçe + English

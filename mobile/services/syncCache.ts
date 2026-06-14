@@ -63,9 +63,22 @@ function localId(prefix: string) {
 function adjustWalletBalance(wallets: any[], walletId: string, delta: number): any[] {
   return wallets.map((w) =>
     w.id === walletId
-      ? { ...w, balance_try: Number(w.balance_try || w.balance || 0) + delta }
+      ? {
+          ...w,
+          balance: Number(w.balance || w.balance_try || 0) + delta,
+          balance_try: Number(w.balance_try || w.balance || 0) + delta,
+        }
       : w,
   );
+}
+
+function findWalletByName(wallets: any[], name?: string): any | undefined {
+  if (!wallets.length) return undefined;
+  const query = (name || "").trim().toLowerCase();
+  if (!query) return wallets[0];
+  return wallets.find((w) => w.name?.toLowerCase().includes(query))
+    || wallets.find((w) => query.includes(w.name?.toLowerCase()))
+    || wallets[0];
 }
 
 /** Optimistically append shopping items when an offline queue entry is created. */
@@ -97,8 +110,18 @@ export async function applyOptimisticForQueuedOp(
     }
     case "shopping_complete": {
       const itemId = String(payload.item_id);
+      const price = Number(payload.price || 0);
+      const walletId = payload.wallet_id ? String(payload.wallet_id) : null;
+      let wallets = snapshot.wallets || [];
+      let net = Number(snapshot.net_worth_total || 0);
+      if (price > 0 && walletId) {
+        wallets = adjustWalletBalance(wallets, walletId, -price);
+        net -= price;
+      }
       await patchCachedSnapshot({
         shopping: (snapshot.shopping || []).filter((i) => i.id !== itemId),
+        wallets,
+        net_worth_total: net,
       });
       return;
     }
@@ -216,15 +239,113 @@ export async function applyOptimisticForQueuedOp(
       return;
     }
     case "agenda_mark_paid": {
+      const itemId = payload.item_id ? String(payload.item_id) : null;
       const title = String(payload.title || "").toLowerCase();
       const now = new Date().toISOString();
       await patchCachedSnapshot({
-        agenda: (snapshot.agenda || []).map((item) =>
-          item.title?.toLowerCase().includes(title) || title.includes(item.title?.toLowerCase())
-            ? { ...item, status: "paid", paid_at: now }
-            : item,
-        ),
+        agenda: (snapshot.agenda || []).map((item) => {
+          const matches = itemId
+            ? item.id === itemId
+            : item.title?.toLowerCase().includes(title) || title.includes(item.title?.toLowerCase());
+          return matches ? { ...item, status: "paid", paid_at: now } : item;
+        }),
       });
+      return;
+    }
+    case "execute": {
+      const parsed = payload.parsed as Record<string, any> | undefined;
+      if (!parsed?.intent) return;
+      const intent = String(parsed.intent);
+
+      if (intent === "add_expense") {
+        const amount = Number(parsed.amount || 0);
+        if (!amount) return;
+        const wallets = snapshot.wallets || [];
+        const wallet = findWalletByName(wallets, parsed.wallet_name || "Nakit");
+        if (!wallet) return;
+        const transactions = [{
+          id: localId("tx"),
+          type: "expense",
+          amount,
+          category: parsed.category || "Genel",
+          description: parsed.description || "",
+          place: parsed.place || "",
+          date: new Date().toISOString(),
+          input_method: "voice",
+        }, ...(snapshot.transactions || [])];
+        const updatedWallets = adjustWalletBalance(wallets, wallet.id, -amount);
+        const net = Number(snapshot.net_worth_total || 0) - amount;
+        await patchCachedSnapshot({ transactions, wallets: updatedWallets, net_worth_total: net });
+        return;
+      }
+
+      if (intent === "add_income") {
+        const amount = Number(parsed.amount || 0);
+        if (!amount) return;
+        const wallets = snapshot.wallets || [];
+        const wallet = findWalletByName(wallets, parsed.wallet_name || "Banka");
+        if (!wallet) return;
+        const transactions = [{
+          id: localId("tx"),
+          type: "income",
+          amount,
+          category: "Gelir",
+          description: parsed.description || "",
+          date: new Date().toISOString(),
+          input_method: "voice",
+        }, ...(snapshot.transactions || [])];
+        const updatedWallets = adjustWalletBalance(wallets, wallet.id, amount);
+        const net = Number(snapshot.net_worth_total || 0) + amount;
+        await patchCachedSnapshot({ transactions, wallets: updatedWallets, net_worth_total: net });
+        return;
+      }
+
+      if (intent === "transfer") {
+        const amount = Number(parsed.amount || 0);
+        if (!amount) return;
+        const wallets = snapshot.wallets || [];
+        const from = findWalletByName(wallets, parsed.wallet_name || "Banka");
+        const to = findWalletByName(wallets, parsed.target_wallet_name || "Nakit");
+        if (!from || !to) return;
+        let updated = adjustWalletBalance(wallets, from.id, -amount);
+        updated = adjustWalletBalance(updated, to.id, amount);
+        await patchCachedSnapshot({ wallets: updated });
+        return;
+      }
+
+      if (intent === "add_shopping") {
+        const items = (parsed.items as string[]) || (parsed.description ? [parsed.description] : []);
+        if (items.length) await optimisticAddShopping(items);
+        return;
+      }
+
+      if (intent === "add_bill") {
+        const agenda = [...(snapshot.agenda || [])];
+        agenda.unshift({
+          id: localId("agenda"),
+          title: parsed.description || parsed.category || "Fatura",
+          amount: parsed.amount,
+          due_date: parsed.date || new Date(Date.now() + 7 * 86400000).toISOString(),
+          status: "pending",
+          is_recurring: parsed.is_recurring || false,
+        });
+        await patchCachedSnapshot({ agenda });
+        return;
+      }
+
+      if (intent === "mark_paid") {
+        const title = String(parsed.description || "").toLowerCase();
+        const now = new Date().toISOString();
+        await patchCachedSnapshot({
+          agenda: (snapshot.agenda || []).map((item) =>
+            item.title?.toLowerCase().includes(title) || title.includes(item.title?.toLowerCase())
+              ? { ...item, status: "paid", paid_at: now }
+              : item,
+          ),
+        });
+        return;
+      }
+
       return;
     }
     default:
