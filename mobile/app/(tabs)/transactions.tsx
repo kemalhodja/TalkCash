@@ -94,7 +94,7 @@ export default function TransactionsScreen() {
 
   return (
     <>
-      <ScreenShell>
+      <ScreenShell ambient="subtle">
         <ScreenHeader title={t.transactions.title} />
         {transactions.map((tx) => (
           <TouchableOpacity

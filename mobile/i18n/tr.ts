@@ -53,6 +53,7 @@ export default {
     offlineCache: "Çevrimdışı önbellek",
     moreTools: "Araçlar & izleme",
     allWallets: "Tüm kasalar",
+    insights: "Öngörüler",
   },
   login: {
     title: "TalkCash",
