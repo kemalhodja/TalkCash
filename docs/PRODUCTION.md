@@ -81,6 +81,19 @@ GitHub Actions: **EAS Build** → profile `production`, platform `android` / `io
 
 ## 3. Yayın öncesi kontrol listesi
 
+Otomatik kontrol (test + verify + typecheck):
+
+```bash
+./scripts/release.sh --checklist
+```
+
+Ardından production pipeline:
+
+```bash
+./scripts/release.sh --production    # Fly prod + EAS AAB
+./scripts/release.sh --submit-play     # Play Console
+```
+
 ### API
 
 - [ ] `./scripts/preflight-staging.sh` geçiyor

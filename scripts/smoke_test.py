@@ -9,6 +9,7 @@ import sys
 import urllib.error
 import urllib.request
 import uuid
+from datetime import datetime
 
 
 def request(method: str, url: str, data: dict | None = None, headers: dict | None = None) -> tuple[int, dict | list]:
@@ -90,6 +91,41 @@ def main() -> int:
 
     status, i18n = request("GET", f"{base}/i18n/en")
     check("i18n", status == 200 and "auth.login_success" in i18n, "missing keys")
+
+    client_wallet_id = str(uuid.uuid4())
+    status, sync_push = request("POST", f"{base}/sync/push", {
+        "operations": [
+            {
+                "id": str(uuid.uuid4()),
+                "type": "wallet_create",
+                "payload": {
+                    "name": "SmokeWallet",
+                    "wallet_type": "cash",
+                    "currency": "TRY",
+                    "client_wallet_id": client_wallet_id,
+                },
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "type": "wallet_income",
+                "payload": {
+                    "wallet_id": client_wallet_id,
+                    "amount": 100,
+                    "description": "smoke income",
+                },
+                "client_timestamp": datetime.utcnow().isoformat(),
+            },
+        ],
+    }, headers=auth)
+    check(
+        "offline sync chain",
+        status == 200 and len(sync_push.get("applied", [])) == 2 and not sync_push.get("failed"),
+        str(sync_push),
+    )
+
+    status, sync_pull = request("GET", f"{base}/sync/pull", headers=auth)
+    check("sync pull", status == 200 and "budgets" in sync_pull, str(sync_pull))
 
     if failures:
         print(f"\nSmoke test FAILED ({len(failures)} checks)")
