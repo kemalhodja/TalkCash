@@ -5,9 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError
 from app.models.transaction import Transaction, TransactionType
-from app.models.wallet import Wallet
 from app.schemas.transaction import TransactionUpdate
-from app.services.wallet.service import WalletService, _apply_inflow, _apply_outflow, _ensure_can_spend, _is_credit_card
+from app.services.wallet.service import WalletService, _apply_inflow, _apply_outflow, _ensure_can_spend
 
 
 class TransactionService:
@@ -20,7 +19,7 @@ class TransactionService:
             raise I18nError("transaction.not_found")
         return tx
 
-    def _reverse_effect(self, tx: Transaction, wallet: Wallet, target: Wallet | None) -> None:
+    def _reverse_effect(self, tx: Transaction, wallet, target) -> None:
         if tx.transaction_type == TransactionType.EXPENSE:
             _apply_inflow(wallet, tx.amount)
         elif tx.transaction_type == TransactionType.INCOME:
@@ -29,7 +28,7 @@ class TransactionService:
             _apply_inflow(wallet, tx.amount)
             _apply_outflow(target, tx.amount)
 
-    def _apply_effect(self, tx: Transaction, wallet: Wallet, target: Wallet | None) -> None:
+    def _apply_effect(self, tx: Transaction, wallet, target) -> None:
         if tx.transaction_type == TransactionType.EXPENSE:
             _ensure_can_spend(wallet, tx.amount)
             _apply_outflow(wallet, tx.amount)
@@ -47,9 +46,7 @@ class TransactionService:
         if tx.transaction_type == TransactionType.TRANSFER:
             raise I18nError("transaction.transfer_edit_unsupported")
 
-        wallet = await db.get(Wallet, tx.wallet_id)
-        if not wallet:
-            raise I18nError("wallet.not_found")
+        wallet = await self.wallet_service.get_owned_wallet(db, user_id, tx.wallet_id)
 
         self._reverse_effect(tx, wallet, None)
 
@@ -61,6 +58,8 @@ class TransactionService:
             tx.description = data.description
         if data.place is not None:
             tx.place = data.place
+        if data.store_name is not None:
+            tx.store_name = data.store_name
 
         self._apply_effect(tx, wallet, None)
         await db.commit()
@@ -69,15 +68,13 @@ class TransactionService:
 
     async def delete(self, db: AsyncSession, user_id: UUID, tx_id: UUID) -> None:
         tx = await self.get_owned(db, user_id, tx_id)
-        wallet = await db.get(Wallet, tx.wallet_id)
-        if not wallet:
-            raise I18nError("wallet.not_found")
+        wallet = await self.wallet_service.get_owned_wallet(db, user_id, tx.wallet_id)
 
         target = None
         if tx.transaction_type == TransactionType.TRANSFER:
-            target = await db.get(Wallet, tx.target_wallet_id) if tx.target_wallet_id else None
-            if not target:
+            if not tx.target_wallet_id:
                 raise I18nError("wallet.not_found")
+            target = await self.wallet_service.get_owned_wallet(db, user_id, tx.target_wallet_id)
 
         self._reverse_effect(tx, wallet, target)
         await db.delete(tx)

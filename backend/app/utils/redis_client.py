@@ -8,6 +8,16 @@ from app.config import settings
 _pool: aioredis.Redis | None = None
 
 
+async def close_redis() -> None:
+    global _pool
+    if _pool is not None:
+        try:
+            await _pool.aclose()
+        except Exception:
+            pass
+        _pool = None
+
+
 async def get_redis() -> aioredis.Redis:
     global _pool
     if _pool is None:

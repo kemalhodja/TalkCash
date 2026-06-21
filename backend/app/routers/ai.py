@@ -10,8 +10,10 @@ from app.database import get_db
 from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error, t
 from app.models.user import User
+from app.services.billing.service import BillingService, EntitlementError
 from app.services.ai_mentor.service import AIMentorService
 from app.services.ai_mentor.chat_service import ChatMentorService
+from app.services.insights.service import InsightService
 from app.services.price_watch.service import PriceWatchService
 from app.utils.rate_limit import check_rate_limit
 
@@ -19,6 +21,8 @@ router = APIRouter(prefix="/ai", tags=["AI Mentor"])
 ai_service = AIMentorService()
 chat_service = ChatMentorService()
 watch_service = PriceWatchService()
+billing_service = BillingService()
+insight_service = InsightService()
 
 
 class WatchlistAdd(BaseModel):
@@ -37,6 +41,15 @@ class ChatMessageResponse(BaseModel):
     created_at: str | None = None
 
 
+class InsightResponse(BaseModel):
+    id: str
+    type: str
+    title: str
+    summary: str
+    severity: str
+    created_at: str | None = None
+
+
 @router.get("/budget-alerts")
 async def budget_alerts(
     request: Request,
@@ -44,6 +57,10 @@ async def budget_alerts(
     db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "ai", settings.ai_rate_limit, identifier=str(user.id), strict=True)
+    try:
+        await billing_service.consume_usage(db, user.id, "ai_coach")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "ai_coach"})
     return await ai_service.check_budget_alerts(db, user.id, user_locale(user))
 
 
@@ -55,6 +72,10 @@ async def month_end_forecast(
     db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "ai", settings.ai_rate_limit, identifier=str(user.id), strict=True)
+    try:
+        await billing_service.consume_usage(db, user.id, "ai_coach")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "ai_coach"})
     return await ai_service.predict_month_end(db, user.id, Decimal(str(current_balance)), user_locale(user))
 
 
@@ -66,6 +87,10 @@ async def price_tracker(
     db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "ai", settings.ai_rate_limit, identifier=str(user.id), strict=True)
+    try:
+        await billing_service.consume_usage(db, user.id, "price_watch")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "price_watch"})
     locale = user_locale(user)
     report = await ai_service.price_change_report(db, user.id, product, locale)
     if report:
@@ -126,6 +151,33 @@ async def chat_history(
     ]
 
 
+@router.get("/insights", response_model=list[InsightResponse])
+async def ai_insights(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "ai", settings.ai_rate_limit, identifier=str(user.id), strict=True)
+    try:
+        await billing_service.consume_usage(db, user.id, "ai_coach")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "ai_coach"})
+    items = await insight_service.list_recent(db, user.id, limit=10)
+    if not items:
+        items = await insight_service.generate_weekly(db, user.id, user_locale(user))
+    return [
+        InsightResponse(
+            id=str(item.id),
+            type=item.insight_type.value,
+            title=item.title,
+            summary=item.summary,
+            severity=item.severity,
+            created_at=item.created_at.isoformat() if item.created_at else None,
+        )
+        for item in items
+    ]
+
+
 @router.post("/chat", response_model=ChatMessageResponse)
 async def chat_mentor(
     data: ChatRequest,
@@ -134,9 +186,13 @@ async def chat_mentor(
     db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "ai", settings.ai_rate_limit, identifier=str(user.id), strict=True)
+    try:
+        await billing_service.consume_usage(db, user.id, "ai_coach")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "ai_coach"})
     locale = user_locale(user)
     try:
-        msg = await chat_service.chat(db, user.id, data.message, locale)
+        msg = await chat_service.chat(db, user.id, data.message, locale, user.assistant_persona or "default")
         return ChatMessageResponse(
             id=str(msg.id), role=msg.role, content=msg.content,
             created_at=msg.created_at.isoformat() if msg.created_at else None,

@@ -1,0 +1,35 @@
+# TalkCash - Render + Neon setup (Fly.io alternative)
+# Run: .\scripts\setup-render-prod.ps1
+
+Write-Host ""
+Write-Host "TalkCash Backend - Render + Neon (Fly.io yerine)"
+Write-Host "================================================"
+Write-Host ""
+Write-Host "ADIM 1: PostgreSQL (Neon - ucretsiz)"
+Write-Host "  https://console.neon.tech"
+Write-Host "  Region: Frankfurt (eu-central)"
+Write-Host "  DATABASE_URL format:"
+Write-Host "  postgresql+asyncpg://user:pass@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+Write-Host ""
+Write-Host "ADIM 2: Redis (Upstash - ucretsiz)"
+Write-Host "  https://console.upstash.com"
+Write-Host "  Region: eu-central-1"
+Write-Host ""
+Write-Host "ADIM 3: API (Render)"
+Write-Host "  https://dashboard.render.com -> New -> Blueprint -> GitHub repo"
+Write-Host "  render.yaml otomatik algilanir"
+Write-Host "  Env: DATABASE_URL, REDIS_URL, OPENAI_API_KEY"
+Write-Host "  URL: https://talkcash-api-prod.onrender.com"
+Write-Host ""
+Write-Host "ADIM 4: Health check"
+Write-Host "  curl https://talkcash-api-prod.onrender.com/health"
+Write-Host ""
+Write-Host "ADIM 5: Yeni EAS build (API URL degisince)"
+Write-Host "  EXPO_PUBLIC_API_URL=https://talkcash-api-prod.onrender.com/api/v1"
+Write-Host "  cd mobile && npx eas-cli build --profile production --platform android"
+Write-Host ""
+
+$secretKey = -join ((1..32) | ForEach-Object { "{0:x2}" -f (Get-Random -Maximum 256) })
+Write-Host "Ornek SECRET_KEY (Render'a yapistirin):"
+Write-Host $secretKey
+Write-Host ""

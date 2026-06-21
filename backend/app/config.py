@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     export_rate_limit: int = 10
     ai_rate_limit: int = 30
     geofence_rate_limit: int = 20
+    micro_savings_rate_limit: int = 40
     sync_max_batch: int = 50
     max_export_rows: int = 2000
 
@@ -54,9 +55,32 @@ class Settings(BaseSettings):
 
     app_timezone: str = "Europe/Istanbul"
 
+    internal_upgrade_secret: str = ""
+    google_play_package_name: str = "io.talkcash.app"
+    google_play_service_account_json: str = ""
+    google_play_verify_mock: bool = False
+    google_rtdn_webhook_secret: str = ""
+    password_reset_ttl_seconds: int = 3600
+    password_reset_url: str = "talkcash://reset-password"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@talkcash.io"
+    smtp_use_tls: bool = True
+
+    sentry_dsn: str = ""
+    sentry_environment: str = "development"
+    sentry_traces_sample_rate: float = 0.1
+
     # OCR: tesseract | google | auto (tesseract first, Vision fallback)
     ocr_provider: str = "auto"
     google_vision_api_key: str = ""
+
+    broker_midas_url: str = "https://www.getmidas.com/"
+    broker_papara_url: str = "https://www.papara.com/"
+    broker_revolut_url: str = "https://www.revolut.com/"
+    broker_trading212_url: str = "https://www.trading212.com/"
 
 
 settings = Settings()

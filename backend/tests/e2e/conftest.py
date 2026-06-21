@@ -42,6 +42,14 @@ async def _override_get_db():
 app.dependency_overrides[get_db] = _override_get_db
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def _reset_redis_pool():
+    yield
+    from app.utils.redis_client import close_redis
+
+    await close_redis()
+
+
 @pytest_asyncio.fixture
 async def client(setup_database):
     transport = ASGITransport(app=app)

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.routers.execute import _dispatch
+from app.services.execute.service import dispatch_confirmed_action
 from app.schemas.common import ParsedInput
 
 
@@ -17,9 +17,9 @@ async def test_dispatch_add_bill():
     mock_item.id = uuid4()
     mock_item.title = "Elektrik"
 
-    with patch("app.routers.execute.agenda_service") as agenda_mock:
+    with patch("app.services.execute.service.agenda_service") as agenda_mock:
         agenda_mock.add_bill = AsyncMock(return_value=mock_item)
-        result = await _dispatch(user_id, parsed, db, locale="tr")
+        result = await dispatch_confirmed_action(user_id, parsed, db, locale="tr")
 
     assert result["title"] == "Elektrik"
     assert "id" in result
@@ -33,7 +33,7 @@ async def test_dispatch_add_bill_requires_amount():
     parsed = ParsedInput(intent="add_bill", description="Elektrik")
 
     with pytest.raises(ValueError, match="Tutar belirlenemedi"):
-        await _dispatch(user_id, parsed, db, locale="tr")
+        await dispatch_confirmed_action(user_id, parsed, db, locale="tr")
 
 
 @pytest.mark.asyncio
@@ -43,4 +43,4 @@ async def test_dispatch_add_bill_amount_required_en():
     parsed = ParsedInput(intent="add_bill", description="Electric")
 
     with pytest.raises(ValueError, match="Amount could not be determined"):
-        await _dispatch(user_id, parsed, db, locale="en")
+        await dispatch_confirmed_action(user_id, parsed, db, locale="en")

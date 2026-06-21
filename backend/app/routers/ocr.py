@@ -1,9 +1,9 @@
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -11,7 +11,10 @@ from app.database import get_db
 from app.dependencies import get_current_user, user_locale
 from app.i18n import t
 from app.models.receipt import Receipt
+from app.models.transaction import Transaction
 from app.models.user import User
+from app.schemas.receipt import ReceiptUpdate
+from app.services.billing.service import BillingService, EntitlementError
 from app.services.ocr.service import OCRService
 from app.services.storage.service import StorageService
 from app.utils.rate_limit import check_rate_limit
@@ -20,6 +23,7 @@ from app.utils.validation import validate_image_bytes
 router = APIRouter(prefix="/ocr", tags=["OCR"])
 ocr_service = OCRService()
 storage_service = StorageService()
+billing_service = BillingService()
 
 
 def _public_image_path(receipt_id: UUID) -> str:
@@ -35,6 +39,10 @@ async def scan_receipt(
 ):
     lang = user_locale(user)
     await check_rate_limit(request, "ocr", settings.ocr_rate_limit, identifier=str(user.id), strict=True)
+    try:
+        await billing_service.consume_usage(db, user.id, "receipt_ocr")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "receipt_ocr"})
     image_bytes = await image.read()
     try:
         validate_image_bytes(image_bytes, settings.ocr_max_upload_bytes)
@@ -60,18 +68,34 @@ async def scan_receipt(
         "receipt_id": str(receipt.id),
         "total_amount": float(data["total_amount"]) if data["total_amount"] else None,
         "date": data["receipt_date"].isoformat() if data["receipt_date"] else None,
+        "due_date": data["due_date"].isoformat() if data.get("due_date") else None,
         "merchant": data["merchant"],
         "verified": receipt.is_verified,
         "image_url": _public_image_path(receipt.id),
         "line_items": data.get("line_items", []),
+        "suggested_category": data.get("suggested_category"),
     }
 
 
 @router.get("/")
-async def list_receipts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Receipt).where(Receipt.user_id == user.id).order_by(Receipt.created_at.desc())
-    )
+async def list_receipts(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    merchant: str | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    verified: bool | None = None,
+):
+    query = select(Receipt).where(Receipt.user_id == user.id)
+    if merchant:
+        query = query.where(Receipt.merchant.ilike(f"%{merchant}%"))
+    if from_date:
+        query = query.where(Receipt.receipt_date >= datetime.fromisoformat(from_date.replace("Z", "")))
+    if to_date:
+        query = query.where(Receipt.receipt_date <= datetime.fromisoformat(to_date.replace("Z", "")))
+    if verified is not None:
+        query = query.where(Receipt.is_verified == verified)
+    result = await db.execute(query.order_by(Receipt.created_at.desc()))
     items = []
     for r in result.scalars().all():
         url = await storage_service.get_url(r.image_url)
@@ -86,6 +110,59 @@ async def list_receipts(user: User = Depends(get_current_user), db: AsyncSession
             "image_url": url,
         })
     return items
+
+
+@router.patch("/{receipt_id}")
+async def update_receipt(
+    receipt_id: UUID,
+    body: ReceiptUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lang = user_locale(user)
+    receipt = await db.get(Receipt, receipt_id)
+    if not receipt or receipt.user_id != user.id:
+        raise HTTPException(status_code=404, detail=t("ocr.receipt_not_found", lang))
+
+    if body.merchant is not None:
+        receipt.merchant = body.merchant.strip()
+    if body.total_amount is not None:
+        receipt.total_amount = Decimal(str(body.total_amount))
+    if body.receipt_date is not None:
+        receipt.receipt_date = body.parsed_date()
+    await db.commit()
+    await db.refresh(receipt)
+    return {
+        "id": str(receipt.id),
+        "total_amount": float(receipt.total_amount) if receipt.total_amount else None,
+        "merchant": receipt.merchant,
+        "date": receipt.receipt_date.isoformat() if receipt.receipt_date else None,
+        "verified": receipt.is_verified,
+        "image_url": _public_image_path(receipt.id),
+    }
+
+
+@router.delete("/{receipt_id}")
+async def delete_receipt(
+    receipt_id: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lang = user_locale(user)
+    receipt = await db.get(Receipt, receipt_id)
+    if not receipt or receipt.user_id != user.id:
+        raise HTTPException(status_code=404, detail=t("ocr.receipt_not_found", lang))
+
+    await db.execute(
+        update(Transaction).where(Transaction.receipt_id == receipt_id).values(receipt_id=None)
+    )
+    try:
+        await storage_service.delete(receipt.image_url)
+    except Exception:
+        pass
+    await db.delete(receipt)
+    await db.commit()
+    return {"status": "deleted", "id": str(receipt_id)}
 
 
 @router.get("/{receipt_id}/image")

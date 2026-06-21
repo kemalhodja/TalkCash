@@ -8,48 +8,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError
 from app.models.shopping import ShoppingCategory, ShoppingItem
+from app.services.shopping.category_keywords import categorize_shopping_item
+from app.services.shopping.predictive import PredictiveShoppingService
 from app.services.wallet.service import WalletService
-
-CATEGORY_KEYWORDS = {
-    ShoppingCategory.BUTCHER: [
-        "et", "sucuk", "sosis", "tavuk", "köfte", "kofte",
-        "meat", "chicken", "beef", "sausage", "steak",
-    ],
-    ShoppingCategory.GREENS: [
-        "domates", "salatalık", "salatalik", "biber", "marul", "meyve",
-        "tomato", "cucumber", "pepper", "lettuce", "fruit", "apple", "banana",
-    ],
-    ShoppingCategory.DAIRY: [
-        "süt", "sut", "yumurta", "peynir", "yoğurt", "yogurt", "tereyağı",
-        "milk", "egg", "cheese", "yogurt", "butter", "cream",
-    ],
-    ShoppingCategory.CLEANING: [
-        "deterjan", "sabun", "temizlik", "bulaşık", "bulasik",
-        "detergent", "soap", "cleaning", "bleach", "sponge",
-    ],
-    ShoppingCategory.BAKERY: [
-        "ekmek", "simit", "poğaça", "pogaca",
-        "bread", "bagel", "pastry", "roll",
-    ],
-    ShoppingCategory.BEVERAGE: [
-        "su", "kola", "meyve suyu", "çay", "cay", "kahve",
-        "water", "cola", "juice", "tea", "coffee", "soda",
-    ],
-}
 
 
 class ShoppingService:
     def __init__(self):
         self.wallet_service = WalletService()
+        self.predictive = PredictiveShoppingService()
 
     def categorize(self, name: str) -> ShoppingCategory:
-        name_lower = name.lower()
-        for category, keywords in CATEGORY_KEYWORDS.items():
-            if any(kw in name_lower for kw in keywords):
-                return category
-        return ShoppingCategory.OTHER
+        return categorize_shopping_item(name)
 
-    async def add_items(self, db: AsyncSession, user_id: UUID, items: list[str]) -> list[ShoppingItem]:
+    async def add_items(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        items: list[str],
+        *,
+        locale: str = "tr",
+        with_suggestion: bool = True,
+    ) -> tuple[list[ShoppingItem], dict | None]:
+        existing = await self.list_active(db, user_id)
+        existing_names = [i.name for i in existing]
+
         created = []
         for name in items:
             item = ShoppingItem(
@@ -59,7 +42,18 @@ class ShoppingService:
             db.add(item)
             created.append(item)
         await db.commit()
-        return created
+
+        suggestion = None
+        if with_suggestion and items:
+            suggestion = await self.predictive.find_complement(
+                db, user_id, items, existing_names, locale=locale,
+            )
+            if suggestion:
+                await self.predictive.log_voice_suggestion(
+                    db, user_id, suggestion["suggestedItem"],
+                )
+
+        return created, suggestion
 
     async def list_active(self, db: AsyncSession, user_id: UUID) -> list[ShoppingItem]:
         result = await db.execute(
@@ -73,7 +67,11 @@ class ShoppingService:
     async def complete_item(
         self, db: AsyncSession, user_id: UUID, item_id: UUID,
         price: Decimal | None = None, wallet_id: UUID | None = None,
-    ) -> ShoppingItem:
+        store_name: str | None = None, locale: str = "tr",
+    ) -> tuple[ShoppingItem, dict | None, dict]:
+        from app.models.user import User
+        from app.services.product_price.service import ProductPriceService
+
         item = await db.get(ShoppingItem, item_id)
         if not item:
             raise I18nError("shopping.item_not_found")
@@ -81,14 +79,30 @@ class ShoppingService:
         item.is_completed = True
         item.completed_at = datetime.utcnow()
         item.price = price
+        voice_alert = None
+        micro_extras: dict = {}
 
         if price and wallet_id:
-            await self.wallet_service.add_expense(
+            resolved_store = (store_name or "Genel").strip()
+            tx = await self.wallet_service.add_expense(
                 db, user_id, wallet_id, price,
-                category="Market", description=item.name, input_method="shopping",
+                category="Market", description=item.name,
+                place=resolved_store, store_name=resolved_store,
+                input_method="shopping",
             )
+            user = await db.get(User, user_id)
+            voice_alert = await ProductPriceService().record_and_compare(
+                db, user_id, item.name, resolved_store, price,
+                transaction_id=tx.id, locale=locale,
+                user_name=user.full_name if user else None,
+            )
+            if user:
+                from app.services.micro_savings.service import MicroSavingsService
+                micro_extras = await MicroSavingsService().process_post_expense(
+                    db, user, item.name, "Market", price, wallet_id, locale,
+                )
         await db.commit()
-        return item
+        return item, voice_alert, micro_extras
 
     async def delete_item(self, db: AsyncSession, user_id: UUID, item_id: UUID) -> None:
         item = await db.get(ShoppingItem, item_id)
@@ -118,7 +132,8 @@ class ShoppingService:
             names = [n for n in names if n.lower().strip() in wanted]
         if not names:
             raise I18nError("shopping.no_items_to_import")
-        return await self.add_items(db, user_id, names)
+        created, _ = await self.add_items(db, user_id, names, with_suggestion=False)
+        return created
 
     async def daily_reset(self, db: AsyncSession) -> int:
         result = await db.execute(

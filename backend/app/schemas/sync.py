@@ -8,11 +8,12 @@ from pydantic import BaseModel, Field
 class SyncOperation(BaseModel):
     id: UUID
     type: Literal[
-        "execute", "shopping_add", "shopping_complete",
-        "wallet_income", "wallet_transfer", "wallet_expense",
+        "execute", "shopping_add", "shopping_complete", "shopping_delete", "shopping_routine",
+        "wallet_income", "wallet_transfer", "wallet_expense", "micro_savings_transfer",
         "transaction_update", "transaction_delete",
         "wallet_create", "wallet_update", "wallet_delete",
-        "agenda_add_bill", "agenda_update", "agenda_delete", "agenda_mark_paid",
+        "agenda_add_bill", "agenda_add_task", "agenda_complete",
+        "agenda_update", "agenda_delete", "agenda_mark_paid",
         "budget_create", "budget_update", "budget_delete",
     ]
     payload: dict[str, Any]

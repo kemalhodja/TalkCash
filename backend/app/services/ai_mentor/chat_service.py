@@ -9,6 +9,7 @@ from app.config import settings
 from app.i18n import t
 from app.models.chat_message import ChatMessage
 from app.services.ai_mentor.service import AIMentorService
+from app.services.nlp.personas import mentor_persona_overlay, normalize_persona
 from app.services.wallet.service import WalletService
 
 mentor_service = AIMentorService()
@@ -46,7 +47,9 @@ class ChatMentorService:
         )
         return list(reversed(result.scalars().all()))
 
-    async def chat(self, db: AsyncSession, user_id: UUID, message: str, locale: str = "tr") -> ChatMessage:
+    async def chat(
+        self, db: AsyncSession, user_id: UUID, message: str, locale: str = "tr", persona: str = "default",
+    ) -> ChatMessage:
         text = message.strip()
         if not text:
             raise ValueError(t("ai.chat_empty", locale))
@@ -59,7 +62,7 @@ class ChatMentorService:
         history = await self.list_history(db, user_id, limit=10)
         # Exclude the message we just added from LLM history (already in `message`)
         history = [m for m in history if m.id != user_msg.id]
-        reply = await self._generate_reply(text, context, history, locale)
+        reply = await self._generate_reply(text, context, history, locale, persona)
 
         assistant_msg = ChatMessage(user_id=user_id, role="assistant", content=reply)
         db.add(assistant_msg)
@@ -68,12 +71,13 @@ class ChatMentorService:
         return assistant_msg
 
     async def _generate_reply(
-        self, message: str, context: dict, history: list[ChatMessage], locale: str,
+        self, message: str, context: dict, history: list[ChatMessage], locale: str, persona: str = "default",
     ) -> str:
         if not self.client:
             return t("ai.chat_offline", locale)
 
         system = CHAT_SYSTEM_EN if locale == "en" else CHAT_SYSTEM_TR
+        system += mentor_persona_overlay(normalize_persona(persona), locale)
         messages = [
             {"role": "system", "content": system},
             {"role": "system", "content": f"Context: {json.dumps(context, ensure_ascii=False)}"},

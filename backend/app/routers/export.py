@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_current_user, user_locale
+from app.dependencies import get_current_user, require_entitlement, user_locale
 from app.i18n import t
 from app.models.agenda import AgendaItem
 from app.models.transaction import Transaction
@@ -29,6 +29,7 @@ wallet_service = WalletService()
 async def export_pdf(
     request: Request,
     limit: int = 500,
+    _premium: None = Depends(require_entitlement("advanced_reports")),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -51,6 +52,7 @@ async def export_pdf(
 async def export_excel(
     request: Request,
     limit: int = 500,
+    _premium: None = Depends(require_entitlement("advanced_reports")),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

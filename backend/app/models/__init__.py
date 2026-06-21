@@ -11,6 +11,15 @@ from app.models.exchange_rate import ExchangeRate
 from app.models.sync_operation import SyncOperationRecord
 from app.models.refresh_token import RefreshToken
 from app.models.chat_message import ChatMessage
+from app.models.audit import AuditLog
+from app.models.analytics import ProductEvent
+from app.models.billing import BillingEvent, Entitlement, GooglePurchase, PlanTier, Subscription, SubscriptionPlan, SubscriptionStatus, UsageMeter
+from app.models.podcast import WeeklyPodcast
+from app.models.product_history import ProductHistory
+from app.models.product_rule import ShoppingSuggestionLog, UserProductRule
+from app.models.insight import FinancialInsight, InsightType
+from app.models.workspace import Invitation, Organization, OrganizationMember, WorkspaceRole, WorkspaceType
+from app.models.roadmap import RoadmapFeature, RoadmapStatus, RoadmapVote
 
 __all__ = [
     "User",
@@ -34,4 +43,28 @@ __all__ = [
     "SyncOperationRecord",
     "RefreshToken",
     "ChatMessage",
+    "AuditLog",
+    "ProductEvent",
+    "GooglePurchase",
+    "BillingEvent",
+    "Entitlement",
+    "PlanTier",
+    "Subscription",
+    "SubscriptionPlan",
+    "SubscriptionStatus",
+    "UsageMeter",
+    "FinancialInsight",
+    "InsightType",
+    "WeeklyPodcast",
+    "UserProductRule",
+    "ShoppingSuggestionLog",
+    "ProductHistory",
+    "Invitation",
+    "Organization",
+    "OrganizationMember",
+    "WorkspaceRole",
+    "WorkspaceType",
+    "RoadmapFeature",
+    "RoadmapStatus",
+    "RoadmapVote",
 ]

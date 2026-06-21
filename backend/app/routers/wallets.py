@@ -69,14 +69,18 @@ async def transfer(data: TransferRequest, user: User = Depends(get_current_user)
 async def add_expense(
     wallet_id: UUID, amount: float,
     category: str = "Genel", description: str = "", place: str = "",
+    store_name: str = "",
     receipt_id: UUID | None = None,
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
+    lang = user_locale(user)
+    resolved = (store_name or place or "Genel").strip()
     tx = await wallet_service.add_expense(
-        db, user.id, wallet_id, Decimal(str(amount)), category, description, place,
+        db, user.id, wallet_id, Decimal(str(amount)), category, description,
+        place or resolved, store_name=resolved,
         input_method="manual", receipt_id=receipt_id,
     )
-    await push_budget_alerts_after_expense(db, user.id, category, user_locale(user))
+    await push_budget_alerts_after_expense(db, user.id, category, lang)
     return TransactionResponse.model_validate(tx)
 
 

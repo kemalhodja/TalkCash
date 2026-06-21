@@ -24,18 +24,28 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://talkcash-api.fly.dev/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "staging"
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "preview-local": {
       "extends": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.1.1:8000/api/v1"
+        "EXPO_PUBLIC_API_URL": "http://10.237.37.46:8000/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "staging"
+      }
+    },
+    "preview-tunnel": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://defining-talks-interstate-fans.trycloudflare.com/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production",
+      "prebuildCommand": "npx expo prebuild --clean",
       "android": {
         "buildType": "app-bundle"
       },
@@ -43,8 +53,12 @@
         "resourceClass": "m-medium"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://talkcash-api-prod.fly.dev/api/v1",
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_API_URL": "https://talkcash-api-prod.onrender.com/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_PRIVACY_URL": "https://talkcash-api-prod.onrender.com/privacy",
+        "EXPO_PUBLIC_TERMS_URL": "https://talkcash-api-prod.onrender.com/terms",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EX_DEV_CLIENT_NETWORK_INSPECTOR": "false"
       }
     }
   },

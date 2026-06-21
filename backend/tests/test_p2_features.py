@@ -36,3 +36,20 @@ def test_ocr_extract_product_price():
     text = "SUT 1L    45,90\nEKMEK     12,50"
     price = ocr.extract_product_price(text, "süt")
     assert price == Decimal("45.90")
+
+
+def test_ocr_suggest_category_from_merchant():
+    ocr = OCRService()
+    assert ocr.suggest_category("MIGROS MARKET", "") == "Market"
+    assert ocr.suggest_category("STARBUCKS", "") == "Kahve"
+    assert ocr.suggest_category("UNKNOWN SHOP", "") == "Genel"
+
+
+def test_ocr_extract_due_date():
+    ocr = OCRService()
+    text = "TURKCELL\nSON ODEME: 25.07.2026\nTOPLAM 450,00 TL"
+    due = ocr._extract_due_date(text)
+    assert due is not None
+    assert due.day == 25
+    assert due.month == 7
+    assert due.year == 2026

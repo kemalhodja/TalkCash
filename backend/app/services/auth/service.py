@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -19,7 +20,10 @@ from app.models.sync_operation import SyncOperationRecord
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.models.wallet import Wallet
+from app.services.storage.service import StorageService
 from app.services.wallet.service import WalletService
+from app.services.email.service import EmailService
+from app.utils.password_reset import consume_reset_token, create_reset_token, store_reset_token
 from app.utils.security import (
     create_access_token,
     create_refresh_token_value,
@@ -32,6 +36,8 @@ from app.utils.security import (
 class AuthService:
     def __init__(self):
         self.wallet_service = WalletService()
+        self.storage_service = StorageService()
+        self.email_service = EmailService()
 
     async def _issue_tokens(self, db: AsyncSession, user: User) -> tuple[str, str]:
         access = create_access_token(user.id)
@@ -45,19 +51,26 @@ class AuthService:
         return access, raw_refresh
 
     async def register(self, db: AsyncSession, email: str, password: str, full_name: str = "") -> tuple[User, str, str]:
+        email = email.strip().lower()
+        full_name = full_name.strip()
         existing = await db.execute(select(User).where(User.email == email))
         if existing.scalars().first():
             raise I18nError("auth.email_exists")
 
         user = User(email=email, hashed_password=hash_password(password), full_name=full_name)
-        db.add(user)
-        await db.flush()
-        await self.wallet_service.create_defaults(db, user.id, commit=False)
-        access, refresh = await self._issue_tokens(db, user)
+        try:
+            db.add(user)
+            await db.flush()
+            await self.wallet_service.create_defaults(db, user.id, commit=False)
+            access, refresh = await self._issue_tokens(db, user)
+        except IntegrityError as exc:
+            await db.rollback()
+            raise I18nError("auth.email_exists") from exc
         await db.refresh(user)
         return user, access, refresh
 
     async def login(self, db: AsyncSession, email: str, password: str) -> tuple[User, str, str]:
+        email = email.strip().lower()
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalars().first()
         if not user or not verify_password(password, user.hashed_password):
@@ -130,14 +143,7 @@ class AuthService:
 
         receipts = await db.execute(select(Receipt).where(Receipt.user_id == user_id))
         for receipt in receipts.scalars().all():
-            if receipt.image_url and not receipt.image_url.startswith("http"):
-                try:
-                    from pathlib import Path
-                    path = Path(receipt.image_url)
-                    if path.exists():
-                        path.unlink()
-                except Exception:
-                    pass
+            await self.storage_service.delete(receipt.image_url)
 
         shared = await db.execute(select(SharedWallet).where(SharedWallet.owner_id == user_id))
         for sw in shared.scalars().all():
@@ -183,6 +189,34 @@ class AuthService:
         if not user:
             raise I18nError("auth.user_not_found")
         user.timezone = timezone
+        await db.commit()
+
+    async def request_password_reset(self, db: AsyncSession, email: str) -> str | None:
+        email = email.strip().lower()
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
+        if not user:
+            return None
+
+        token = create_reset_token()
+        await store_reset_token(user.id, token)
+        reset_url = f"{settings.password_reset_url}?token={token}"
+        self.email_service.send_password_reset(user.email, reset_url, user.locale or "tr")
+        return token if settings.debug else None
+
+    async def reset_password(self, db: AsyncSession, token: str, new_password: str) -> None:
+        user_id = await consume_reset_token(token.strip())
+        if not user_id:
+            raise I18nError("auth.invalid_reset_token")
+
+        user = await db.get(User, user_id)
+        if not user:
+            raise I18nError("auth.user_not_found")
+
+        user.hashed_password = hash_password(new_password)
+        await db.execute(
+            update(RefreshToken).where(RefreshToken.user_id == user_id).values(revoked_at=datetime.utcnow())
+        )
         await db.commit()
 
     async def set_push_token(self, db: AsyncSession, user_id: UUID, token: str) -> None:

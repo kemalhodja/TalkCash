@@ -30,7 +30,7 @@ def test_haversine_ordering_sync():
 def test_static_poi_database_size():
     from pathlib import Path
     import json
-    pois = json.loads((Path(__file__).parents[1] / "app/data/market_pois.json").read_text())
+    pois = json.loads((Path(__file__).parents[1] / "app/data/market_pois.json").read_text(encoding="utf-8"))
     assert len(pois) >= 80
 
 

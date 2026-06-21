@@ -9,16 +9,33 @@ from app.services.ocr.vision import google_vision_text
 
 
 class OCRService:
+    def suggest_category(self, merchant: str, raw_text: str = "") -> str:
+        haystack = self._normalize_text(f"{merchant} {raw_text}")
+        rules: list[tuple[list[str], str]] = [
+            (["migros", "carrefour", "bim", "a101", "sok", "market", "grocery", "supermarket"], "Market"),
+            (["starbucks", "kahve", "cafe", "coffee", "nero", "espresso"], "Kahve"),
+            (["restoran", "restaurant", "yemek", "burger", "pizza", "kebap"], "Yemek"),
+            (["shell", "bp", "petrol", "otopark", "metro", "ulasim", "transport", "taksi"], "Ulaşım"),
+            (["elektrik", "enerji", "internet", "fatura", "turkcell", "vodafone", "dogalgaz"], "Faturalar"),
+        ]
+        for keywords, category in rules:
+            if any(kw in haystack for kw in keywords):
+                return category
+        return "Genel"
+
     async def extract_receipt_data(self, image_bytes: bytes, locale: str = "tr") -> dict:
         raw_text, engine = await self._extract_text(image_bytes, locale)
         line_items = self._extract_line_items(raw_text)
+        merchant = self._extract_merchant(raw_text)
         return {
             "total_amount": self._extract_amount(raw_text),
             "receipt_date": self._extract_date(raw_text),
-            "merchant": self._extract_merchant(raw_text),
+            "due_date": self._extract_due_date(raw_text),
+            "merchant": merchant,
             "ocr_raw_text": raw_text,
             "line_items": line_items,
             "ocr_engine": engine,
+            "suggested_category": self.suggest_category(merchant, raw_text),
         }
 
     async def _extract_text(self, image_bytes: bytes, locale: str) -> tuple[str, str]:
@@ -122,6 +139,27 @@ class OCRService:
                 return datetime(int(match.group(3)), int(match.group(2)), int(match.group(1)))
             except ValueError:
                 pass
+        return None
+
+    def _extract_due_date(self, text: str) -> datetime | None:
+        if not text:
+            return None
+        haystack = self._normalize_text(text)
+        patterns = [
+            r"(?:son\s*odeme|odeme\s*tarihi|due\s*date|payment\s*due|vade\s*tarihi)\s*:?\s*(\d{2})[./](\d{2})[./](\d{4})",
+            r"(?:son\s*odeme|odeme\s*tarihi|due\s*date|payment\s*due|vade\s*tarihi)\s*:?\s*(\d{2})[./](\d{2})[./](\d{2})",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, haystack)
+            if not match:
+                continue
+            day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+            if year < 100:
+                year += 2000
+            try:
+                return datetime(year, month, day)
+            except ValueError:
+                continue
         return None
 
     def _extract_merchant(self, text: str) -> str:

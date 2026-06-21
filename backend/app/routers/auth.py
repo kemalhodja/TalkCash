@@ -8,18 +8,23 @@ from app.config import settings
 from app.i18n import SUPPORTED_LOCALES, I18nError, locale_from_request, resolve_error, t
 from app.schemas.auth import (
     DeleteAccountRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LocaleRequest,
     LoginRequest,
     PasswordChangeRequest,
+    PersonaRequest,
     PinChangeRequest,
     PinRequest,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TimezoneRequest,
     TokenResponse,
     UserProfile,
 )
 from app.services.auth.service import AuthService
+from app.services.nlp.personas import VALID_PERSONAS, normalize_persona
 from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -36,6 +41,7 @@ def _token_response(user: User, access: str, refresh: str) -> TokenResponse:
         has_pin=bool(user.pin_code),
         locale=user.locale or "tr",
         timezone=user.timezone or "Europe/Istanbul",
+        assistant_persona=normalize_persona(user.assistant_persona),
     )
 
 
@@ -59,6 +65,36 @@ async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends
         return _token_response(user, access, refresh)
     except I18nError as e:
         raise HTTPException(status_code=401, detail=resolve_error(e, lang))
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "auth", settings.auth_rate_limit, strict=True)
+    lang = locale_from_request(request)
+    reset_token = await auth_service.request_password_reset(db, data.email)
+    return ForgotPasswordResponse(
+        message=t("auth.password_reset_sent", lang),
+        reset_token=reset_token,
+    )
+
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await check_rate_limit(request, "auth", settings.auth_rate_limit, strict=True)
+    lang = locale_from_request(request)
+    try:
+        await auth_service.reset_password(db, data.token, data.new_password)
+        return {"status": "ok", "message": t("auth.password_reset_success", lang)}
+    except I18nError as e:
+        raise HTTPException(status_code=400, detail=resolve_error(e, lang))
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -85,7 +121,23 @@ async def me(user: User = Depends(get_current_user)):
         biometric_enabled=user.biometric_enabled, has_pin=bool(user.pin_code),
         locale=user.locale or "tr",
         timezone=user.timezone or "Europe/Istanbul",
+        assistant_persona=normalize_persona(user.assistant_persona),
     )
+
+
+@router.put("/persona")
+async def set_persona(
+    data: PersonaRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lang = user.locale or "tr"
+    persona = normalize_persona(data.assistant_persona)
+    if data.assistant_persona.strip().lower() not in VALID_PERSONAS:
+        raise HTTPException(status_code=400, detail=t("persona.invalid", lang))
+    user.assistant_persona = persona
+    await db.commit()
+    return {"assistant_persona": persona}
 
 
 @router.post("/pin")

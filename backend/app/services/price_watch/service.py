@@ -9,6 +9,7 @@ from app.i18n import I18nError, t
 from app.models.social import PriceWatchItem
 from app.models.user import User
 from app.services.ai_mentor.service import AIMentorService
+from app.services.notifications.prefs import allows_notification, allows_push
 from app.services.notifications.service import NotificationService
 
 ai_service = AIMentorService()
@@ -75,9 +76,11 @@ class PriceWatchService:
             await notif_service.create_in_app(
                 db, watch.user_id, watch.product_name, msg, "price_change", {"route": "/"},
             )
-            if user.push_token:
+            if not allows_notification(user, "price_change"):
+                continue
+            if user.push_token and allows_push(user, "price_change"):
                 await notif_service.send_push(
-                    user.push_token, watch.product_name, msg, {"url": "talkcash://home"},
+                    user.push_token, watch.product_name, msg, {"route": "/"},
                 )
             watch.last_checked_at = datetime.utcnow()
             if report.get("current_avg") is not None:

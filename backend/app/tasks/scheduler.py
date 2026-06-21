@@ -6,6 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.database import async_session
 from app.services.agenda.service import AgendaService
 from app.services.budget_scheduler import daily_budget_alert_scan
+from app.services.billing_scheduler import daily_premium_subscription_scan
 from app.services.exchange.service import ExchangeService
 from app.services.notifications.service import NotificationService
 from app.services.shopping.service import ShoppingService
@@ -80,6 +81,26 @@ async def budget_alerts_daily():
     await _guarded(_run)
 
 
+async def premium_subscription_scan():
+    async def _run():
+        async with async_session() as db:
+            count = await daily_premium_subscription_scan(db)
+            logger.info("Premium subscription scan: %d notifications", count)
+
+    await _guarded(_run)
+
+
+async def subscription_reminders_scan():
+    from app.services.subscription.scheduler import scan_subscription_reminders
+
+    async def _run():
+        async with async_session() as db:
+            count = await scan_subscription_reminders(db)
+            logger.info("Subscription T-2 reminders sent: %d", count)
+
+    await _guarded(_run)
+
+
 async def sync_exchange_rates():
     async def _run():
         async with async_session() as db:
@@ -96,6 +117,34 @@ async def price_watch_scan():
         async with async_session() as db:
             count = await PriceWatchService().scan_all(db)
             logger.info("Price watch alerts sent: %d", count)
+
+    await _guarded(_run)
+
+
+async def weekly_podcast_scan():
+    from app.models.user import User
+    from app.services.podcast.service import PodcastService
+    from sqlalchemy import select
+
+    service = PodcastService()
+
+    async def _run():
+        async with async_session() as db:
+            count = await service.generate_all_users(db)
+            logger.info("Weekly podcast generated: %d users", count)
+
+    await _guarded(_run)
+
+
+async def rebuild_product_rules():
+    from app.services.shopping.predictive import PredictiveShoppingService
+
+    service = PredictiveShoppingService()
+
+    async def _run():
+        async with async_session() as db:
+            count = await service.rebuild_all_users(db)
+            logger.info("Product association rules rebuilt: %d rules", count)
 
     await _guarded(_run)
 
@@ -117,9 +166,13 @@ def start_scheduler():
     scheduler.add_job(mark_overdue_bills, "cron", hour=7, minute=0, timezone=tz, id="overdue_bills")
     scheduler.add_job(agenda_reminders_today, "cron", hour=8, minute=0, timezone=tz, id="morning_reminders")
     scheduler.add_job(budget_alerts_daily, "cron", hour=9, minute=0, timezone=tz, id="budget_alerts")
+    scheduler.add_job(premium_subscription_scan, "cron", hour=11, minute=0, timezone=tz, id="premium_expiry")
     scheduler.add_job(price_watch_scan, "cron", hour=10, minute=0, timezone=tz, id="price_watch")
     scheduler.add_job(agenda_reminders_tomorrow, "cron", hour=20, minute=0, timezone=tz, id="evening_reminders")
+    scheduler.add_job(subscription_reminders_scan, "cron", hour=9, minute=30, timezone=tz, id="subscription_reminders")
     scheduler.add_job(spawn_recurring_bills, "cron", hour=1, minute=0, timezone=tz, id="recurring_bills")
+    scheduler.add_job(weekly_podcast_scan, "cron", day_of_week="sun", hour=8, minute=0, timezone=tz, id="weekly_podcast")
+    scheduler.add_job(rebuild_product_rules, "cron", hour=3, minute=30, timezone=tz, id="product_rules")
     scheduler.add_job(sync_exchange_rates, "interval", hours=1, id="rate_sync")
     scheduler.start()
     logger.info("Scheduler started")

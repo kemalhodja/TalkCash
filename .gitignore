@@ -1,10 +1,12 @@
 __pycache__/
 *.py[cod]
 .env
+.env.render
 .venv/
 venv/
 node_modules/
 .expo/
+mobile/.gradle-local/
 dist/
 *.egg-info/
 .DS_Store

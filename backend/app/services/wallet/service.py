@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from app.i18n import I18nError
 from app.models.transaction import Transaction, TransactionType
 from app.models.wallet import Wallet, WalletType
 from app.schemas.wallet import NetWorthResponse, WalletCreate, WalletNetWorthItem, WalletResponse
+from app.services.audit.service import AuditService
 from app.services.exchange.service import ExchangeService
 
 
@@ -53,6 +55,11 @@ def _ensure_can_spend(wallet: Wallet, amount: Decimal) -> None:
         raise I18nError("wallet.insufficient_funds")
 
 
+def _ensure_positive_amount(amount: Decimal) -> None:
+    if amount <= 0:
+        raise I18nError("wallet.invalid_amount")
+
+
 def _apply_inflow(wallet: Wallet, amount: Decimal) -> None:
     """Income or transfer in: credit card payment reduces debt."""
     if _is_credit_card(wallet):
@@ -64,6 +71,7 @@ def _apply_inflow(wallet: Wallet, amount: Decimal) -> None:
 class WalletService:
     def __init__(self):
         self.exchange = ExchangeService()
+        self.audit = AuditService()
 
     async def create_defaults(self, db: AsyncSession, user_id: UUID, *, commit: bool = True) -> list[Wallet]:
         wallets = []
@@ -88,6 +96,12 @@ class WalletService:
         await db.refresh(wallet)
         return WalletResponse.model_validate(wallet)
 
+    async def get_owned_wallet(self, db: AsyncSession, user_id: UUID, wallet_id: UUID) -> Wallet:
+        wallet = await db.get(Wallet, wallet_id)
+        if not wallet or wallet.user_id != user_id or not wallet.is_active:
+            raise I18nError("wallet.not_found")
+        return wallet
+
     async def get_net_worth(self, db: AsyncSession, user_id: UUID) -> NetWorthResponse:
         result = await db.execute(select(Wallet).where(Wallet.user_id == user_id, Wallet.is_active == True))
         raw_wallets = list(result.scalars().all())
@@ -104,22 +118,41 @@ class WalletService:
         return NetWorthResponse(total_try=total, wallets=wallet_responses)
 
     async def transfer(
-        self, db: AsyncSession, user_id: UUID, from_id: UUID, to_id: UUID, amount: Decimal, description: str = ""
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        from_id: UUID,
+        to_id: UUID,
+        amount: Decimal,
+        description: str = "",
+        *,
+        input_method: str = "voice",
     ) -> tuple[Wallet, Wallet]:
-        from_wallet = await db.get(Wallet, from_id)
-        to_wallet = await db.get(Wallet, to_id)
-        if not from_wallet or not to_wallet:
-            raise I18nError("wallet.not_found")
+        _ensure_positive_amount(amount)
+        if from_id == to_id:
+            raise I18nError("wallet.invalid_transfer")
+        from_wallet = await self.get_owned_wallet(db, user_id, from_id)
+        to_wallet = await self.get_owned_wallet(db, user_id, to_id)
 
         _ensure_can_spend(from_wallet, amount)
         _apply_outflow(from_wallet, amount)
         _apply_inflow(to_wallet, amount)
 
-        db.add(Transaction(
+        tx = Transaction(
             user_id=user_id, wallet_id=from_id, target_wallet_id=to_id,
             transaction_type=TransactionType.TRANSFER, amount=amount,
-            description=description, input_method="voice",
-        ))
+            description=description, input_method=input_method,
+        )
+        db.add(tx)
+        await db.flush()
+        await self.audit.log(
+            db,
+            actor_user_id=user_id,
+            action="wallet.transfer",
+            resource_type="transaction",
+            resource_id=str(tx.id),
+            metadata={"from_wallet_id": str(from_id), "to_wallet_id": str(to_id), "amount": str(amount)},
+        )
         await db.commit()
         return from_wallet, to_wallet
 
@@ -127,9 +160,8 @@ class WalletService:
         self, db: AsyncSession, user_id: UUID, wallet_id: UUID,
         amount: Decimal, description: str = "", input_method: str = "voice",
     ) -> Transaction:
-        wallet = await db.get(Wallet, wallet_id)
-        if not wallet:
-            raise I18nError("wallet.not_found")
+        _ensure_positive_amount(amount)
+        wallet = await self.get_owned_wallet(db, user_id, wallet_id)
         _apply_inflow(wallet, amount)
         tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,
@@ -137,6 +169,15 @@ class WalletService:
             description=description, input_method=input_method,
         )
         db.add(tx)
+        await db.flush()
+        await self.audit.log(
+            db,
+            actor_user_id=user_id,
+            action="wallet.income",
+            resource_type="transaction",
+            resource_id=str(tx.id),
+            metadata={"wallet_id": str(wallet_id), "amount": str(amount), "input_method": input_method},
+        )
         await db.commit()
         await db.refresh(tx)
         return tx
@@ -144,20 +185,37 @@ class WalletService:
     async def add_expense(
         self, db: AsyncSession, user_id: UUID, wallet_id: UUID,
         amount: Decimal, category: str, description: str = "", place: str = "",
-        input_method: str = "voice", receipt_id: UUID | None = None,
+        store_name: str = "", input_method: str = "voice", receipt_id: UUID | None = None,
+        is_recurring: bool = False, next_billing_date: date | None = None,
+        subscription_name: str | None = None,
     ) -> Transaction:
-        wallet = await db.get(Wallet, wallet_id)
-        if not wallet:
-            raise I18nError("wallet.not_found")
+        _ensure_positive_amount(amount)
+        wallet = await self.get_owned_wallet(db, user_id, wallet_id)
         _ensure_can_spend(wallet, amount)
         _apply_outflow(wallet, amount)
+        resolved_store = (store_name or place or "").strip() or "Genel"
         tx = Transaction(
             user_id=user_id, wallet_id=wallet_id,
             transaction_type=TransactionType.EXPENSE, amount=amount,
-            category=category, description=description, place=place, input_method=input_method,
+            category=category, description=description,
+            place=place or resolved_store,
+            store_name=resolved_store,
+            input_method=input_method,
             receipt_id=receipt_id,
+            is_recurring=is_recurring,
+            next_billing_date=next_billing_date,
+            subscription_name=subscription_name,
         )
         db.add(tx)
+        await db.flush()
+        await self.audit.log(
+            db,
+            actor_user_id=user_id,
+            action="wallet.expense",
+            resource_type="transaction",
+            resource_id=str(tx.id),
+            metadata={"wallet_id": str(wallet_id), "amount": str(amount), "category": category, "input_method": input_method},
+        )
         await db.commit()
         await db.refresh(tx)
         return tx
@@ -165,9 +223,7 @@ class WalletService:
     async def update_wallet(
         self, db: AsyncSession, user_id: UUID, wallet_id: UUID, data,
     ) -> WalletResponse:
-        wallet = await db.get(Wallet, wallet_id)
-        if not wallet or wallet.user_id != user_id or not wallet.is_active:
-            raise I18nError("wallet.not_found")
+        wallet = await self.get_owned_wallet(db, user_id, wallet_id)
         if data.name is not None:
             wallet.name = data.name
         if data.wallet_type is not None:
@@ -179,9 +235,7 @@ class WalletService:
         return WalletResponse.model_validate(wallet)
 
     async def deactivate_wallet(self, db: AsyncSession, user_id: UUID, wallet_id: UUID) -> None:
-        wallet = await db.get(Wallet, wallet_id)
-        if not wallet or wallet.user_id != user_id or not wallet.is_active:
-            raise I18nError("wallet.not_found")
+        wallet = await self.get_owned_wallet(db, user_id, wallet_id)
         if wallet.balance != Decimal("0"):
             raise I18nError("wallet.non_zero_balance")
         wallet.is_active = False
@@ -191,12 +245,20 @@ class WalletService:
         key = name.lower().strip()
         resolved = WALLET_ALIASES.get(key, name)
         result = await db.execute(
-            select(Wallet).where(Wallet.user_id == user_id, Wallet.name.ilike(f"%{resolved}%"))
+            select(Wallet).where(
+                Wallet.user_id == user_id,
+                Wallet.is_active == True,
+                Wallet.name.ilike(f"%{resolved}%"),
+            )
         )
         wallet = result.scalars().first()
         if wallet or resolved == name:
             return wallet
         result = await db.execute(
-            select(Wallet).where(Wallet.user_id == user_id, Wallet.name.ilike(f"%{name}%"))
+            select(Wallet).where(
+                Wallet.user_id == user_id,
+                Wallet.is_active == True,
+                Wallet.name.ilike(f"%{name}%"),
+            )
         )
         return result.scalars().first()

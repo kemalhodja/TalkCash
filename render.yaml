@@ -1,0 +1,38 @@
+# TalkCash API — Render Blueprint
+# Dashboard: New → Blueprint → connect GitHub kemalhodja/TalkCash
+# Set sync:false secrets in Render UI after first sync.
+
+services:
+  - type: web
+    name: talkcash-api-prod
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: frankfurt
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: DEBUG
+        value: "false"
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: S3_ENABLED
+        value: "false"
+      - key: GOOGLE_PLAY_PACKAGE_NAME
+        value: io.talkcash.app
+      - key: GOOGLE_PLAY_VERIFY_MOCK
+        value: "true"
+      - key: SENTRY_ENVIRONMENT
+        value: production

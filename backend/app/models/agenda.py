@@ -16,13 +16,20 @@ class AgendaStatus(str, enum.Enum):
     OVERDUE = "overdue"
 
 
+class AgendaItemType(str, enum.Enum):
+    BILL = "bill"
+    TASK = "task"
+
+
 class AgendaItem(Base):
     __tablename__ = "agenda_items"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String(255))
-    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2))
+    item_type: Mapped[str] = mapped_column(String(16), default=AgendaItemType.BILL.value)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     currency: Mapped[str] = mapped_column(String(10), default="TRY")
     due_date: Mapped[datetime] = mapped_column(DateTime)
     status: Mapped[AgendaStatus] = mapped_column(pg_enum(AgendaStatus), default=AgendaStatus.PENDING)

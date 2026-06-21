@@ -9,6 +9,11 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(default="", max_length=255)
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value) -> str:
+        return str(value).strip().lower()
+
     @field_validator("password")
     @classmethod
     def password_strength(cls, value: str) -> str:
@@ -20,6 +25,11 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value) -> str:
+        return str(value).strip().lower()
 
 
 class PinRequest(BaseModel):
@@ -43,6 +53,7 @@ class TokenResponse(BaseModel):
     has_pin: bool
     locale: str = "tr"
     timezone: str = "Europe/Istanbul"
+    assistant_persona: str = "default"
 
 
 class RefreshRequest(BaseModel):
@@ -85,6 +96,11 @@ class UserProfile(BaseModel):
     has_pin: bool
     locale: str = "tr"
     timezone: str = "Europe/Istanbul"
+    assistant_persona: str = "default"
+
+
+class PersonaRequest(BaseModel):
+    assistant_persona: str = Field(max_length=32)
 
 
 class LocaleRequest(BaseModel):
@@ -93,3 +109,30 @@ class LocaleRequest(BaseModel):
 
 class TimezoneRequest(BaseModel):
     timezone: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value) -> str:
+        return str(value).strip().lower()
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=512)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        if value.isdigit():
+            raise ValueError("auth.password_too_weak")
+        return value
+
+
+class ForgotPasswordResponse(BaseModel):
+    status: str = "ok"
+    message: str
+    reset_token: str | None = None

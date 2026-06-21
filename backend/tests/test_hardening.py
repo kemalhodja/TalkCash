@@ -24,6 +24,13 @@ def test_password_schema_rejects_digits_only():
         RegisterRequest(email="a@b.com", password="12345678")
 
 
+def test_auth_schemas_normalize_email():
+    from app.schemas.auth import LoginRequest, RegisterRequest
+
+    assert RegisterRequest(email="USER@Example.COM ", password="Strong123!", full_name="A").email == "user@example.com"
+    assert LoginRequest(email="USER@Example.COM ", password="x").email == "user@example.com"
+
+
 def test_pin_schema_rejects_letters():
     from pydantic import ValidationError
     from app.schemas.auth import PinRequest
@@ -44,6 +51,22 @@ def test_credit_card_allows_spend_without_balance_check():
     _ensure_can_spend(wallet, Decimal("500"))
 
 
+@pytest.mark.asyncio
+async def test_get_owned_wallet_rejects_other_user_wallet():
+    from app.services.wallet.service import WalletService
+
+    owner_id = uuid4()
+    other_id = uuid4()
+    wallet = Wallet(id=uuid4(), user_id=other_id, name="Banka", wallet_type=WalletType.BANK, balance=Decimal("10"))
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=wallet)
+
+    with pytest.raises(I18nError) as exc:
+        await WalletService().get_owned_wallet(db, owner_id, wallet.id)
+
+    assert exc.value.key == "wallet.not_found"
+
+
 def test_ocr_max_upload_setting():
     from app.config import settings
 
@@ -59,6 +82,18 @@ def test_storage_get_url_preserves_http():
     svc = StorageService()
     url = asyncio.run(svc.get_url("https://cdn.example.com/receipt.jpg"))
     assert url == "https://cdn.example.com/receipt.jpg"
+
+
+@pytest.mark.asyncio
+async def test_storage_delete_removes_local_file(tmp_path):
+    from app.services.storage.service import StorageService
+
+    receipt = tmp_path / "receipt.jpg"
+    receipt.write_bytes(b"fake-image")
+
+    await StorageService().delete(str(receipt))
+
+    assert not receipt.exists()
 
 
 @pytest.mark.asyncio

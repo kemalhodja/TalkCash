@@ -7,7 +7,7 @@ from sqlalchemy import and_, extract, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError
-from app.models.agenda import AgendaItem, AgendaStatus
+from app.models.agenda import AgendaItem, AgendaItemType, AgendaStatus
 from app.services.wallet.service import WalletService
 
 
@@ -27,6 +27,28 @@ class AgendaService:
         item = AgendaItem(
             user_id=user_id, title=title, amount=amount,
             due_date=due_date, is_recurring=is_recurring,
+            item_type=AgendaItemType.BILL.value,
+        )
+        db.add(item)
+        await db.commit()
+        await db.refresh(item)
+        return item
+
+    async def add_task(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        title: str,
+        due_date: datetime,
+        notes: str | None = None,
+    ) -> AgendaItem:
+        item = AgendaItem(
+            user_id=user_id,
+            title=title.strip(),
+            due_date=due_date,
+            item_type=AgendaItemType.TASK.value,
+            amount=None,
+            notes=(notes or "").strip() or None,
         )
         db.add(item)
         await db.commit()
@@ -43,6 +65,7 @@ class AgendaService:
         parent = AgendaItem(
             user_id=user_id, title=title, amount=per_installment,
             due_date=start, installment_total=count, installment_current=1,
+            item_type=AgendaItemType.BILL.value,
         )
         db.add(parent)
         await db.flush()
@@ -53,7 +76,7 @@ class AgendaService:
                 user_id=user_id, title=f"{title} ({i + 1}/{count})",
                 amount=per_installment, due_date=start + relativedelta(months=i),
                 installment_total=count, installment_current=i + 1,
-                parent_id=parent.id,
+                parent_id=parent.id, item_type=AgendaItemType.BILL.value,
             )
             db.add(item)
             items.append(item)
@@ -63,7 +86,8 @@ class AgendaService:
 
     async def _resolve_wallet(self, db: AsyncSession, user_id: UUID, wallet_id: UUID | None) -> UUID | None:
         if wallet_id:
-            return wallet_id
+            wallet = await self.wallet_service.get_owned_wallet(db, user_id, wallet_id)
+            return wallet.id
         wallet = await self.wallet_service.find_by_name(db, user_id, "Banka")
         if not wallet:
             wallets = await self.wallet_service.list_wallets(db, user_id)
@@ -86,6 +110,9 @@ class AgendaService:
         if not item:
             raise I18nError("agenda.not_found_title", title=title)
 
+        if item.item_type == AgendaItemType.TASK.value:
+            deduct_wallet = False
+
         resolved_wallet = await self._resolve_wallet(db, user_id, wallet_id) if deduct_wallet else None
         item.status = AgendaStatus.PAID
         item.paid_at = datetime.utcnow()
@@ -93,18 +120,30 @@ class AgendaService:
             item.wallet_id = resolved_wallet
         if deduct_wallet and resolved_wallet:
             await self.wallet_service.add_expense(
-                db, user_id, resolved_wallet, item.amount,
+                db, user_id, resolved_wallet, item.amount or Decimal("0"),
                 category="Fatura", description=item.title, input_method="voice",
             )
 
-        if item.is_recurring:
+        if item.is_recurring and item.item_type == AgendaItemType.BILL.value:
             next_due = item.due_date + relativedelta(months=1)
             db.add(AgendaItem(
                 user_id=user_id, title=item.title, amount=item.amount,
-                due_date=next_due, is_recurring=True,
+                due_date=next_due, is_recurring=True, item_type=AgendaItemType.BILL.value,
             ))
 
         await db.commit()
+        return item
+
+    async def mark_complete(self, db: AsyncSession, user_id: UUID, item_id: UUID) -> AgendaItem:
+        item = await db.get(AgendaItem, item_id)
+        if not item or item.user_id != user_id:
+            raise I18nError("agenda.not_found")
+        if item.status == AgendaStatus.PAID:
+            raise I18nError("agenda.already_done")
+        item.status = AgendaStatus.PAID
+        item.paid_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(item)
         return item
 
     async def spawn_recurring_bills(self, db: AsyncSession) -> int:
@@ -133,24 +172,33 @@ class AgendaService:
             if not existing.scalars().first():
                 db.add(AgendaItem(
                     user_id=paid.user_id, title=paid.title, amount=paid.amount,
-                    due_date=next_due, is_recurring=True,
+                    due_date=next_due, is_recurring=True, item_type=AgendaItemType.BILL.value,
                 ))
                 created += 1
         if created:
             await db.commit()
         return created
 
-    async def list_upcoming(self, db: AsyncSession, user_id: UUID, days: int = 30) -> list[AgendaItem]:
+    async def list_upcoming(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        days: int = 30,
+        item_type: AgendaItemType | None = None,
+    ) -> list[AgendaItem]:
         cutoff = datetime.utcnow() + timedelta(days=days)
+        filters = [
+            AgendaItem.user_id == user_id,
+            AgendaItem.status.in_([AgendaStatus.PENDING, AgendaStatus.OVERDUE]),
+            or_(
+                AgendaItem.status == AgendaStatus.OVERDUE,
+                AgendaItem.due_date <= cutoff,
+            ),
+        ]
+        if item_type is not None:
+            filters.append(AgendaItem.item_type == item_type.value)
         result = await db.execute(
-            select(AgendaItem).where(
-                AgendaItem.user_id == user_id,
-                AgendaItem.status.in_([AgendaStatus.PENDING, AgendaStatus.OVERDUE]),
-                or_(
-                    AgendaItem.status == AgendaStatus.OVERDUE,
-                    AgendaItem.due_date <= cutoff,
-                ),
-            ).order_by(AgendaItem.due_date)
+            select(AgendaItem).where(*filters).order_by(AgendaItem.due_date)
         )
         return list(result.scalars().all())
 
@@ -169,12 +217,21 @@ class AgendaService:
             await db.commit()
         return len(items)
 
-    async def list_paid(self, db: AsyncSession, user_id: UUID, limit: int = 50) -> list[AgendaItem]:
+    async def list_paid(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        limit: int = 50,
+        item_type: AgendaItemType | None = None,
+    ) -> list[AgendaItem]:
+        filters = [
+            AgendaItem.user_id == user_id,
+            AgendaItem.status == AgendaStatus.PAID,
+        ]
+        if item_type is not None:
+            filters.append(AgendaItem.item_type == item_type.value)
         result = await db.execute(
-            select(AgendaItem).where(
-                AgendaItem.user_id == user_id,
-                AgendaItem.status == AgendaStatus.PAID,
-            ).order_by(AgendaItem.paid_at.desc()).limit(limit)
+            select(AgendaItem).where(*filters).order_by(AgendaItem.paid_at.desc()).limit(limit)
         )
         return list(result.scalars().all())
 
@@ -182,6 +239,7 @@ class AgendaService:
         self, db: AsyncSession, user_id: UUID, item_id: UUID,
         title: str | None = None, amount: Decimal | None = None,
         due_date: datetime | None = None, is_recurring: bool | None = None,
+        notes: str | None = None,
     ) -> AgendaItem:
         item = await db.get(AgendaItem, item_id)
         if not item or item.user_id != user_id:
@@ -190,12 +248,14 @@ class AgendaService:
             raise I18nError("agenda.cannot_edit_paid")
         if title is not None:
             item.title = title
-        if amount is not None:
+        if amount is not None and item.item_type == AgendaItemType.BILL.value:
             item.amount = amount
         if due_date is not None:
             item.due_date = due_date
-        if is_recurring is not None:
+        if is_recurring is not None and item.item_type == AgendaItemType.BILL.value:
             item.is_recurring = is_recurring
+        if notes is not None:
+            item.notes = notes.strip() or None
         await db.commit()
         await db.refresh(item)
         return item

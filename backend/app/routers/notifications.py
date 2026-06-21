@@ -8,10 +8,37 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
+from app.schemas.notification import NotificationPrefsResponse, NotificationPrefsUpdate
+from app.services.notifications.prefs import parse_prefs, serialize_prefs
 from app.services.notifications.service import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 notif_service = NotificationService()
+
+
+def _to_response(user: User) -> NotificationPrefsResponse:
+    prefs = parse_prefs(user.notification_prefs)
+    return NotificationPrefsResponse(**prefs)
+
+
+@router.get("/preferences", response_model=NotificationPrefsResponse)
+async def get_notification_preferences(user: User = Depends(get_current_user)):
+    return _to_response(user)
+
+
+@router.patch("/preferences", response_model=NotificationPrefsResponse)
+async def update_notification_preferences(
+    body: NotificationPrefsUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    prefs = parse_prefs(user.notification_prefs)
+    for key, value in body.model_dump(exclude_unset=True).items():
+        prefs[key] = value
+    user.notification_prefs = serialize_prefs(prefs)
+    await db.commit()
+    await db.refresh(user)
+    return _to_response(user)
 
 
 @router.post("/register-token")

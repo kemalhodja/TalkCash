@@ -21,6 +21,7 @@ class ParsedInput(BaseModel):
     category: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=255)
     place: str | None = Field(default=None, max_length=255)
+    store_name: str | None = Field(default=None, max_length=255)
     date: datetime | None = None
     wallet_name: str | None = Field(default=None, max_length=100)
     target_wallet_name: str | None = Field(default=None, max_length=100)
@@ -31,8 +32,11 @@ class ParsedInput(BaseModel):
     receipt_id: str | None = Field(default=None, max_length=64)
     force: bool = False
     is_recurring: bool = False
+    is_subscription: bool = False
+    subscription_name: str | None = Field(default=None, max_length=255)
     raw_text: str = Field(default="", max_length=2000)
     confidence: float = Field(default=1.0, ge=0, le=1)
+    parse_failed: bool = False
 
     @field_validator("items")
     @classmethod

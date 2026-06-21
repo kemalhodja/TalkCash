@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -15,6 +15,7 @@ class TransactionCreate(BaseModel):
     category: str = "Genel"
     description: str = ""
     place: str = ""
+    store_name: str = ""
     input_method: str = "manual"
 
 
@@ -27,8 +28,12 @@ class TransactionResponse(ORMBase):
     category: str
     description: str
     place: str
+    store_name: str
     input_method: str
     created_at: datetime
+    is_recurring: bool = False
+    next_billing_date: date | None = None
+    subscription_name: str | None = None
 
 
 class TransactionUpdate(BaseModel):
@@ -36,3 +41,4 @@ class TransactionUpdate(BaseModel):
     category: str | None = Field(default=None, max_length=100)
     description: str | None = Field(default=None, max_length=255)
     place: str | None = Field(default=None, max_length=255)
+    store_name: str | None = Field(default=None, max_length=255)

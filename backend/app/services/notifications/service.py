@@ -11,12 +11,18 @@ from app.i18n import t
 from app.models.agenda import AgendaItem, AgendaStatus
 from app.models.notification import Notification
 from app.models.user import User
+from app.services.notifications.prefs import allows_notification, allows_push
 
 ROUTE_BY_TYPE = {
     "agenda_reminder": "/agenda",
     "budget_warning": "/budget",
     "budget_exceeded": "/budget",
     "price_change": "/",
+    "premium_expiry_reminder": "/settings",
+    "premium_grace": "/settings",
+    "premium_expired": "/settings",
+    "weekly_podcast": "/",
+    "subscription_reminder": "/transactions",
 }
 
 
@@ -44,6 +50,8 @@ class NotificationService:
         payload: dict = {"to": push_token, "title": title, "body": body, "sound": "default"}
         if data:
             payload["data"] = data
+            if data.get("route") and not data.get("url"):
+                payload["data"]["url"] = f"talkcash://{str(data['route']).lstrip('/')}"
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 await client.post("https://exp.host/--/api/v2/push/send", json=payload)
@@ -81,17 +89,28 @@ class NotificationService:
             if due.date() != target:
                 continue
             locale = user.locale or "tr"
+            is_task = getattr(item, "item_type", "bill") == "task"
             if when == "tomorrow":
                 title = t("notif.agenda_tomorrow_title", locale, title=item.title)
-                body = t("notif.agenda_tomorrow_body", locale, amount=item.amount)
+                body = (
+                    t("notif.agenda_task_tomorrow_body", locale, title=item.title)
+                    if is_task
+                    else t("notif.agenda_tomorrow_body", locale, amount=item.amount)
+                )
             else:
                 title = t("notif.agenda_today_title", locale, title=item.title)
-                body = t("notif.agenda_today_body", locale, amount=item.amount)
+                body = (
+                    t("notif.agenda_task_today_body", locale, title=item.title)
+                    if is_task
+                    else t("notif.agenda_today_body", locale, amount=item.amount)
+                )
 
             meta = {"route": "/agenda", "agenda_id": str(item.id)}
+            if not allows_notification(user, "agenda_reminder"):
+                continue
             await self.create_in_app(db, user.id, title, body, "agenda_reminder", meta)
-            if user.push_token:
-                await self.send_push(user.push_token, title, body, {"url": "talkcash://agenda"})
+            if user.push_token and allows_push(user, "agenda_reminder"):
+                await self.send_push(user.push_token, title, body, meta)
             sent += 1
         return sent
 

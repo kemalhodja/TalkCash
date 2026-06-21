@@ -73,6 +73,43 @@ def extract_date(text: str) -> datetime | None:
     return None
 
 
+def detect_easter_egg(text: str, locale: str = "tr") -> str | None:
+    text_lower = text.lower()
+    patterns_tr = [
+        r"para bitti",
+        r"metelik yok",
+        r"param yok",
+        r"çok fakir",
+        r"cok fakir",
+        r"fakirim",
+        r"iflas",
+        r"cüzdanım boş",
+        r"cuzdanim bos",
+    ]
+    patterns_en = [
+        r"broke",
+        r"no money",
+        r"i'm poor",
+        r"wallet empty",
+    ]
+    patterns = patterns_en if locale == "en" else patterns_tr
+    if not any(re.search(p, text_lower) for p in patterns):
+        return None
+    messages_tr = [
+        "Para bitmez, sadece geçici olarak saklanır! Küçük bir kahve bütçesi bile seni zengin hissettirir.",
+        "Fakirlik geçici, finansal farkındalık kalıcı. TalkCash yanında!",
+        "Metelik yoksa liste yap, harcamayı gör — kontrol zenginliktir!",
+    ]
+    messages_en = [
+        "Money doesn't vanish — it just hides in small expenses. Track them and take control!",
+        "Being broke is temporary; awareness is permanent. TalkCash has your back!",
+        "Empty wallet? Start with one tracked coffee. Small wins add up!",
+    ]
+    import random
+    pool = messages_en if locale == "en" else messages_tr
+    return random.choice(pool)
+
+
 def detect_intent(text: str) -> str:
     text_lower = text.lower()
     if any(w in text_lower for w in ["listeye", "liste", "alınacak", "alınacaklar"]):
@@ -89,6 +126,12 @@ def detect_intent(text: str) -> str:
         return "split_bill"
     if any(w in text_lower for w in ["taksit"]):
         return "add_installment"
+    if any(w in text_lower for w in [
+        "yapılacak", "yapilacak", "görev", "gorev", "hatırlat", "hatirlat",
+        "ajandaya ekle", "to-do", "todo", "yapılacaklar", "yapilacaklar",
+    ]):
+        if not any(w in text_lower for w in ["fatura", "kira", "elektrik", "internet", "tl", "lira", "₺"]):
+            return "add_task"
     if any(w in text_lower for w in ["fatura", "kira", "elektrik", "internet"]):
         return "add_bill"
     return "add_expense"
@@ -155,3 +198,52 @@ def extract_shopping_items(text: str) -> list[str]:
     raw = match.group(1)
     items = re.split(r"[,;]\s*|\s+ve\s+", raw)
     return [item.strip() for item in items if item.strip()]
+
+
+KNOWN_STORES = [
+    ("bim", "Bim"),
+    ("a101", "A101"),
+    ("a 101", "A101"),
+    ("şok", "Şok"),
+    ("sok", "Şok"),
+    ("migros", "Migros"),
+    ("carrefour", "Carrefour"),
+    ("macro", "Macrocenter"),
+    ("macrocenter", "Macrocenter"),
+    ("hakmar", "Hakmar"),
+    ("metro", "Metro"),
+    ("real", "Real"),
+    ("tesco", "Tesco"),
+    ("koçtaş", "Koçtaş"),
+    ("koctas", "Koçtaş"),
+    ("media markt", "Media Markt"),
+    ("mahalle bakkalı", "Mahalle Bakkalı"),
+    ("mahalle bakkali", "Mahalle Bakkalı"),
+    ("bakkal", "Mahalle Bakkalı"),
+    ("starbucks", "Starbucks"),
+    ("mcdonalds", "McDonald's"),
+    ("burger king", "Burger King"),
+]
+
+
+def extract_store_name(text: str) -> str | None:
+    text_lower = text.lower()
+    for key, label in KNOWN_STORES:
+        if key in text_lower:
+            return label
+
+    store_match = re.search(
+        r"([\wçğıöşüÇĞİÖŞÜ\s]{2,40}?)(?:'den|'dan|'ten|'tan|den|dan)\s",
+        text,
+        re.IGNORECASE,
+    )
+    if store_match:
+        candidate = store_match.group(1).strip()
+        if candidate and not re.fullmatch(r"\d+", candidate):
+            return candidate.title()
+
+    market_match = re.search(r"([\wçğıöşüÇĞİÖŞÜ\s]{2,30})\s+market", text, re.IGNORECASE)
+    if market_match:
+        return market_match.group(1).strip().title()
+
+    return None

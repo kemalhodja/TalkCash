@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
-from app.routers import agenda, ai, auth, budgets, execute, export, geofence, input, notifications, ocr, shopping, social, sync, transactions, wallets, ws
+from app.routers import agenda, ai, analytics, auth, billing, billing_google, budgets, demo, execute, export, geofence, input, insights, legal, micro_savings, notifications, ocr, podcast, roadmap, shopping, social, sync, transactions, wallets, workspaces, ws
 from app.services.social.ws_bridge import start_redis_ws_bridge, stop_redis_ws_bridge
 from app.startup import validate_production_settings
 from app.tasks.scheduler import start_scheduler, stop_scheduler
@@ -19,6 +20,23 @@ from app.utils.redis_client import get_redis
 from app.utils.scheduler_lock import acquire_scheduler_leader
 
 logging.basicConfig(level=logging.INFO)
+
+if settings.sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.sentry_environment,
+            traces_sample_rate=settings.sentry_traces_sample_rate,
+            integrations=[FastApiIntegration(), LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)],
+            send_default_pii=False,
+        )
+        logging.info("Sentry enabled for environment=%s", settings.sentry_environment)
+    except Exception:
+        logging.exception("Failed to initialize Sentry")
 
 
 @asynccontextmanager
@@ -73,7 +91,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             {**item, "msg": maybe_translate(item.get("msg", ""), lang)} if isinstance(item, dict) else item
             for item in detail
         ]
-    return JSONResponse(status_code=exc.status_code, content={"detail": detail})
+    return JSONResponse(status_code=exc.status_code, content=jsonable_encoder({"detail": detail}))
 
 
 @app.exception_handler(RequestValidationError)
@@ -85,7 +103,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             detail.append({**err, "msg": maybe_translate(str(err["msg"]), lang)})
         else:
             detail.append(err)
-    return JSONResponse(status_code=422, content={"detail": detail})
+    return JSONResponse(status_code=422, content=jsonable_encoder({"detail": detail}))
 
 
 @app.exception_handler(ValueError)
@@ -102,12 +120,20 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(billing.router, prefix="/api/v1")
+app.include_router(billing_google.router, prefix="/api/v1")
+app.include_router(legal.router)
+app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(input.router, prefix="/api/v1")
+app.include_router(insights.router, prefix="/api/v1")
+app.include_router(micro_savings.router, prefix="/api/v1")
 app.include_router(wallets.router, prefix="/api/v1")
+app.include_router(workspaces.router, prefix="/api/v1")
 app.include_router(agenda.router, prefix="/api/v1")
 app.include_router(shopping.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
+app.include_router(podcast.router, prefix="/api/v1")
 app.include_router(social.router, prefix="/api/v1")
 app.include_router(execute.router, prefix="/api/v1")
 app.include_router(budgets.router, prefix="/api/v1")
@@ -116,6 +142,8 @@ app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(export.router, prefix="/api/v1")
 app.include_router(geofence.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")
+app.include_router(demo.router, prefix="/api/v1")
+app.include_router(roadmap.router, prefix="/api/v1")
 app.include_router(ws.router, prefix="/api/v1")
 
 
@@ -160,6 +188,12 @@ async def health(request: Request, db: AsyncSession = Depends(get_db)):
             "message": t("health.ok", lang),
             "locales": SUPPORTED_LOCALES,
             "checks": checks,
+            "features": {
+                "micro_savings": True,
+                "live_rates": True,
+                "portfolio_coach": True,
+                "offline_sync": True,
+            },
         },
     )
 

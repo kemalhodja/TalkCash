@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.services.ai_mentor.service import AIMentorService
+from app.services.notifications.prefs import allows_notification, allows_push
 from app.services.notifications.service import NotificationService
 from app.utils.redis_client import get_redis
 
@@ -34,12 +35,14 @@ async def daily_budget_alert_scan(db: AsyncSession) -> int:
             except Exception:
                 pass
             ntype = "budget_exceeded" if alert["type"] == "budget_exceeded" else "budget_warning"
+            if not allows_notification(user, ntype):
+                continue
             await notif_service.create_in_app(
                 db, user.id, alert["category"], alert["message"], ntype, {"route": "/budget"},
             )
-            if user.push_token:
+            if user.push_token and allows_push(user, ntype):
                 await notif_service.send_push(
-                    user.push_token, alert["category"], alert["message"], {"url": "talkcash://budget"},
+                    user.push_token, alert["category"], alert["message"], {"route": "/budget"},
                 )
             sent += 1
     logger.info("Daily budget alerts sent: %d", sent)

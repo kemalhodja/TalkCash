@@ -11,7 +11,7 @@ from app.models.receipt import Receipt
 from app.models.shopping import ShoppingItem
 from app.models.sync_operation import SyncOperationRecord
 from app.models.transaction import Transaction
-from app.routers.execute import _dispatch
+from app.services.execute.service import dispatch_confirmed_action
 from app.schemas.common import ParsedInput
 from app.schemas.sync import SyncConflict, SyncOperation, SyncPushResponse, SyncPullResponse
 from app.schemas.wallet import TransferRequest, WalletCreate, WalletUpdate
@@ -48,6 +48,8 @@ def _register_batch_remap(op: SyncOperation, result: dict, id_map: dict[str, str
     if op.type == "wallet_create" and op.payload.get("client_wallet_id") and result.get("wallet_id"):
         id_map[str(op.payload["client_wallet_id"])] = str(result["wallet_id"])
     if op.type == "agenda_add_bill" and op.payload.get("client_item_id") and result.get("id"):
+        id_map[str(op.payload["client_item_id"])] = str(result["id"])
+    if op.type == "agenda_add_task" and op.payload.get("client_item_id") and result.get("id"):
         id_map[str(op.payload["client_item_id"])] = str(result["id"])
     if op.type == "budget_create" and op.payload.get("client_budget_id") and result.get("budget_id"):
         id_map[str(op.payload["client_budget_id"])] = str(result["budget_id"])
@@ -104,10 +106,14 @@ class SyncService:
         transactions = [
             {
                 "id": str(tx.id), "amount": float(tx.amount), "currency": tx.currency,
-                "category": tx.category, "description": tx.description, "place": tx.place,
+                "category": tx.category, "description": tx.description,
+                "place": tx.place, "store_name": tx.store_name,
                 "type": tx.transaction_type.value, "wallet_id": str(tx.wallet_id),
                 "date": tx.created_at.isoformat(),
                 "receipt_id": str(tx.receipt_id) if tx.receipt_id else None,
+                "is_recurring": tx.is_recurring,
+                "next_billing_date": tx.next_billing_date.isoformat() if tx.next_billing_date else None,
+                "subscription_name": tx.subscription_name,
             }
             for tx in tx_result.scalars().all()
         ]
@@ -130,6 +136,8 @@ class SyncService:
             shopping=[
                 {
                     "id": str(i.id), "name": i.name, "category": i.category.value,
+                    "is_routine": i.is_routine,
+                    "routine_type": i.routine_type or "daily",
                     "is_completed": i.is_completed,
                     "completed_at": i.completed_at.isoformat() if i.completed_at else None,
                 }
@@ -137,18 +145,24 @@ class SyncService:
             ],
             agenda=[
                 {
-                    "id": str(i.id), "title": i.title, "amount": float(i.amount),
+                    "id": str(i.id), "title": i.title,
+                    "item_type": getattr(i, "item_type", "bill") or "bill",
+                    "amount": float(i.amount) if i.amount is not None else None,
                     "due_date": i.due_date.isoformat(), "status": i.status.value,
                     "paid_at": i.paid_at.isoformat() if i.paid_at else None,
                     "is_recurring": i.is_recurring,
+                    "notes": getattr(i, "notes", None),
                 }
                 for i in agenda
             ],
             agenda_history=[
                 {
-                    "id": str(i.id), "title": i.title, "amount": float(i.amount),
+                    "id": str(i.id), "title": i.title,
+                    "item_type": getattr(i, "item_type", "bill") or "bill",
+                    "amount": float(i.amount) if i.amount is not None else None,
                     "due_date": i.due_date.isoformat(), "status": i.status.value,
                     "paid_at": i.paid_at.isoformat() if i.paid_at else None,
+                    "notes": getattr(i, "notes", None),
                 }
                 for i in agenda_history
             ],
@@ -182,7 +196,7 @@ class SyncService:
     ) -> tuple[dict | None, SyncConflict | None]:
         if op.type == "execute":
             parsed = ParsedInput(**op.payload.get("parsed", {}))
-            result = await _dispatch(user_id, parsed, db, locale)
+            result = await dispatch_confirmed_action(user_id, parsed, db, locale)
             return result, None
 
         if op.type == "wallet_income":
@@ -206,6 +220,20 @@ class SyncService:
             )
             return {"from": from_w.name, "to": to_w.name}, None
 
+        if op.type == "micro_savings_transfer":
+            from app.services.micro_savings.service import MicroSavingsService
+
+            result = await MicroSavingsService().transfer_savings(
+                db,
+                user_id,
+                UUID(op.payload["from_wallet_id"]),
+                UUID(op.payload["to_wallet_id"]),
+                Decimal(str(op.payload["amount"])),
+                str(op.payload.get("rule_key", "round_up")),
+                locale,
+            )
+            return result, None
+
         if op.type == "wallet_expense":
             wallet_id = UUID(op.payload["wallet_id"])
             amount = Decimal(str(op.payload["amount"]))
@@ -213,6 +241,8 @@ class SyncService:
                 db, user_id, wallet_id, amount,
                 op.payload.get("category", "Genel"),
                 op.payload.get("description", ""),
+                op.payload.get("place", ""),
+                store_name=op.payload.get("store_name", op.payload.get("place", "Genel")),
                 input_method="sync",
                 receipt_id=UUID(op.payload["receipt_id"]) if op.payload.get("receipt_id") else None,
             )
@@ -220,7 +250,7 @@ class SyncService:
 
         if op.type == "shopping_add":
             items = op.payload.get("items", [])
-            created = await shopping_service.add_items(db, user_id, items)
+            created, _ = await shopping_service.add_items(db, user_id, items, with_suggestion=False)
             return {"added": [{"id": str(i.id), "name": i.name} for i in created]}, None
 
         if op.type == "shopping_complete":
@@ -250,8 +280,27 @@ class SyncService:
 
             price = Decimal(str(op.payload["price"])) if op.payload.get("price") else None
             wallet_id = UUID(op.payload["wallet_id"]) if op.payload.get("wallet_id") else None
-            completed = await shopping_service.complete_item(db, user_id, item_id, price, wallet_id)
-            return {"id": str(completed.id), "name": completed.name}, None
+            store_name = op.payload.get("store_name")
+            item, _, _ = await shopping_service.complete_item(
+                db, user_id, item_id, price, wallet_id,
+                store_name=store_name, locale=locale,
+            )
+            return {"id": str(item.id), "name": item.name}, None
+
+        if op.type == "shopping_delete":
+            item_id = UUID(op.payload["item_id"])
+            await shopping_service.delete_item(db, user_id, item_id)
+            return {"deleted": True}, None
+
+        if op.type == "shopping_routine":
+            item_id = UUID(op.payload["item_id"])
+            item = await db.get(ShoppingItem, item_id)
+            if not item or item.user_id != user_id:
+                raise ValueError(t("shopping.item_not_found", locale))
+            item.is_routine = bool(op.payload.get("is_routine", False))
+            item.routine_type = op.payload.get("routine_type") or "daily"
+            await db.commit()
+            return {"id": str(item.id), "is_routine": item.is_routine}, None
 
         if op.type == "transaction_update":
             tx_id = UUID(op.payload["transaction_id"])
@@ -260,6 +309,7 @@ class SyncService:
                 category=op.payload.get("category"),
                 description=op.payload.get("description"),
                 place=op.payload.get("place"),
+                store_name=op.payload.get("store_name"),
             )
             tx = await transaction_service.update(db, user_id, tx_id, data)
             return {"transaction_id": str(tx.id)}, None
@@ -298,6 +348,17 @@ class SyncService:
                 db, user_id, op.payload["title"], Decimal(str(op.payload["amount"])),
                 due, op.payload.get("is_recurring", False), op.payload.get("force", False),
             )
+            return {"id": str(item.id), "title": item.title}, None
+
+        if op.type == "agenda_add_task":
+            due = datetime.fromisoformat(op.payload["due_date"].replace("Z", ""))
+            item = await agenda_service.add_task(
+                db, user_id, op.payload["title"], due, op.payload.get("notes"),
+            )
+            return {"id": str(item.id), "title": item.title}, None
+
+        if op.type == "agenda_complete":
+            item = await agenda_service.mark_complete(db, user_id, UUID(op.payload["item_id"]))
             return {"id": str(item.id), "title": item.title}, None
 
         if op.type == "agenda_update":

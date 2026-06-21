@@ -35,3 +35,10 @@ def test_slash_command_local():
     assert result.intent == "add_expense"
     assert result.amount == Decimal("150")
     assert result.category == "kahve"
+
+
+def test_local_parse_expense_without_openai():
+    engine = NLPEngine()
+    result = engine._parse_locally("50 TL kahve")
+    assert result.intent == "add_expense"
+    assert result.amount == Decimal("50")
