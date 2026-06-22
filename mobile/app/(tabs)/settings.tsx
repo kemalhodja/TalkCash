@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert, Linking, Modal, StyleSheet, Text, View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import { AssistantSetup } from "@/components/AssistantSetup";
 import { ApiConnectionCard } from "@/components/ApiConnectionCard";
+import { PaywallCard } from "@/components/PaywallCard";
 import { ChipPicker } from "@/components/ui/ChipPicker";
 import { InputField } from "@/components/ui/InputField";
 import { ListRow } from "@/components/ui/ListRow";
@@ -18,7 +19,7 @@ import { SettingSwitchRow } from "@/components/ui/SettingSwitchRow";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing } from "@/constants/theme";
-import { PRIVACY_POLICY_URL } from "@/constants/links";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL, FEEDBACK_MAILTO } from "@/constants/links";
 import { useI18n, Locale } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
@@ -26,6 +27,9 @@ import { getAppEnv } from "@/services/config";
 import { isGeofencingEnabled, restoreGeofencingIfEnabled, setupGeofencing, stopGeofencing } from "@/services/geofencing";
 import { registerForPushNotifications } from "@/services/notifications";
 import { flushQueue, getPendingCount } from "@/services/offlineQueue";
+import { getPendingReceiptScanCount } from "@/services/receiptQueue";
+import { getPremiumStatus, PremiumStatus } from "@/services/premium";
+import { isStoreBillingSupported, restoreSubscriptions } from "@/services/storeBilling";
 import { pullAndCacheSnapshot } from "@/services/syncCache";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
 
@@ -50,19 +54,36 @@ export default function SettingsScreen() {
   const [timezone, setTimezone] = useState("Europe/Istanbul");
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingReceipts, setPendingReceipts] = useState(0);
+  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [premiumStatus, setPremiumStatus] = useState<PremiumStatus | null>(null);
+  const [persona, setPersona] = useState<"default" | "angry_mom" | "street_smart">("default");
   const [securityModal, setSecurityModal] = useState<"pin" | "password" | "delete" | null>(null);
   const [field1, setField1] = useState("");
   const [field2, setField2] = useState("");
+
+  const refreshPending = useCallback(() => {
+    getPendingCount().then(setPendingCount);
+    getPendingReceiptScanCount().then(setPendingReceipts);
+  }, []);
 
   useEffect(() => {
     isBudgetTtsEnabled().then(setTtsBudget);
     api.getMe().then((u) => {
       if (u.timezone) setTimezone(u.timezone);
       if (typeof u.biometric_enabled === "boolean") setBiometric(u.biometric_enabled);
+      if (u.assistant_persona) setPersona(u.assistant_persona);
     }).catch(() => {});
     isGeofencingEnabled().then(setGeofence).catch(() => {});
-    getPendingCount().then(setPendingCount);
-  }, []);
+    refreshPending();
+    getPremiumStatus().then(setPremiumStatus).catch(() => {});
+  }, [refreshPending]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPending();
+    }, [refreshPending]),
+  );
 
   const closeSecurity = () => {
     setSecurityModal(null);
@@ -101,7 +122,7 @@ export default function SettingsScreen() {
         ]);
       }));
       await pullAndCacheSnapshot();
-      setPendingCount(await getPendingCount());
+      refreshPending();
       Alert.alert(
         t.settings.sync,
         t.settings.syncResult
@@ -188,12 +209,63 @@ export default function SettingsScreen() {
     doLogout();
   };
 
+  const handleDemoSeed = async () => {
+    setSeedingDemo(true);
+    try {
+      const res = await api.seedDemoData();
+      Alert.alert(
+        t.onboarding.demoTitle,
+        res.status === "seeded" ? t.onboarding.demoLoaded : t.onboarding.demoSkipped,
+      );
+    } catch {
+      Alert.alert(t.onboarding.demoTitle, t.onboarding.demoFailed);
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    try {
+      await restoreSubscriptions();
+      setPremiumStatus(await getPremiumStatus(true));
+      Alert.alert(t.premium.title, t.premium.restored);
+    } catch (e: any) {
+      Alert.alert(t.premium.title, e.message?.includes("No active") ? t.premium.noSubscriptions : (e.message || t.common.error));
+    }
+  };
+
   return (
     <>
       <ScreenShell ambient="subtle">
         <ScreenHeader title={t.settings.title} subtitle={`${t.settings.appEnv}: ${getAppEnv()}`} />
 
         <ApiConnectionCard />
+
+        <SectionBlock title={t.premium.title} bare>
+          <Surface variant="elevated" style={styles.premiumSummary}>
+            <Text style={styles.premiumPlan}>{(premiumStatus?.plan || "free").toUpperCase()}</Text>
+            <Text style={styles.premiumMeta}>{t.premium.usage}: AI {premiumStatus?.entitlements.ai_coach?.used ?? 0}/{premiumStatus?.entitlements.ai_coach?.limit ?? "∞"}</Text>
+          </Surface>
+          {premiumStatus?.plan === "free" || !premiumStatus ? (
+            <PaywallCard onUpgraded={() => getPremiumStatus(true).then(setPremiumStatus)} />
+          ) : null}
+          {isStoreBillingSupported() ? (
+            <>
+              <PrimaryButton
+                label={t.premium.restorePurchases}
+                onPress={handleRestorePurchases}
+                variant="ghost"
+                style={styles.actionBtn}
+              />
+              <PrimaryButton
+                label={t.premium.manageSubscriptions}
+                onPress={() => Linking.openURL("https://play.google.com/store/account/subscriptions?package=io.talkcash.app")}
+                variant="ghost"
+                style={styles.actionBtn}
+              />
+            </>
+          ) : null}
+        </SectionBlock>
 
         <SectionBlock title={t.settings.language} bare>
           <ChipPicker
@@ -217,6 +289,36 @@ export default function SettingsScreen() {
           <SettingSwitchRow label={t.settings.geofence} value={geofence} onValueChange={toggleGeofence} />
         </SectionBlock>
 
+        <SectionBlock title={t.persona.title} bare>
+          <Text style={styles.demoHint}>{t.persona.hint}</Text>
+          <ChipPicker
+            options={[
+              { id: "default", label: t.persona.default },
+              { id: "angry_mom", label: t.persona.angryMom },
+              { id: "street_smart", label: t.persona.streetSmart },
+            ]}
+            value={persona}
+            onChange={async (id) => {
+              const prev = persona;
+              const next = id as typeof persona;
+              setPersona(next);
+              try {
+                await api.setAssistantPersona(next);
+                await auth.updateUser({ assistantPersona: next });
+              } catch (e: any) {
+                setPersona(prev);
+                Alert.alert(t.common.error, e.message || t.common.error);
+              }
+            }}
+          />
+        </SectionBlock>
+
+        <SectionBlock title={t.quickVoice.title} bare>
+          <Text style={styles.demoHint}>{t.quickVoice.hint}</Text>
+          <Text style={styles.demoHint}>{t.quickVoice.tileHint}</Text>
+          <PrimaryButton label={t.quickVoice.title} onPress={() => router.push("/quick-voice?hold=1")} variant="secondary" style={styles.actionBtn} />
+        </SectionBlock>
+
         <AssistantSetup />
 
         <SectionBlock title={t.settings.security} bare>
@@ -233,19 +335,51 @@ export default function SettingsScreen() {
             disabled={syncing}
             loading={syncing}
             style={styles.actionBtn}
+            testID="settings-sync"
           />
           {pendingCount > 0 && (
             <Text style={styles.pendingHint}>{t.settings.pendingOps.replace("{count}", String(pendingCount))}</Text>
           )}
+          {pendingReceipts > 0 && (
+            <Text style={styles.pendingHint}>{t.settings.pendingReceiptScans.replace("{count}", String(pendingReceipts))}</Text>
+          )}
+        </SectionBlock>
+
+        <SectionBlock title={t.onboarding.demoTitle} bare>
+          <Text style={styles.demoHint}>{t.settings.loadDemoHint}</Text>
+          <PrimaryButton
+            label={t.settings.loadDemo}
+            onPress={handleDemoSeed}
+            variant="secondary"
+            loading={seedingDemo}
+            disabled={seedingDemo}
+            style={styles.actionBtn}
+            testID="settings-load-demo"
+          />
         </SectionBlock>
 
         <SectionBlock title={t.settings.notifications} bare>
           <PrimaryButton label={t.settings.push} onPress={() => registerForPushNotifications()} variant="ghost" style={styles.actionBtn} />
           <PrimaryButton label={t.settings.viewNotifications} onPress={() => router.push("/notifications")} variant="ghost" style={styles.actionBtn} />
+          <PrimaryButton label={t.notificationPrefs.title} onPress={() => router.push("/notification-settings")} variant="ghost" style={styles.actionBtn} />
+          <PrimaryButton label={t.roadmap.title} onPress={() => router.push("/roadmap")} variant="ghost" style={styles.actionBtn} testID="settings-roadmap" />
+        </SectionBlock>
+
+        <SectionBlock title={t.microSavings.settingsTitle} bare>
+          <PrimaryButton
+            label={t.microSavings.settingsTitle}
+            onPress={() => router.push("/micro-savings-settings")}
+            variant="secondary"
+            style={styles.actionBtn}
+          />
         </SectionBlock>
 
         <SectionBlock title={t.settings.viewReceipts} bare>
           <PrimaryButton label={t.settings.viewReceipts} onPress={() => router.push("/receipts")} variant="ghost" style={styles.actionBtn} />
+        </SectionBlock>
+
+        <SectionBlock title={t.workspaces.title} bare>
+          <PrimaryButton label={t.workspaces.title} onPress={() => router.push("/workspaces")} variant="secondary" style={styles.actionBtn} />
         </SectionBlock>
 
         <SectionBlock title={t.settings.export} bare>
@@ -258,6 +392,18 @@ export default function SettingsScreen() {
           <PrimaryButton
             label={t.settings.privacyPolicy}
             onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+            variant="ghost"
+            style={styles.actionBtn}
+          />
+          <PrimaryButton
+            label={t.settings.termsOfService}
+            onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
+            variant="ghost"
+            style={styles.actionBtn}
+          />
+          <PrimaryButton
+            label={t.settings.sendFeedback}
+            onPress={() => Linking.openURL(FEEDBACK_MAILTO)}
             variant="ghost"
             style={styles.actionBtn}
           />
@@ -277,7 +423,7 @@ export default function SettingsScreen() {
                   : t.settings.deleteAccount}
             </Text>
             {securityModal === "delete" && (
-              <Text style={styles.modalHint}>{t.settings.deleteAccountConfirm}</Text>
+              <Text style={styles.modalHint}>{t.settings.deleteAccountDataHint}</Text>
             )}
             <InputField
               placeholder={
@@ -312,7 +458,11 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   actionBtn: { marginTop: Spacing.sm },
+  premiumSummary: { padding: Spacing.md, marginBottom: Spacing.sm },
+  premiumPlan: { color: Colors.accent, fontSize: 22, fontWeight: "800" },
+  premiumMeta: { color: Colors.textSecondary, marginTop: 4 },
   pendingHint: { color: Colors.warning, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
+  demoHint: { color: Colors.textSecondary, fontSize: 13, marginBottom: Spacing.sm },
   modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
   modalCard: { padding: Spacing.lg },
   modalTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },

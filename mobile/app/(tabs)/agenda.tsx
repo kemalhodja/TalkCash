@@ -25,9 +25,14 @@ import { scheduleAgendaReminder } from "@/services/notifications";
 import { getCachedSnapshot } from "@/services/syncCache";
 import { formatDate, formatMoney } from "@/utils/format";
 
-type AddMode = "bill" | "installment" | null;
+type AddMode = "bill" | "installment" | "task" | null;
 type ViewMode = "list" | "calendar";
 type ListTab = "upcoming" | "history";
+type ItemFilter = "all" | "bill" | "task";
+
+function isTaskItem(item: { item_type?: string }) {
+  return item.item_type === "task";
+}
 
 function defaultDueDate() {
   const d = new Date();
@@ -45,11 +50,13 @@ export default function AgendaScreen() {
   const [items, setItems] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [listTab, setListTab] = useState<ListTab>("upcoming");
+  const [itemFilter, setItemFilter] = useState<ItemFilter>("all");
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [addMode, setAddMode] = useState<AddMode>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [installmentCount, setInstallmentCount] = useState("6");
@@ -83,7 +90,7 @@ export default function AgendaScreen() {
   const { refreshing, onRefresh } = usePullRefresh(loadAgenda);
 
   const resetForm = () => {
-    setTitle(""); setAmount(""); setInstallmentCount("6");
+    setTitle(""); setAmount(""); setNotes(""); setInstallmentCount("6");
     setIsRecurring(false); setDueDate(defaultDueDate()); setAddMode(null); setEditing(null);
   };
 
@@ -109,6 +116,19 @@ export default function AgendaScreen() {
     }
   };
 
+  const handleAddTask = async () => {
+    if (!title) return;
+    await api.addTask(title, dueDate.toISOString(), notes.trim() || undefined);
+    await scheduleAgendaReminder(title, 0, dueDate, locale);
+    resetForm();
+    loadAgenda();
+  };
+
+  const handleCompleteTask = async (item: any) => {
+    await api.completeAgendaItem(item.id);
+    loadAgenda();
+  };
+
   const handleAddInstallment = async () => {
     if (!title || !amount || !installmentCount) return;
     await api.createInstallments(title, parseFloat(amount), parseInt(installmentCount) || 6);
@@ -124,13 +144,22 @@ export default function AgendaScreen() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editing || !title || !amount) return;
-    await api.updateAgendaItem(editing.id, {
-      title,
-      amount: parseFloat(amount),
-      due_date: dueDate.toISOString(),
-      is_recurring: isRecurring,
-    });
+    if (!editing || !title) return;
+    if (isTaskItem(editing)) {
+      await api.updateAgendaItem(editing.id, {
+        title,
+        due_date: dueDate.toISOString(),
+        notes: notes.trim() || null,
+      });
+    } else {
+      if (!amount) return;
+      await api.updateAgendaItem(editing.id, {
+        title,
+        amount: parseFloat(amount),
+        due_date: dueDate.toISOString(),
+        is_recurring: isRecurring,
+      });
+    }
     setEditing(null);
     resetForm();
     loadAgenda();
@@ -153,13 +182,19 @@ export default function AgendaScreen() {
   const startEdit = (item: any) => {
     setEditing(item);
     setTitle(item.title);
-    setAmount(String(item.amount));
+    setAmount(item.amount != null ? String(item.amount) : "");
+    setNotes(item.notes || "");
     setDueDate(new Date(item.due_date));
     setIsRecurring(!!item.is_recurring);
-    setAddMode("bill");
+    setAddMode(isTaskItem(item) ? "task" : "bill");
   };
 
-  const displayItems = listTab === "upcoming" ? items : historyItems;
+  const filterByType = (list: any[]) => {
+    if (itemFilter === "all") return list;
+    return list.filter((item) => (itemFilter === "task") === isTaskItem(item));
+  };
+
+  const displayItems = filterByType(listTab === "upcoming" ? items : historyItems);
 
   const isPresetActive = (days: number) => {
     const expected = new Date();
@@ -176,6 +211,10 @@ export default function AgendaScreen() {
         title={t.agenda.title}
         actions={
           <>
+            <TextLink
+              label={addMode === "task" ? t.agenda.cancel : t.agenda.addTask}
+              onPress={() => setAddMode(addMode === "task" ? null : "task")}
+            />
             <TextLink
               label={addMode === "installment" ? t.agenda.cancel : t.agenda.addInstallment}
               onPress={() => setAddMode(addMode === "installment" ? null : "installment")}
@@ -199,6 +238,16 @@ export default function AgendaScreen() {
 
       <SegmentedControl
         options={[
+          { key: "all", label: t.agenda.filterAll },
+          { key: "bill", label: t.agenda.filterBills },
+          { key: "task", label: t.agenda.filterTasks },
+        ]}
+        value={itemFilter}
+        onChange={(k) => setItemFilter(k as ItemFilter)}
+      />
+
+      <SegmentedControl
+        options={[
           { key: "calendar", label: t.agenda.calendar },
           { key: "list", label: t.agenda.list },
         ]}
@@ -208,9 +257,39 @@ export default function AgendaScreen() {
 
       {viewMode === "calendar" && (
         <Surface variant="elevated" style={styles.calendarWrap}>
-          <AgendaCalendar items={items} onSelectItem={(item) => {
-            if (isPayableStatus(item.status)) setPayModal({ title: item.title, amount: item.amount });
+          <AgendaCalendar items={filterByType(items)} onSelectItem={(item) => {
+            if (!isPayableStatus(item.status)) return;
+            if (isTaskItem(item)) handleCompleteTask(item);
+            else setPayModal({ title: item.title, amount: item.amount ?? 0 });
           }} />
+        </Surface>
+      )}
+
+      {addMode === "task" && (
+        <Surface variant="glass" style={styles.addForm}>
+          <Text style={styles.formTitle}>{editing ? t.agenda.editTask : t.agenda.addTask}</Text>
+          <InputField placeholder={t.agenda.taskName} value={title} onChangeText={setTitle} />
+          <InputField placeholder={t.agenda.taskNotes} value={notes} onChangeText={setNotes} multiline />
+          <ChipPicker
+            label={t.agenda.due}
+            options={[
+              { id: "0", label: t.agenda.duePresets.today },
+              { id: "1", label: t.agenda.duePresets.tomorrow },
+              { id: "7", label: t.agenda.duePresets.week },
+            ]}
+            value={
+              ([0, 1, 7].find((days) => isPresetActive(days))?.toString()) ?? null
+            }
+            onChange={(id) => applyPresetDays(parseInt(id, 10))}
+          />
+          <DueDatePicker value={dueDate} onChange={setDueDate} />
+          <PrimaryButton
+            label={editing ? t.common.save : t.agenda.add}
+            onPress={() => editing ? handleSaveEdit() : handleAddTask()}
+          />
+          {editing ? (
+            <TextLink label={t.common.cancel} onPress={() => { setEditing(null); resetForm(); }} style={styles.cancelEdit} />
+          ) : null}
         </Surface>
       )}
 
@@ -271,18 +350,29 @@ export default function AgendaScreen() {
           >
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>
-                {item.title}{item.is_recurring ? " 🔄" : ""}
+                {isTaskItem(item) ? "☑ " : ""}{item.title}{item.is_recurring ? " 🔄" : ""}
                 {item.status === "overdue" ? ` · ${t.agenda.overdue}` : ""}
-                {item.status === "paid" ? ` · ${t.agenda.paidStatus}` : ""}
+                {item.status === "paid"
+                  ? ` · ${isTaskItem(item) ? t.agenda.doneStatus : t.agenda.paidStatus}`
+                  : ""}
               </Text>
               {listTab === "upcoming" && isPayableStatus(item.status) && (
                 <View style={styles.cardActions}>
-                  <TextLink label={t.agenda.paid} onPress={() => setPayModal({ title: item.title, amount: item.amount })} />
+                  {isTaskItem(item) ? (
+                    <TextLink label={t.agenda.done} onPress={() => handleCompleteTask(item)} />
+                  ) : (
+                    <TextLink label={t.agenda.paid} onPress={() => setPayModal({ title: item.title, amount: item.amount ?? 0 })} />
+                  )}
                   <TextLink label="✕" onPress={() => handleDeleteItem(item)} danger />
                 </View>
               )}
             </View>
-            <Text style={styles.amount}>{formatMoney(item.amount ?? 0, locale)}</Text>
+            {!isTaskItem(item) && item.amount != null ? (
+              <Text style={styles.amount}>{formatMoney(item.amount ?? 0, locale)}</Text>
+            ) : null}
+            {isTaskItem(item) && item.notes ? (
+              <Text style={styles.notes}>{item.notes}</Text>
+            ) : null}
             <Text style={styles.date}>
               {t.agenda.due}: {formatDate(item.due_date, locale)}
               {item.paid_at ? ` · ${formatDate(item.paid_at, locale)}` : ""}
@@ -326,5 +416,6 @@ const styles = StyleSheet.create({
   formTitle: { color: Colors.textSecondary, marginBottom: Spacing.sm, fontWeight: "600" },
   cancelEdit: { textAlign: "center", marginTop: Spacing.sm },
   amount: { color: Colors.accent, fontSize: 20, fontWeight: "700", marginTop: 8 },
+  notes: { color: Colors.textSecondary, fontSize: 14, marginTop: 6, lineHeight: 20 },
   date: { color: Colors.textMuted, fontSize: 13, marginTop: 4 },
 });

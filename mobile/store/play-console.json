@@ -1,0 +1,35 @@
+{
+  "package": "io.talkcash.app",
+  "version": "1.2.0",
+  "pricing_benchmark": "Cleo AI coach + Acorns round-up + TR budget apps — see docs/PRICING.md",
+  "privacy_url": "https://talkcash-api-prod.onrender.com/privacy",
+  "terms_url": "https://talkcash-api-prod.onrender.com/terms",
+  "support_email": "support@talkcash.io",
+  "api_url": "https://talkcash-api-prod.onrender.com/api/v1",
+  "subscriptions": [
+    {
+      "product_id": "talkcash_pro_monthly",
+      "plan": "pro",
+      "price_try": "99.99",
+      "price_try_yearly": "899.99",
+      "comparable": "Cleo Plus ($5.99) + Acorns round-up ($3-6)"
+    },
+    {
+      "product_id": "talkcash_family_monthly",
+      "plan": "family",
+      "price_try": "169.99",
+      "price_try_yearly": "1599.99",
+      "comparable": "Stash+ ($9) + Acorns Gold family ($12)"
+    },
+    {
+      "product_id": "talkcash_business_monthly",
+      "plan": "business",
+      "price_try": "299.99",
+      "price_try_yearly": "2499.99",
+      "comparable": "Monarch Plus business ($199/yr)"
+    }
+  ],
+  "trial_days": 7,
+  "submit_track": "internal",
+  "category": "FINANCE"
+}

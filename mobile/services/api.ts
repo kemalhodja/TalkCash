@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { auth } from "./auth";
 import { getApiBaseUrl } from "./config";
+import { captureError } from "./observability";
 
 const LOCALE_KEY = "talkcash_locale";
 const REQUEST_TIMEOUT_MS = 25000;
@@ -18,6 +19,11 @@ function parseErrorDetail(body: unknown, status: number): string {
   if (typeof body === "object" && body !== null && "detail" in body) {
     const detail = (body as { detail: unknown }).detail;
     if (typeof detail === "string") return detail;
+    if (typeof detail === "object" && detail !== null && "code" in detail) {
+      const code = String((detail as { code: string }).code);
+      if (code === "premium_required") return "Premium plan required";
+      return code;
+    }
     if (Array.isArray(detail)) {
       return detail
         .map((item) => (typeof item === "object" && item && "msg" in item ? String((item as { msg: string }).msg) : String(item)))
@@ -104,6 +110,9 @@ async function request<T>(path: string, options?: RequestInit, attempt = 0, auth
         await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
         return request<T>(path, options, attempt + 1);
       }
+      if (res.status >= 500) {
+        captureError(new ApiError(detail, res.status));
+      }
       throw new ApiError(detail, res.status);
     }
 
@@ -135,6 +144,11 @@ export const api = {
   setLocale: (locale: string) => request("/auth/locale", { method: "PUT", body: JSON.stringify({ locale }) }),
   setTimezone: (timezone: string) => request("/auth/timezone", { method: "PUT", body: JSON.stringify({ timezone }) }),
   getMe: () => request<any>("/auth/me"),
+  setAssistantPersona: (assistant_persona: "default" | "angry_mom" | "street_smart") =>
+    request<{ assistant_persona: string }>("/auth/persona", {
+      method: "PUT",
+      body: JSON.stringify({ assistant_persona }),
+    }),
   refreshSession: (refreshToken: string) =>
     request<any>("/auth/refresh", { method: "POST", body: JSON.stringify({ refresh_token: refreshToken }) }),
   logout: async () => {
@@ -160,16 +174,62 @@ export const api = {
     }),
   deleteAccount: (password: string) =>
     request("/auth/me", { method: "DELETE", body: JSON.stringify({ password }) }),
+  forgotPassword: (email: string) =>
+    request<{ status: string; message: string; reset_token?: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ status: string; message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword }),
+    }),
+
+  // Premium / billing
+  getPremiumStatus: () => request<any>("/billing/me"),
+  upgradeInternalPlan: (plan: "free" | "pro" | "family" | "business") => {
+    const headers: Record<string, string> = {};
+    const secret = process.env.EXPO_PUBLIC_INTERNAL_UPGRADE_SECRET;
+    if (secret) headers["X-Internal-Upgrade-Secret"] = secret;
+    return request<any>("/billing/internal-upgrade", {
+      method: "POST",
+      body: JSON.stringify({ plan }),
+      headers,
+    });
+  },
+  verifyGooglePurchase: (productId: string, purchaseToken: string) =>
+    request<any>("/billing/google/verify", {
+      method: "POST",
+      body: JSON.stringify({ product_id: productId, purchase_token: purchaseToken }),
+    }),
+  getBillingProducts: () => request<any>("/billing/products"),
 
   // Input
   parseText: (text: string, whisperMode = false) =>
     request<any>(`/input/parse?text=${encodeURIComponent(text)}&whisper_mode=${whisperMode}`, { method: "POST" }),
   parseSlash: (command: string) =>
     request<any>(`/input/slash?command=${encodeURIComponent(command)}`, { method: "POST" }),
+  parseSms: (text: string) =>
+    request<any>("/input/parse-sms", { method: "POST", body: JSON.stringify({ text }) }),
   parseVoice: async (uri: string, whisperMode = false) => {
     const form = new FormData();
     form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
     return request<any>(`/input/voice?whisper_mode=${whisperMode}`, { method: "POST", body: form });
+  },
+  transcribeVoice: async (uri: string, whisperMode = false) => {
+    const form = new FormData();
+    form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
+    return request<any>(`/input/transcribe?whisper_mode=${whisperMode}`, { method: "POST", body: form });
+  },
+  processPremiumVoice: async (uri: string, whisperMode = false) => {
+    const form = new FormData();
+    form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
+    return request<any>(`/input/process-voice?whisper_mode=${whisperMode}`, { method: "POST", body: form });
+  },
+  quickVoice: async (uri: string) => {
+    const form = new FormData();
+    form.append("audio", { uri, type: "audio/m4a", name: "quick.m4a" } as any);
+    return request<any>("/input/quick-voice", { method: "POST", body: form });
   },
   executeAction: async (parsed: object, confirmed: boolean) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
@@ -265,8 +325,19 @@ export const api = {
   },
 
   // Transactions
-  getTransactions: (limit = 50) => request<any[]>(`/transactions/?limit=${limit}`),
-  updateTransaction: async (id: string, data: { amount?: number; category?: string; description?: string; place?: string }) => {
+  getTransactions: (limit = 50, filters?: { category?: string; search?: string; fromDate?: string; toDate?: string }) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (filters?.category) params.set("category", filters.category);
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.fromDate) params.set("from_date", filters.fromDate);
+    if (filters?.toDate) params.set("to_date", filters.toDate);
+    return request<any[]>(`/transactions/?${params.toString()}`);
+  },
+  getUpcomingSubscriptions: () =>
+    request<{ subscriptions: Array<{ id: string; subscription_name: string; amount: number; next_billing_date: string; cancel_url?: string | null }> }>(
+      "/transactions/subscriptions/upcoming",
+    ),
+  updateTransaction: async (id: string, data: { amount?: number; category?: string; description?: string; place?: string; store_name?: string }) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
     try {
       return await request(`/transactions/${id}`, { method: "PATCH", body: JSON.stringify(data) });
@@ -336,6 +407,37 @@ export const api = {
       throw err;
     }
   },
+  addTask: async (title: string, dueDate: string, notes?: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const { newClientId } = await import("@/utils/clientId");
+    const client_item_id = newClientId();
+    const notesParam = notes ? `&notes=${encodeURIComponent(notes)}` : "";
+    const url = `/agenda/task?title=${encodeURIComponent(title)}&due_date=${dueDate}${notesParam}`;
+    try {
+      return await request<any>(url, { method: "POST" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({
+          type: "agenda_add_task",
+          payload: { title, due_date: dueDate, notes, client_item_id },
+        });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
+  completeAgendaItem: async (itemId: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/agenda/${itemId}/complete`, { method: "POST" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const opId = await enqueue({ type: "agenda_complete", payload: { item_id: itemId } });
+        return { status: "queued", operation_id: opId };
+      }
+      throw err;
+    }
+  },
   markPaid: async (title: string, walletId?: string) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
     const url = `/agenda/pay?title=${encodeURIComponent(title)}${walletId ? `&wallet_id=${walletId}` : ""}`;
@@ -354,12 +456,15 @@ export const api = {
 
   // Shopping
   getShoppingList: () => request<any>("/shopping/"),
-  addShoppingItems: async (items: string[]) => {
+  addShoppingItems: async (items: string[], skipSuggestion = false) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
     const { newClientId } = await import("@/utils/clientId");
     const client_item_ids = items.map(() => newClientId());
     try {
-      return await request("/shopping/add", { method: "POST", body: JSON.stringify({ items }) });
+      return await request("/shopping/add", {
+        method: "POST",
+        body: JSON.stringify({ items, skip_suggestion: skipSuggestion }),
+      });
     } catch (err) {
       if (shouldQueueError(err)) {
         const id = await enqueue({ type: "shopping_add", payload: { items, client_item_ids } });
@@ -368,34 +473,62 @@ export const api = {
       throw err;
     }
   },
-  completeShoppingItem: async (itemId: string, price?: number, walletId?: string) => {
+  completeShoppingItem: async (itemId: string, price?: number, walletId?: string, storeName?: string) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
     let url = `/shopping/complete/${itemId}`;
     const params = new URLSearchParams();
     if (price) params.set("price", String(price));
     if (walletId) params.set("wallet_id", walletId);
+    if (storeName) params.set("store_name", storeName);
     const qs = params.toString();
     try {
       return await request(`${url}${qs ? `?${qs}` : ""}`, { method: "POST" });
     } catch (err) {
       if (shouldQueueError(err)) {
-        const id = await enqueue({ type: "shopping_complete", payload: { item_id: itemId, price, wallet_id: walletId } });
+        const id = await enqueue({ type: "shopping_complete", payload: { item_id: itemId, price, wallet_id: walletId, store_name: storeName } });
         return { status: "queued", operation_id: id };
       }
       throw err;
     }
   },
-  setRoutine: (itemId: string, isRoutine: boolean, routineType: "daily" | "weekly" = "daily") =>
-    request(`/shopping/${itemId}/routine`, {
-      method: "PATCH",
-      body: JSON.stringify({ is_routine: isRoutine, routine_type: routineType }),
-    }),
-  deleteShoppingItem: (itemId: string) => request(`/shopping/${itemId}`, { method: "DELETE" }),
+  setRoutine: async (itemId: string, isRoutine: boolean, routineType: "daily" | "weekly" = "daily") => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const payload = { item_id: itemId, is_routine: isRoutine, routine_type: routineType };
+    try {
+      return await request(`/shopping/${itemId}/routine`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_routine: isRoutine, routine_type: routineType }),
+      });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "shopping_routine", payload });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
+  deleteShoppingItem: async (itemId: string) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    try {
+      return await request(`/shopping/${itemId}`, { method: "DELETE" });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "shopping_delete", payload: { item_id: itemId } });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
   importReceiptToShopping: (receiptId: string, itemNames?: string[]) =>
     request("/shopping/import-receipt", {
       method: "POST",
       body: JSON.stringify({ receipt_id: receiptId, item_names: itemNames }),
     }),
+  scanShoppingPhoto: async (uri: string) => {
+    const form = new FormData();
+    form.append("image", { uri, type: "image/jpeg", name: "basket.jpg" } as any);
+    return request<{ items: string[]; count: number }>("/shopping/scan-photo", { method: "POST", body: form });
+  },
 
   // OCR
   scanReceipt: async (uri: string) => {
@@ -403,7 +536,17 @@ export const api = {
     form.append("image", { uri, type: "image/jpeg", name: "receipt.jpg" } as any);
     return request<any>("/ocr/scan", { method: "POST", body: form });
   },
-  getReceipts: () => request<any[]>("/ocr/"),
+  getReceipts: (filters?: { merchant?: string; verified?: boolean }) => {
+    const params = new URLSearchParams();
+    if (filters?.merchant) params.set("merchant", filters.merchant);
+    if (filters?.verified != null) params.set("verified", String(filters.verified));
+    const q = params.toString();
+    return request<any[]>(`/ocr/${q ? `?${q}` : ""}`);
+  },
+  updateReceipt: (id: string, data: { merchant?: string; total_amount?: number; receipt_date?: string }) =>
+    request<any>(`/ocr/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteReceipt: (id: string) =>
+    request<{ status: string }>(`/ocr/${id}`, { method: "DELETE" }),
   verifyReceipt: (transactionAmount: number, receiptAmount?: number, receiptId?: string) => {
     let url = `/ocr/verify?transaction_amount=${transactionAmount}`;
     if (receiptAmount != null) url += `&receipt_amount=${receiptAmount}`;
@@ -411,6 +554,7 @@ export const api = {
     return request<{ verified: boolean; receipt_amount?: number; transaction_amount?: number }>(url, { method: "POST" });
   },
   getInputCapabilities: () => request<any>("/input/capabilities"),
+  getLatestPodcast: () => request<any>("/podcast/latest"),
 
   getNearbyMarkets: (lat: number, lng: number, radiusKm = 2, useOsm = true) =>
     request<{
@@ -475,6 +619,42 @@ export const api = {
   getChatHistory: () => request<any[]>("/ai/chat/history"),
   sendChatMessage: (message: string) =>
     request<any>("/ai/chat", { method: "POST", body: JSON.stringify({ message }) }),
+  getAiInsights: () => request<any[]>("/ai/insights"),
+  getInsightsSummary: () => request<any>("/insights/summary"),
+  getMicroSavingsSummary: () => request<any>("/micro-savings/summary"),
+  getMicroSavingsRates: () => request<any>("/micro-savings/rates"),
+  simulateMicroSavings: (body: Record<string, unknown>) =>
+    request<any>("/micro-savings/simulate", { method: "POST", body: JSON.stringify(body) }),
+  getMicroSavingsPrefs: () => request<any>("/micro-savings/prefs"),
+  updateMicroSavingsPrefs: (prefs: Record<string, unknown>) =>
+    request<any>("/micro-savings/prefs", { method: "PATCH", body: JSON.stringify(prefs) }),
+  getMicroSavingsBrokers: () => request<any>("/micro-savings/brokers"),
+  transferMicroSavings: async (
+    fromWalletId: string,
+    toWalletId: string,
+    amount: number,
+    ruleKey: string,
+  ) => {
+    const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const payload = {
+      from_wallet_id: fromWalletId,
+      to_wallet_id: toWalletId,
+      amount,
+      rule_key: ruleKey,
+    };
+    try {
+      return await request("/micro-savings/transfer", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      if (shouldQueueError(err)) {
+        const id = await enqueue({ type: "micro_savings_transfer", payload });
+        return { status: "queued", operation_id: id };
+      }
+      throw err;
+    }
+  },
 
   // Social
   splitBill: (total: number, personCount: number) =>
@@ -512,12 +692,31 @@ export const api = {
     request(`/social/shared-wallet/${walletId}/transfer?member_id=${memberId}`, { method: "POST" }),
   deleteSharedWallet: (walletId: string) => request(`/social/shared-wallet/${walletId}`, { method: "DELETE" }),
 
+  // Workspaces
+  getWorkspaces: () => request<any[]>("/workspaces/"),
+  createWorkspace: (name: string, workspaceType: "family" | "business") =>
+    request<any>("/workspaces/", { method: "POST", body: JSON.stringify({ name, workspace_type: workspaceType }) }),
+  inviteWorkspaceMember: (workspaceId: string, email: string, role: "admin" | "member" | "viewer" = "member") =>
+    request<any>(`/workspaces/${workspaceId}/invite`, { method: "POST", body: JSON.stringify({ email, role }) }),
+  getWorkspaceInvitations: (workspaceId: string) => request<any[]>(`/workspaces/${workspaceId}/invitations`),
+  cancelWorkspaceInvitation: (workspaceId: string, invitationId: string) =>
+    request<void>(`/workspaces/${workspaceId}/invitations/${invitationId}`, { method: "DELETE" }),
+
+  // Analytics
+  trackEvent: (eventName: string, properties?: Record<string, unknown>) =>
+    request("/analytics/events", { method: "POST", body: JSON.stringify({ event_name: eventName, properties }) }),
+
   // Notifications
   registerPushToken: (token: string) =>
     request(`/notifications/register-token?token=${encodeURIComponent(token)}`, { method: "POST" }),
   getNotifications: () => request<any[]>("/notifications/"),
+  getNotificationPrefs: () => request<any>("/notifications/preferences"),
+  updateNotificationPrefs: (prefs: Record<string, boolean | string>) =>
+    request<any>("/notifications/preferences", { method: "PATCH", body: JSON.stringify(prefs) }),
   markNotificationRead: (id: string) => request(`/notifications/${id}/read`, { method: "POST" }),
   markAllNotificationsRead: () => request<{ marked: number }>("/notifications/read-all", { method: "POST" }),
+
+  seedDemoData: () => request<{ status: string; transactions?: number }>("/demo/seed", { method: "POST" }),
 
   // Export
   exportPdf: () => request<Blob>("/export/pdf"),
@@ -527,6 +726,16 @@ export const api = {
   syncPush: (operations: object[]) =>
     request<any>("/sync/push", { method: "POST", body: JSON.stringify({ operations }) }),
   syncPull: () => request<any>("/sync/pull"),
+
+  // Roadmap
+  getRoadmap: () =>
+    request<{
+      active: Array<{ id: string; title: string; description: string; status: string; vote_count: number; is_voted: boolean; sort_order: number }>;
+      soon: Array<{ id: string; title: string; description: string; status: string; vote_count: number; is_voted: boolean; sort_order: number }>;
+      backlog: Array<{ id: string; title: string; description: string; status: string; vote_count: number; is_voted: boolean; sort_order: number }>;
+    }>("/roadmap"),
+  voteRoadmapFeature: (featureId: string) =>
+    request<{ feature_id: string; vote_count: number; is_voted: boolean }>(`/roadmap/${featureId}/vote`, { method: "POST" }),
 };
 
 export async function resolveMediaUrl(path: string): Promise<{ uri: string; headers?: Record<string, string> }> {

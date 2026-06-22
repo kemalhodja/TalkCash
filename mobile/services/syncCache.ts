@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
 import type { QueuedOperation } from "./offlineQueue";
 import { newClientId } from "@/utils/clientId";
+import { getStoredLocale } from "@/i18n";
+import { resyncSubscriptionRemindersFromTransactions } from "./notifications";
 
 const SNAPSHOT_KEY = "talkcash_cloud_snapshot";
 
@@ -35,10 +37,13 @@ export function groupShoppingFromSnapshot(shopping: CloudSnapshot["shopping"]): 
 export async function pullAndCacheSnapshot(): Promise<void> {
   try {
     const data = await api.syncPull();
-    await AsyncStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+    const snapshot = {
       ...data,
       cached_at: new Date().toISOString(),
-    }));
+    };
+    await AsyncStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+    const locale = await getStoredLocale();
+    await resyncSubscriptionRemindersFromTransactions(snapshot.transactions || [], locale);
   } catch {
     /* offline */
   }
@@ -46,7 +51,13 @@ export async function pullAndCacheSnapshot(): Promise<void> {
 
 export async function getCachedSnapshot(): Promise<CloudSnapshot | null> {
   const raw = await AsyncStorage.getItem(SNAPSHOT_KEY);
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    await AsyncStorage.removeItem(SNAPSHOT_KEY);
+    return null;
+  }
 }
 
 export async function patchCachedSnapshot(partial: Partial<CloudSnapshot>): Promise<void> {
@@ -128,6 +139,24 @@ export async function applyOptimisticForQueuedOp(
       });
       return;
     }
+    case "shopping_delete": {
+      const itemId = String(payload.item_id);
+      await patchCachedSnapshot({
+        shopping: (snapshot.shopping || []).filter((i) => i.id !== itemId),
+      });
+      return;
+    }
+    case "shopping_routine": {
+      const itemId = String(payload.item_id);
+      const isRoutine = Boolean(payload.is_routine);
+      const routineType = String(payload.routine_type || "daily");
+      await patchCachedSnapshot({
+        shopping: (snapshot.shopping || []).map((i) =>
+          i.id === itemId ? { ...i, is_routine: isRoutine, routine_type: routineType } : i,
+        ),
+      });
+      return;
+    }
     case "wallet_create": {
       const wallets = [...(snapshot.wallets || [])];
       const clientId = String(payload.client_wallet_id || localId("wallet"));
@@ -172,7 +201,8 @@ export async function applyOptimisticForQueuedOp(
       await patchCachedSnapshot({ wallets, net_worth_total: net });
       return;
     }
-    case "wallet_transfer": {
+    case "wallet_transfer":
+    case "micro_savings_transfer": {
       const fromId = String(payload.from_wallet_id);
       const toId = String(payload.to_wallet_id);
       const amount = Number(payload.amount || 0);
@@ -192,6 +222,10 @@ export async function applyOptimisticForQueuedOp(
                 ...(payload.category != null ? { category: payload.category } : {}),
                 ...(payload.description != null ? { description: payload.description } : {}),
                 ...(payload.place != null ? { place: payload.place } : {}),
+                ...(payload.store_name != null ? { store_name: payload.store_name } : {}),
+                ...(payload.is_recurring != null ? { is_recurring: payload.is_recurring } : {}),
+                ...(payload.next_billing_date != null ? { next_billing_date: payload.next_billing_date } : {}),
+                ...(payload.subscription_name != null ? { subscription_name: payload.subscription_name } : {}),
               }
             : tx,
         ),
@@ -210,10 +244,26 @@ export async function applyOptimisticForQueuedOp(
       agenda.unshift({
         id: String(payload.client_item_id || localId("agenda")),
         title: payload.title,
+        item_type: "bill",
         amount: payload.amount,
         due_date: payload.due_date,
         status: "pending",
         is_recurring: payload.is_recurring || false,
+      });
+      await patchCachedSnapshot({ agenda });
+      return;
+    }
+    case "agenda_add_task": {
+      const agenda = [...(snapshot.agenda || [])];
+      agenda.unshift({
+        id: String(payload.client_item_id || localId("agenda")),
+        title: payload.title,
+        item_type: "task",
+        amount: null,
+        notes: payload.notes || null,
+        due_date: payload.due_date,
+        status: "pending",
+        is_recurring: false,
       });
       await patchCachedSnapshot({ agenda });
       return;
@@ -256,6 +306,16 @@ export async function applyOptimisticForQueuedOp(
       });
       return;
     }
+    case "agenda_complete": {
+      const itemId = String(payload.item_id);
+      const now = new Date().toISOString();
+      await patchCachedSnapshot({
+        agenda: (snapshot.agenda || []).map((item) =>
+          item.id === itemId ? { ...item, status: "paid", paid_at: now } : item,
+        ),
+      });
+      return;
+    }
     case "execute": {
       const parsed = payload.parsed as Record<string, any> | undefined;
       if (!parsed?.intent) return;
@@ -273,9 +333,13 @@ export async function applyOptimisticForQueuedOp(
           amount,
           category: parsed.category || "Genel",
           description: parsed.description || "",
-          place: parsed.place || "",
+          place: parsed.place || parsed.store_name || "",
+          store_name: parsed.store_name || parsed.place || "Genel",
           date: new Date().toISOString(),
           input_method: "voice",
+          is_recurring: parsed.is_recurring || parsed.is_subscription || false,
+          next_billing_date: parsed.next_billing_date || null,
+          subscription_name: parsed.subscription_name || null,
         }, ...(snapshot.transactions || [])];
         const updatedWallets = adjustWalletBalance(wallets, wallet.id, -amount);
         const net = Number(snapshot.net_worth_total || 0) - amount;

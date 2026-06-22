@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
+import { flushReceiptScans } from "./receiptQueue";
 import { getIdMap, registerRemapFromResult, remapPayload, remapQueue, remapSnapshotWithMap } from "./idRemap";
 import { applyOptimisticForQueuedOp } from "./syncCache";
 
@@ -10,19 +11,25 @@ export type QueuedOperation = {
   id: string;
   type:
     | "execute"
+    | "receipt_scan"
     | "shopping_add"
     | "shopping_complete"
+    | "shopping_delete"
+    | "shopping_routine"
     | "wallet_income"
     | "wallet_transfer"
+    | "micro_savings_transfer"
     | "transaction_update"
     | "transaction_delete"
     | "wallet_create"
     | "wallet_update"
     | "wallet_delete"
     | "agenda_add_bill"
+    | "agenda_add_task"
     | "agenda_update"
     | "agenda_delete"
     | "agenda_mark_paid"
+    | "agenda_complete"
     | "budget_create"
     | "budget_update"
     | "budget_delete";
@@ -58,7 +65,14 @@ export function shouldQueueError(err: unknown): boolean {
 
 export async function getQueue(): Promise<QueuedOperation[]> {
   const raw = await AsyncStorage.getItem(QUEUE_KEY);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    await AsyncStorage.removeItem(QUEUE_KEY);
+    return [];
+  }
 }
 
 async function saveQueue(queue: QueuedOperation[]): Promise<void> {
@@ -97,8 +111,12 @@ export async function flushQueue(
   let conflicts = 0;
   let failed = 0;
 
-  while ((await getQueue()).length > 0) {
-    const queue = await getQueue();
+  const receiptFlush = await flushReceiptScans();
+  applied += receiptFlush.applied;
+  failed += receiptFlush.failed;
+
+  while ((await getQueue()).filter((op) => op.type !== "receipt_scan").length > 0) {
+    const queue = (await getQueue()).filter((op) => op.type !== "receipt_scan");
     const idMap = await getIdMap();
     const chunk = queue.slice(0, BATCH_SIZE).map((op) => ({
       ...op,
@@ -158,10 +176,14 @@ export async function flushQueue(
       nextQueue.push(op);
     }
 
-    await saveQueue(nextQueue);
+    const pendingReceipts = (await getQueue()).filter((op) => op.type === "receipt_scan");
+    await saveQueue([...pendingReceipts, ...nextQueue]);
     if (remapped) {
       const updatedMap = await getIdMap();
-      await replaceQueue(remapQueue(await getQueue(), updatedMap));
+      const remappedQueue = remapQueue(await getQueue(), updatedMap);
+      const receipts = remappedQueue.filter((op) => op.type === "receipt_scan");
+      const syncOps = remappedQueue.filter((op) => op.type !== "receipt_scan");
+      await replaceQueue([...receipts, ...syncOps]);
       await remapSnapshotWithMap(updatedMap);
     }
     applied += chunkApplied;

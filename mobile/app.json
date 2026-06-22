@@ -2,11 +2,14 @@
   "expo": {
     "name": "TalkCash",
     "slug": "talkcash",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "talkcash",
     "userInterfaceStyle": "automatic",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0A0E17"
     },
     "ios": {
@@ -20,13 +23,21 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0E17"
       },
       "package": "io.talkcash.app",
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "com.android.vending.BILLING"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "intentFilters": [
         {
@@ -36,6 +47,18 @@
             {
               "scheme": "talkcash",
               "host": "command"
+            },
+            {
+              "scheme": "talkcash",
+              "host": "share"
+            },
+            {
+              "scheme": "talkcash",
+              "host": "input"
+            },
+            {
+              "scheme": "talkcash",
+              "host": "quick-voice"
             },
             {
               "scheme": "talkcash",
@@ -50,11 +73,26 @@
       ]
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
       "expo-dev-client",
+      "@sentry/react-native/expo",
+      "expo-asset",
       "./plugins/withAssistant.js",
+      "./plugins/withQuickWhisperWidget.js",
+      "./plugins/withReactNativeIap.js",
+      "./plugins/withShareIntent.js",
       [
         "@config-plugins/react-native-siri-shortcut",
         [
+          "io.talkcash.app.whisper-expense",
+          "io.talkcash.app.quick-whisper",
           "io.talkcash.app.add-expense",
           "io.talkcash.app.add-income",
           "io.talkcash.app.add-shopping",
