@@ -1,8 +1,20 @@
-# TalkCash API — Render Blueprint
-# Dashboard: New → Blueprint → connect GitHub kemalhodja/TalkCash
-# Set sync:false secrets in Render UI after first sync.
+# TalkCash API — Render Blueprint (self-contained: Postgres + Redis + API)
+# Dashboard: New → Blueprint → GitHub kemalhodja/TalkCash → Apply
+# Push to main syncs this file automatically when Blueprint is linked.
+
+databases:
+  - name: talkcash-db
+    plan: free
+    region: frankfurt
+    ipAllowList: []
 
 services:
+  - type: keyvalue
+    name: talkcash-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+
   - type: web
     name: talkcash-api-prod
     runtime: docker
@@ -13,9 +25,14 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: talkcash-db
+          property: connectionString
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: keyvalue
+          name: talkcash-redis
+          property: connectionString
       - key: OPENAI_API_KEY
         sync: false
       - key: SECRET_KEY

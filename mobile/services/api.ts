@@ -730,9 +730,9 @@ export const api = {
   // Roadmap
   getRoadmap: () =>
     request<{
-      active: Array<{ id: string; title: string; description: string; status: string; vote_count: number; is_voted: boolean; sort_order: number }>;
-      soon: Array<{ id: string; title: string; description: string; status: string; vote_count: number; is_voted: boolean; sort_order: number }>;
-      backlog: Array<{ id: string; title: string; description: string; status: string; vote_count: number; is_voted: boolean; sort_order: number }>;
+      active: Array<{ id: string; title: string; description: string; status: "active" | "soon" | "backlog"; vote_count: number; is_voted: boolean; sort_order: number }>;
+      soon: Array<{ id: string; title: string; description: string; status: "active" | "soon" | "backlog"; vote_count: number; is_voted: boolean; sort_order: number }>;
+      backlog: Array<{ id: string; title: string; description: string; status: "active" | "soon" | "backlog"; vote_count: number; is_voted: boolean; sort_order: number }>;
     }>("/roadmap"),
   voteRoadmapFeature: (featureId: string) =>
     request<{ feature_id: string; vote_count: number; is_voted: boolean }>(`/roadmap/${featureId}/vote`, { method: "POST" }),

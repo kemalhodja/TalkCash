@@ -1,4 +1,14 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _normalize_database_url(url: str) -> str:
+    """Render/Heroku provide postgresql:// — SQLAlchemy async needs +asyncpg."""
+    if url.startswith("postgresql://") and "+asyncpg" not in url:
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgres://") and "+asyncpg" not in url:
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return url
 
 
 class Settings(BaseSettings):
@@ -81,6 +91,11 @@ class Settings(BaseSettings):
     broker_papara_url: str = "https://www.papara.com/"
     broker_revolut_url: str = "https://www.revolut.com/"
     broker_trading212_url: str = "https://www.trading212.com/"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_db_url(cls, value: str) -> str:
+        return _normalize_database_url(value)
 
 
 settings = Settings()

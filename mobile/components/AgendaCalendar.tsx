@@ -10,6 +10,7 @@ interface AgendaItem {
   amount: number;
   due_date: string;
   status: string;
+  item_type?: string;
   installment?: string | null;
 }
 
