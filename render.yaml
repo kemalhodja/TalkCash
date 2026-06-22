@@ -38,7 +38,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: "*"
+        value: "https://talkcash-api-prod.onrender.com"
       - key: SCHEDULER_ENABLED
         value: "true"
       - key: DEBUG
