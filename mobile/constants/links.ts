@@ -1,5 +1,16 @@
 /** Public URLs for in-app links (Play Store compliance). */
-export const PRIVACY_POLICY_URL =
-  "https://github.com/kemalhodja/eduai-sale/blob/main/docs/PRIVACY.md";
+import { getApiBaseUrl } from "@/services/config";
 
-export const SUPPORT_EMAIL = "support@talkcash.io";
+function apiSiteRoot(): string {
+  return getApiBaseUrl().replace(/\/api\/v1\/?$/, "");
+}
+
+export const PRIVACY_POLICY_URL =
+  process.env.EXPO_PUBLIC_PRIVACY_URL || `${apiSiteRoot()}/privacy`;
+
+export const TERMS_OF_SERVICE_URL =
+  process.env.EXPO_PUBLIC_TERMS_URL || `${apiSiteRoot()}/terms`;
+
+export const SUPPORT_EMAIL = "ozyurtkemal35@gmail.com";
+
+export const FEEDBACK_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=TalkCash%20Feedback`;

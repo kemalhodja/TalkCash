@@ -1,35 +1,75 @@
 {
   "package": "io.talkcash.app",
   "version": "1.2.0",
-  "pricing_benchmark": "Cleo AI coach + Acorns round-up + TR budget apps — see docs/PRICING.md",
+  "market": "global",
+  "pricing_anchor": "USD",
+  "pricing_doc": "docs/PRICING.md",
   "privacy_url": "https://talkcash-api-prod.onrender.com/privacy",
   "terms_url": "https://talkcash-api-prod.onrender.com/terms",
-  "support_email": "support@talkcash.io",
+  "support_email": "ozyurtkemal35@gmail.com",
   "api_url": "https://talkcash-api-prod.onrender.com/api/v1",
-  "subscriptions": [
+  "subscriptions_monthly": [
     {
       "product_id": "talkcash_pro_monthly",
       "plan": "pro",
-      "price_try": "99.99",
-      "price_try_yearly": "899.99",
-      "comparable": "Cleo Plus ($5.99) + Acorns round-up ($3-6)"
+      "price_usd": "9.99",
+      "price_eur": "9.99",
+      "price_gbp": "8.99",
+      "price_try": "99.99"
     },
     {
       "product_id": "talkcash_family_monthly",
       "plan": "family",
-      "price_try": "169.99",
-      "price_try_yearly": "1599.99",
-      "comparable": "Stash+ ($9) + Acorns Gold family ($12)"
+      "price_usd": "16.99",
+      "price_eur": "16.99",
+      "price_gbp": "14.99",
+      "price_try": "169.99"
     },
     {
       "product_id": "talkcash_business_monthly",
       "plan": "business",
-      "price_try": "299.99",
-      "price_try_yearly": "2499.99",
-      "comparable": "Monarch Plus business ($199/yr)"
+      "price_usd": "29.99",
+      "price_eur": "29.99",
+      "price_gbp": "24.99",
+      "price_try": "299.99"
+    }
+  ],
+  "subscriptions_yearly_planned": [
+    {
+      "product_id": "talkcash_pro_yearly",
+      "plan": "pro",
+      "price_usd": "99.99",
+      "price_eur": "99.99",
+      "price_gbp": "89.99",
+      "price_try": "899.99",
+      "status": "not_in_code_yet"
+    },
+    {
+      "product_id": "talkcash_family_yearly",
+      "plan": "family",
+      "price_usd": "169.99",
+      "price_eur": "169.99",
+      "price_gbp": "149.99",
+      "price_try": "1599.99",
+      "status": "not_in_code_yet"
+    },
+    {
+      "product_id": "talkcash_business_yearly",
+      "plan": "business",
+      "price_usd": "299.99",
+      "price_eur": "299.99",
+      "price_gbp": "249.99",
+      "price_try": "2499.99",
+      "status": "not_in_code_yet"
     }
   ],
   "trial_days": 7,
+  "prices_are_tax_inclusive": true,
+  "tax_note_tr": "TRY prices include 20% KDV (digital services). Enter gross prices in Play Console.",
+  "tax_note_eu": "EUR prices include VAT per member state. Use Play tax-inclusive template.",
+  "tax_note_us": "USD list price; state sales tax may apply at checkout per Google Play rules.",
+  "intro_offer_usd_pro": "4.99",
+  "intro_offer_try_pro": "49.99",
   "submit_track": "internal",
   "category": "FINANCE"
 }

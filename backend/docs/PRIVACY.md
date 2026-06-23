@@ -23,7 +23,14 @@ TalkCash helps users manage personal finance, budgets, receipts, reminders, AI i
 
 ## Sharing
 
-Data is not sold. External processors may be used for hosting, storage, push notifications, transcription/OCR, AI processing, analytics, and crash reporting. Only the minimum needed data is sent for each feature.
+Data is not sold. We use trusted service providers only to operate the app, such as:
+
+- **Hosting and database** (e.g. Render, PostgreSQL, Redis)
+- **AI and speech** (e.g. OpenAI for NLP, transcription, and insights)
+- **Push notifications** (device push token delivery)
+- **Crash and error reporting** (e.g. Sentry, when enabled)
+
+Only the minimum data needed for each feature is sent to these providers.
 
 ## Security
 
@@ -35,4 +42,6 @@ You may delete your account from Settings. Account deletion removes user data an
 
 ## Contact
 
-Support email: support@talkcash.io
+For privacy questions, account deletion, or data requests, contact:
+
+**Email:** ozyurtkemal35@gmail.com
