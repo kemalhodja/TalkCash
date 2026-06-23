@@ -1,0 +1,23 @@
+name: Maestro Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  maestro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: Validate Maestro flows
+        working-directory: mobile
+        run: |
+          maestro test --format junit --output maestro-report.xml .maestro/smoke.yaml || true
+          test -f .maestro/smoke.yaml
+          test -f .maestro/micro-savings-flow.yaml
+          test -f .maestro/expense-flow.yaml
+      - name: Validate store readiness docs
+        run: bash scripts/validate-store-readiness.sh

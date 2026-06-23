@@ -33,6 +33,7 @@ jobs:
       SECRET_KEY: test-secret-key
       SCHEDULER_ENABLED: "false"
       RATE_LIMIT_ENABLED: "false"
+      S3_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -62,7 +63,8 @@ jobs:
         run: |
           pip install -r backend/requirements.txt
           cd mobile && npm install
-          API_URL=http://127.0.0.1:1 bash ../scripts/verify-release.sh
+          bash scripts/validate-store-readiness.sh
+          API_URL=http://127.0.0.1:1 bash scripts/verify-release.sh
 
   mobile:
     runs-on: ubuntu-latest

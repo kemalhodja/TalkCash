@@ -16,7 +16,7 @@ on:
 jobs:
   submit:
     runs-on: ubuntu-latest
-    if: github.repository == 'kemalhodja/eduai-sale'
+    if: github.repository == 'kemalhodja/TalkCash'
     steps:
       - uses: actions/checkout@v4
 
