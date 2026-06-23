@@ -129,6 +129,16 @@ class AuthService:
         user.pin_code = None
         await db.commit()
 
+    async def clear_pin_by_email(self, db: AsyncSession, email: str) -> bool:
+        email = email.strip().lower()
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
+        if not user:
+            return False
+        user.pin_code = None
+        await db.commit()
+        return True
+
     async def verify_pin(self, db: AsyncSession, user_id: UUID, pin: str) -> bool:
         user = await db.get(User, user_id)
         if not user or not user.pin_code:

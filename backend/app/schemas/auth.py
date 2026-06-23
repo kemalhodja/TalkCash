@@ -136,3 +136,12 @@ class ForgotPasswordResponse(BaseModel):
     status: str = "ok"
     message: str
     reset_token: str | None = None
+
+
+class AdminClearPinRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value) -> str:
+        return str(value).strip().lower()

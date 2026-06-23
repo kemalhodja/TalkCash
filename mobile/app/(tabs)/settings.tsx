@@ -19,8 +19,9 @@ import { SettingSwitchRow } from "@/components/ui/SettingSwitchRow";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing } from "@/constants/theme";
+import { LANGUAGE_OPTIONS } from "@/constants/languages";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL, FEEDBACK_MAILTO } from "@/constants/links";
-import { useI18n, Locale } from "@/i18n";
+import { useI18n, type Locale } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { getAppEnv } from "@/services/config";
@@ -38,11 +39,6 @@ const TIMEZONES = [
   { id: "Europe/London", label: "🇬🇧 London" },
   { id: "America/New_York", label: "🇺🇸 New York" },
   { id: "Asia/Tokyo", label: "🇯🇵 Tokyo" },
-];
-
-const LANGUAGE_OPTIONS = [
-  { id: "tr", label: "🇹🇷 Türkçe" },
-  { id: "en", label: "🇬🇧 English" },
 ];
 
 export default function SettingsScreen() {
@@ -77,6 +73,10 @@ export default function SettingsScreen() {
       if (u.timezone) setTimezone(u.timezone);
       if (typeof u.biometric_enabled === "boolean") setBiometric(u.biometric_enabled);
       if (u.assistant_persona) setPersona(u.assistant_persona);
+      if (typeof u.has_pin === "boolean") {
+        setHasPin(u.has_pin);
+        auth.updateUser({ hasPin: u.has_pin }).catch(() => {});
+      }
     }).catch(() => {});
     isGeofencingEnabled().then(setGeofence).catch(() => {});
     refreshPending();
@@ -86,9 +86,16 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshPending();
-      auth.getUser().then((u) => {
-        if (u) setHasPin(!!u.hasPin);
-      }).catch(() => {});
+      api.getMe().then((u) => {
+        if (typeof u?.has_pin === "boolean") {
+          setHasPin(u.has_pin);
+          auth.updateUser({ hasPin: u.has_pin }).catch(() => {});
+        }
+      }).catch(() => {
+        auth.getUser().then((u) => {
+          if (u) setHasPin(!!u.hasPin);
+        }).catch(() => {});
+      });
     }, [refreshPending]),
   );
 

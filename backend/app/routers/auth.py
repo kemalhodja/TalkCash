@@ -7,6 +7,7 @@ from app.models.user import User
 from app.config import settings
 from app.i18n import SUPPORTED_LOCALES, I18nError, locale_from_request, resolve_error, t
 from app.schemas.auth import (
+    AdminClearPinRequest,
     DeleteAccountRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -29,6 +30,16 @@ from app.utils.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 auth_service = AuthService()
+
+
+def _allow_internal_admin(request: Request) -> None:
+    if settings.debug:
+        return
+    secret = settings.internal_upgrade_secret.strip()
+    header = request.headers.get("x-internal-upgrade-secret", "")
+    if secret and header == secret:
+        return
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 def _token_response(user: User, access: str, refresh: str) -> TokenResponse:
@@ -175,6 +186,19 @@ async def remove_pin(
     except I18nError as e:
         status = 400 if e.key == "auth.pin_not_set" else 401
         raise HTTPException(status_code=status, detail=resolve_error(e, lang))
+
+
+@router.post("/admin/clear-pin")
+async def admin_clear_pin(
+    request: Request,
+    data: AdminClearPinRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    _allow_internal_admin(request)
+    cleared = await auth_service.clear_pin_by_email(db, data.email)
+    if not cleared:
+        raise HTTPException(status_code=404, detail="auth.user_not_found")
+    return {"status": "ok", "email": data.email, "has_pin": False}
 
 
 @router.post("/pin/verify")
