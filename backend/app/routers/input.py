@@ -124,7 +124,7 @@ async def process_voice_transaction(
     except EntitlementError:
         raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "voice_expense"})
     subscription = await billing.get_subscription(db, user.id)
-    is_premium = subscription.is_premium
+    is_premium = await billing.is_user_premium(db, user.id)
     try:
         audio_bytes = await audio.read()
         validate_audio_bytes(audio_bytes, settings.ocr_max_upload_bytes)

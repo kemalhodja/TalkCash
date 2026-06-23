@@ -196,6 +196,7 @@ async def health(request: Request, db: AsyncSession = Depends(get_db)):
                 "offline_sync": True,
                 "voice_commands": stt_available(),
                 "llm": bool(settings.openai_api_key),
+                "premium_unlocked": settings.billing_premium_unlocked,
                 "stt_provider": (
                     "groq" if settings.groq_api_key
                     else "openai" if settings.openai_api_key

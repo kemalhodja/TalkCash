@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     app_timezone: str = "Europe/Istanbul"
 
     internal_upgrade_secret: str = ""
+    billing_premium_unlocked: bool = False
     google_play_package_name: str = "io.talkcash.app"
     google_play_service_account_json: str = ""
     google_play_verify_mock: bool = False

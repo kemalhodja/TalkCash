@@ -15,6 +15,7 @@ from app.models.billing import (
     SubscriptionStatus,
     UsageMeter,
 )
+from app.config import settings
 from app.schemas.billing import EntitlementStatus, PremiumStatusResponse
 from app.services.audit.service import AuditService
 from app.services.billing.google_play import GooglePlayVerifier, VerifiedGooglePurchase
@@ -27,7 +28,8 @@ DEFAULT_PLAN_CONFIG: dict[PlanTier, dict] = {
         "entitlements": {
             "basic_finance": None,
             "receipt_ocr": 5,
-            "ai_coach": 10,
+            "ai_coach": 15,
+            "voice_expense": 3,
             "advanced_reports": 0,
             "shared_workspace": 0,
             "price_watch": 3,
@@ -37,11 +39,12 @@ DEFAULT_PLAN_CONFIG: dict[PlanTier, dict] = {
     },
     PlanTier.PRO: {
         "name": "TalkCash Pro",
-        "price": 9999,
+        "price": 899,
         "entitlements": {
             "basic_finance": None,
             "receipt_ocr": None,
             "ai_coach": 250,
+            "voice_expense": None,
             "advanced_reports": None,
             "shared_workspace": 1,
             "price_watch": 50,
@@ -51,11 +54,12 @@ DEFAULT_PLAN_CONFIG: dict[PlanTier, dict] = {
     },
     PlanTier.FAMILY: {
         "name": "TalkCash Family",
-        "price": 16999,
+        "price": 1499,
         "entitlements": {
             "basic_finance": None,
             "receipt_ocr": None,
             "ai_coach": 500,
+            "voice_expense": None,
             "advanced_reports": None,
             "shared_workspace": 3,
             "family_controls": None,
@@ -66,11 +70,12 @@ DEFAULT_PLAN_CONFIG: dict[PlanTier, dict] = {
     },
     PlanTier.BUSINESS: {
         "name": "TalkCash Business",
-        "price": 29999,
+        "price": 2499,
         "entitlements": {
             "basic_finance": None,
             "receipt_ocr": None,
             "ai_coach": 1000,
+            "voice_expense": None,
             "advanced_reports": None,
             "shared_workspace": 10,
             "business_reports": None,
@@ -100,6 +105,28 @@ class BillingService:
     def __init__(self):
         self.audit = AuditService()
         self.google_play = GooglePlayVerifier()
+
+    @staticmethod
+    def premium_unlocked() -> bool:
+        return settings.billing_premium_unlocked
+
+    async def _open_access_status(self, db: AsyncSession) -> PremiumStatusResponse:
+        plan = await self._plan_by_tier(db, PlanTier.PRO)
+        entitlements = {
+            ent.key: EntitlementStatus(enabled=True, limit=None, used=0, remaining=None)
+            for ent in plan.entitlements
+        }
+        return PremiumStatusResponse(
+            plan=PlanTier.PRO,
+            status=SubscriptionStatus.ACTIVE,
+            is_premium=True,
+            entitlements=entitlements,
+        )
+
+    async def is_user_premium(self, db: AsyncSession, user_id: UUID) -> bool:
+        if self.premium_unlocked():
+            return True
+        return (await self.get_status(db, user_id)).is_premium
 
     def period_key(self) -> str:
         return datetime.utcnow().strftime("%Y-%m")
@@ -205,6 +232,8 @@ class BillingService:
         return subscription
 
     async def get_status(self, db: AsyncSession, user_id: UUID) -> PremiumStatusResponse:
+        if self.premium_unlocked():
+            return await self._open_access_status(db)
         subscription = await self.get_subscription(db, user_id)
         plan = await self._plan_by_id(db, subscription.plan_id)
         usage = await self._usage_for_period(db, user_id)
@@ -255,6 +284,8 @@ class BillingService:
         return {row.entitlement_key: row.used for row in result.scalars().all()}
 
     async def require_entitlement(self, db: AsyncSession, user_id: UUID, key: str, amount: int = 0) -> None:
+        if self.premium_unlocked():
+            return
         status = await self.get_status(db, user_id)
         ent = status.entitlements.get(key)
         if not ent or not ent.enabled:
@@ -306,6 +337,8 @@ class BillingService:
 
     async def verify_premium_status(self, db: AsyncSession, user_id: UUID) -> Subscription:
         subscription = await self.get_subscription(db, user_id)
+        if self.premium_unlocked():
+            return subscription
         if subscription.status == SubscriptionStatus.EXPIRED:
             raise PremiumRequiredError("subscription_expired")
 
