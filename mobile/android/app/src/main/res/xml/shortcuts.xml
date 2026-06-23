@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <capability android:name="actions.intent.CREATE_MONEY_TRANSFER">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command{?amount,currency,description,action,source}" />
+      <parameter android:name="moneyTransfer.amount" android:key="amount" />
+      <parameter android:name="moneyTransfer.currency" android:key="currency" />
+      <parameter android:name="moneyTransfer.description" android:key="description" />
+    </intent>
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command?action=add_expense&amp;source=google" />
+    </intent>
+  </capability>
+
+  <capability android:name="actions.intent.CREATE_ITEM_LIST">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command{?item,action,source}" />
+      <parameter android:name="itemList.itemListElement.name" android:key="item" />
+    </intent>
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command?action=add_shopping&amp;source=google" />
+    </intent>
+  </capability>
+
+  <capability android:name="actions.intent.UPDATE_ITEM_LIST">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command{?item,action,source}" />
+      <parameter android:name="itemList.itemListElement.name" android:key="item" />
+    </intent>
+  </capability>
+
+  <capability android:name="actions.intent.OPEN_APP_FEATURE">
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command{?feature,description,action,source}" />
+      <parameter android:name="feature" android:key="feature" />
+    </intent>
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command?action=add_income&amp;source=google" />
+    </intent>
+    <intent android:action="android.intent.action.VIEW" android:targetPackage="io.talkcash.app">
+      <url-template android:value="talkcash://command?action=mark_paid&amp;source=google" />
+    </intent>
+  </capability>
+
+  <shortcut
+    android:shortcutId="whisper_expense"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/assistant_shortcut_whisper_short"
+    android:shortcutLongLabel="@string/assistant_shortcut_whisper_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="io.talkcash.app"
+      android:data="talkcash://input?whisper=1&amp;hold=1&amp;source=shortcut" />
+    <categories android:name="android.shortcut.conversation" />
+    <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+      <parameter-binding android:key="feature" android:value="whisper_expense" />
+    </capability-binding>
+  </shortcut>
+  <shortcut
+    android:shortcutId="quick_whisper"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/assistant_shortcut_quick_short"
+    android:shortcutLongLabel="@string/assistant_shortcut_quick_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="io.talkcash.app"
+      android:data="talkcash://quick-voice?hold=1&amp;source=shortcut" />
+    <categories android:name="android.shortcut.conversation" />
+    <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+      <parameter-binding android:key="feature" android:value="quick_whisper" />
+    </capability-binding>
+  </shortcut>
+  <shortcut
+    android:shortcutId="add_expense"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/assistant_shortcut_add_expense_short"
+    android:shortcutLongLabel="@string/assistant_shortcut_add_expense_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="io.talkcash.app"
+      android:data="talkcash://command?text=150%20TL%20kahve%20banka&amp;source=shortcut" />
+    <categories android:name="android.shortcut.conversation" />
+    <capability-binding android:key="actions.intent.CREATE_MONEY_TRANSFER" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="add_income"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/assistant_shortcut_add_income_short"
+    android:shortcutLongLabel="@string/assistant_shortcut_add_income_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="io.talkcash.app"
+      android:data="talkcash://command?text=maa%C5%9F%C4%B1m%20yatt%C4%B1%2045000%20banka&amp;source=shortcut" />
+    <categories android:name="android.shortcut.conversation" />
+    <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+      <parameter-binding android:key="feature" android:value="add_income" />
+    </capability-binding>
+  </shortcut>
+  <shortcut
+    android:shortcutId="add_shopping"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/assistant_shortcut_add_shopping_short"
+    android:shortcutLongLabel="@string/assistant_shortcut_add_shopping_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="io.talkcash.app"
+      android:data="talkcash://command?text=listeye%20s%C3%BCt%20ekmek%20ekle&amp;source=shortcut" />
+    <categories android:name="android.shortcut.conversation" />
+    <capability-binding android:key="actions.intent.CREATE_ITEM_LIST" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="mark_paid"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/assistant_shortcut_mark_paid_short"
+    android:shortcutLongLabel="@string/assistant_shortcut_mark_paid_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="io.talkcash.app"
+      android:data="talkcash://command?text=elektrik%20faturas%C4%B1n%C4%B1%20%C3%B6dedim&amp;source=shortcut" />
+    <categories android:name="android.shortcut.conversation" />
+    <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+      <parameter-binding android:key="feature" android:value="mark_paid" />
+    </capability-binding>
+  </shortcut>
+</shortcuts>

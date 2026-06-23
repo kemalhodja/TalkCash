@@ -8,6 +8,9 @@ node_modules/
 .expo/
 mobile/.gradle-local/
 dist/
+mobile/android/keystore.properties
+mobile/android/app/release.keystore
+mobile/android/app/*.jks
 *.egg-info/
 .DS_Store
 uploads/

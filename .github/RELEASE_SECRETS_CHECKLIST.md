@@ -5,7 +5,13 @@ Copy this checklist when configuring **Settings → Secrets and variables → Ac
 ## Secrets
 
 - [ ] `FLY_API_TOKEN` — from `flyctl auth token` ([Fly tokens](https://fly.io/user/personal_access_tokens))
-- [ ] `EXPO_TOKEN` — from [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens)
+- [ ] `EXPO_TOKEN` — from [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens) *(EAS Submit için; AAB derleme artık Gradle)*
+- [ ] `ANDROID_KEYSTORE_BASE64` — release.keystore base64 *(Gradle AAB workflow)*
+- [ ] `ANDROID_KEYSTORE_PASSWORD`
+- [ ] `ANDROID_KEY_ALIAS`
+- [ ] `ANDROID_KEY_PASSWORD`
+
+Keystore kurulumu: [docs/ANDROID_AAB_GRADLE.md](../docs/ANDROID_AAB_GRADLE.md)
 
 ## Variables
 

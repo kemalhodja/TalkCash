@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="assistant_shortcut_whisper_short">Fısıltı</string>
+  <string name="assistant_shortcut_whisper_long">TalkCash Fısıltı ile Harcama</string>
+  <string name="assistant_shortcut_quick_short">Hızlı Fısıltı</string>
+  <string name="assistant_shortcut_quick_long">TalkCash Hızlı Fısıltı</string>
+  <string name="assistant_shortcut_add_expense_short">Harcama</string>
+  <string name="assistant_shortcut_add_expense_long">TalkCash Harcama Ekle</string>
+  <string name="assistant_shortcut_add_income_short">Gelir</string>
+  <string name="assistant_shortcut_add_income_long">TalkCash Gelir Ekle</string>
+  <string name="assistant_shortcut_add_shopping_short">Liste</string>
+  <string name="assistant_shortcut_add_shopping_long">TalkCash Listeye Ekle</string>
+  <string name="assistant_shortcut_mark_paid_short">Fatura</string>
+  <string name="assistant_shortcut_mark_paid_long">TalkCash Fatura Ödedim</string>
+</resources>
