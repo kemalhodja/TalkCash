@@ -132,6 +132,7 @@
   "export.user": "User: {name}",
   "export.filename": "talkcash-report",
   "nlp.openai_required": "OpenAI API key required. Set OPENAI_API_KEY environment variable.",
+  "nlp.stt_required": "Voice commands require GROQ_API_KEY or OPENAI_API_KEY.",
   "sync.conflict_shopping": "'{name}' was already completed on the server. Which version should be kept?",
   "sync.unsupported_type": "Unsupported sync operation: {type}",
   "micro_savings.speech": "If you choose {alternative}, you could move {saved} to your {target} wallet.",

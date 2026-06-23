@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.services.nlp.stt import stt_available
 from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
 from app.routers import agenda, ai, analytics, auth, billing, billing_google, budgets, demo, execute, export, geofence, input, insights, legal, micro_savings, notifications, ocr, podcast, roadmap, shopping, social, sync, transactions, wallets, workspaces, ws
@@ -193,6 +194,13 @@ async def health(request: Request, db: AsyncSession = Depends(get_db)):
                 "live_rates": True,
                 "portfolio_coach": True,
                 "offline_sync": True,
+                "voice_commands": stt_available(),
+                "llm": bool(settings.openai_api_key),
+                "stt_provider": (
+                    "groq" if settings.groq_api_key
+                    else "openai" if settings.openai_api_key
+                    else None
+                ),
             },
         },
     )

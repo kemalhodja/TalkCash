@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     whisper_model: str = "whisper-1"
+    groq_api_key: str = ""
+    groq_whisper_model: str = "whisper-large-v3-turbo"
 
     exchange_rate_api: str = "https://api.exchangerate-api.com/v4/latest/TRY"
 

@@ -4,7 +4,7 @@ from decimal import Decimal
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.i18n import I18nError, t
+from app.i18n import t
 from app.schemas.common import ParsedInput
 from app.utils.json_safe import safe_parse_json
 from app.services.nlp.english_parser import (
@@ -15,6 +15,7 @@ from app.services.nlp.english_parser import (
 )
 from app.services.nlp.personas import nlp_persona_overlay, normalize_persona
 from app.services.subscription.manager import detect_subscription
+from app.services.nlp.stt import transcribe_audio as stt_transcribe_audio
 from app.services.nlp.turkish_parser import (
     detect_easter_egg,
     detect_intent,
@@ -115,19 +116,7 @@ class NLPEngine:
         return self._parse_locally(text, whisper_mode=whisper_mode)
 
     async def transcribe_audio(self, audio_bytes: bytes, whisper_mode: bool = False, locale: str = "tr") -> str:
-        if not self.client:
-            raise I18nError("nlp.openai_required")
-        lang = "en" if locale == "en" else "tr"
-        kwargs: dict = {
-            "model": settings.whisper_model,
-            "file": ("audio.webm", audio_bytes),
-            "language": lang,
-        }
-        if whisper_mode:
-            kwargs["prompt"] = "quiet whisper speech, Turkish financial terms" if locale == "tr" else "quiet whisper speech"
-            kwargs["temperature"] = 0.2
-        response = await self.client.audio.transcriptions.create(**kwargs)
-        return response.text
+        return await stt_transcribe_audio(audio_bytes, whisper_mode=whisper_mode, locale=locale)
 
     def _manual_edit_fallback(self, text: str) -> ParsedInput:
         return ParsedInput(

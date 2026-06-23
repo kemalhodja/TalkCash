@@ -43,9 +43,12 @@ async def test_input_capabilities_route():
     from unittest.mock import MagicMock, patch
     from app.routers.input import input_capabilities
     user = MagicMock()
-    with patch("app.routers.input.settings") as mock_settings:
+    with patch("app.routers.input.settings") as mock_settings, patch(
+        "app.routers.input.stt_available", return_value=False,
+    ):
         mock_settings.openai_api_key = ""
         mock_settings.google_vision_api_key = ""
         result = await input_capabilities(user)
     assert result["voice_available"] is False
+    assert result["llm_available"] is False
     assert result["ocr_tesseract"] is True

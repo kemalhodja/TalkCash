@@ -11,6 +11,7 @@ bcrypt==4.2.1
 python-multipart==0.0.20
 httpx==0.28.1
 openai==1.58.1
+groq==0.15.0
 pillow==11.0.0
 pytesseract==0.3.13
 python-dateutil==2.9.0

@@ -5,14 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_current_user, user_locale, verify_premium_status
+from app.dependencies import get_current_user, user_locale
 from app.i18n import resolve_error, t
-from app.models.billing import Subscription
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.services.billing.service import BillingService, EntitlementError
 from app.services.execute.service import dispatch_confirmed_action
 from app.schemas.common import ConfirmationCard
 from app.services.nlp import nlp_engine
+from app.services.nlp.stt import stt_available
 from app.utils.rate_limit import check_rate_limit
 from app.utils.redis_client import cache_get, cache_set
 from app.utils.validation import validate_audio_bytes, validate_image_bytes
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/input", tags=["Data Input"])
 async def input_capabilities(user: User = Depends(get_current_user)):
     ai = bool(settings.openai_api_key)
     return {
-        "voice_available": ai,
+        "voice_available": stt_available(),
         "llm_available": ai,
         "ocr_tesseract": True,
         "ocr_google_vision": bool(settings.google_vision_api_key),
@@ -108,12 +109,18 @@ async def process_voice_transaction(
     audio: UploadFile = File(...),
     whisper_mode: bool = False,
     user: User = Depends(get_current_user),
-    subscription: Subscription = Depends(verify_premium_status),
     db: AsyncSession = Depends(get_db),
 ):
-    """Premium: transcribe voice, parse intent, and save to TalkCash in one step."""
+    """Transcribe voice, parse intent, and save — uses voice_expense entitlement (3/mo free)."""
     await check_rate_limit(request, "voice", settings.voice_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
+    billing = BillingService()
+    try:
+        await billing.consume_usage(db, user.id, "voice_expense")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "voice_expense"})
+    subscription = await billing.get_subscription(db, user.id)
+    is_premium = subscription.is_premium
     try:
         audio_bytes = await audio.read()
         validate_audio_bytes(audio_bytes, settings.ocr_max_upload_bytes)
@@ -123,7 +130,7 @@ async def process_voice_transaction(
             return {
                 "status": "needs_confirmation",
                 "message": nlp_engine.build_confirmation(parsed, lang),
-                "is_premium": subscription.is_premium,
+                "is_premium": is_premium,
                 "transcript": text,
                 "parsed": parsed.model_dump(mode="json"),
             }
@@ -131,7 +138,7 @@ async def process_voice_transaction(
             return {
                 "status": "easter_egg",
                 "message": parsed.description or t("nlp.easter_egg", lang),
-                "is_premium": subscription.is_premium,
+                "is_premium": is_premium,
                 "transcript": text,
                 "parsed": parsed.model_dump(mode="json"),
             }
@@ -139,7 +146,7 @@ async def process_voice_transaction(
         payload = {
             "status": "success",
             "message": t("input.voice_processed_success", lang),
-            "is_premium": subscription.is_premium,
+            "is_premium": is_premium,
             "transcript": text,
             "parsed": parsed.model_dump(mode="json"),
             "result": result,
@@ -167,6 +174,11 @@ async def quick_voice_expense(
     """Lock-screen / widget: transcribe, save expense, return notification payload."""
     await check_rate_limit(request, "voice", settings.voice_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
+    billing = BillingService()
+    try:
+        await billing.consume_usage(db, user.id, "voice_expense")
+    except EntitlementError:
+        raise HTTPException(status_code=402, detail={"code": "premium_required", "entitlement": "voice_expense"})
     try:
         audio_bytes = await audio.read()
         validate_audio_bytes(audio_bytes, settings.ocr_max_upload_bytes)

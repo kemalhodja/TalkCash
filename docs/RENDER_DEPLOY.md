@@ -19,7 +19,8 @@
 4. `talkcash-api-prod` → **Environment** → şunları ekle:
    - `DATABASE_URL` → `postgresql+asyncpg://...?sslmode=require` (Neon'dan, `postgresql://` → `+asyncpg` ekle)
    - `REDIS_URL` → Upstash URL
-   - `OPENAI_API_KEY` → (opsiyonel ama ses/LLM için gerekli)
+   - `GROQ_API_KEY` → [console.groq.com](https://console.groq.com/keys) (sesli komut, ücretsiz kota — önerilen)
+   - `OPENAI_API_KEY` → (opsiyonel — AI mentor / podcast için)
 
 ### 4. Deploy + health
 

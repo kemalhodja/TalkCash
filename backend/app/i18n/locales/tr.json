@@ -132,6 +132,7 @@
   "export.user": "Kullanıcı: {name}",
   "export.filename": "talkcash-rapor",
   "nlp.openai_required": "OpenAI API key gerekli. OPENAI_API_KEY ortam değişkenini ayarlayın.",
+  "nlp.stt_required": "Sesli komut için GROQ_API_KEY veya OPENAI_API_KEY gerekli.",
   "sync.conflict_shopping": "'{name}' sunucuda zaten tamamlanmış. Hangi sürümü kullanmak istersiniz?",
   "sync.unsupported_type": "Desteklenmeyen senkron işlemi: {type}",
   "micro_savings.speech": "{alternative} tercih edersen {saved} TL'yi {target} cüzdanına aktarabilirsin.",
