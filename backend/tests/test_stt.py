@@ -62,6 +62,7 @@ async def test_input_capabilities_with_groq():
         mock_settings.openai_api_key = ""
         mock_settings.groq_api_key = "gsk_test"
         mock_settings.google_vision_api_key = ""
-        result = await input_capabilities(user)
+        with patch("app.routers.input.stt_available", return_value=True):
+            result = await input_capabilities(user)
     assert result["voice_available"] is True
-    assert result["llm_available"] is False
+    assert result["llm_available"] is True

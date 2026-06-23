@@ -23,10 +23,14 @@ router = APIRouter(prefix="/input", tags=["Data Input"])
 
 @router.get("/capabilities")
 async def input_capabilities(user: User = Depends(get_current_user)):
-    ai = bool(settings.openai_api_key)
+    voice = stt_available()
+    llm = bool(settings.openai_api_key)
+    # Legacy mobile builds required voice_available && llm_available for the mic.
+    # Groq STT + local parser works without OpenAI.
+    effective_llm = llm or voice
     return {
-        "voice_available": stt_available(),
-        "llm_available": ai,
+        "voice_available": voice,
+        "llm_available": effective_llm,
         "ocr_tesseract": True,
         "ocr_google_vision": bool(settings.google_vision_api_key),
     }
