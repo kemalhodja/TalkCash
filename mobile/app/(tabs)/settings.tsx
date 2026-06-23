@@ -58,9 +58,10 @@ export default function SettingsScreen() {
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [premiumStatus, setPremiumStatus] = useState<PremiumStatus | null>(null);
   const [persona, setPersona] = useState<"default" | "angry_mom" | "street_smart">("default");
-  const [securityModal, setSecurityModal] = useState<"pin" | "password" | "delete" | null>(null);
+  const [securityModal, setSecurityModal] = useState<"pin" | "removePin" | "password" | "delete" | null>(null);
   const [field1, setField1] = useState("");
   const [field2, setField2] = useState("");
+  const [hasPin, setHasPin] = useState(false);
 
   const refreshPending = useCallback(() => {
     getPendingCount().then(setPendingCount);
@@ -69,6 +70,9 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     isBudgetTtsEnabled().then(setTtsBudget);
+    auth.getUser().then((u) => {
+      if (u) setHasPin(!!u.hasPin);
+    }).catch(() => {});
     api.getMe().then((u) => {
       if (u.timezone) setTimezone(u.timezone);
       if (typeof u.biometric_enabled === "boolean") setBiometric(u.biometric_enabled);
@@ -82,6 +86,9 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshPending();
+      auth.getUser().then((u) => {
+        if (u) setHasPin(!!u.hasPin);
+      }).catch(() => {});
     }, [refreshPending]),
   );
 
@@ -96,6 +103,12 @@ export default function SettingsScreen() {
       if (securityModal === "pin") {
         await api.changePin(field1, field2);
         Alert.alert(t.settings.changePin, t.settings.pinChanged);
+      } else if (securityModal === "removePin") {
+        await api.removePin(field1);
+        await auth.updateUser({ hasPin: false });
+        auth.setUnlocked(true);
+        setHasPin(false);
+        Alert.alert(t.settings.removePin, t.settings.pinRemoved);
       } else if (securityModal === "password") {
         await api.changePassword(field1, field2);
         Alert.alert(t.settings.changePassword, t.settings.passwordChanged);
@@ -322,7 +335,14 @@ export default function SettingsScreen() {
         <AssistantSetup />
 
         <SectionBlock title={t.settings.security} bare>
-          <PrimaryButton label={t.settings.changePin} onPress={() => setSecurityModal("pin")} variant="secondary" style={styles.actionBtn} />
+          {hasPin ? (
+            <>
+              <PrimaryButton label={t.settings.changePin} onPress={() => setSecurityModal("pin")} variant="secondary" style={styles.actionBtn} />
+              <PrimaryButton label={t.settings.removePin} onPress={() => setSecurityModal("removePin")} variant="ghost" style={styles.actionBtn} />
+            </>
+          ) : (
+            <PrimaryButton label={t.lock.createPin} onPress={() => router.push("/lock")} variant="secondary" style={styles.actionBtn} />
+          )}
           <PrimaryButton label={t.settings.changePassword} onPress={() => setSecurityModal("password")} variant="secondary" style={styles.actionBtn} />
           <PrimaryButton label={t.settings.deleteAccount} onPress={() => setSecurityModal("delete")} variant="danger" style={styles.actionBtn} />
         </SectionBlock>
@@ -419,24 +439,28 @@ export default function SettingsScreen() {
           <Surface variant="glass" style={styles.modalCard}>
             <Text style={styles.modalTitle}>
               {securityModal === "pin" ? t.settings.changePin
+                : securityModal === "removePin" ? t.settings.removePin
                 : securityModal === "password" ? t.settings.changePassword
                   : t.settings.deleteAccount}
             </Text>
             {securityModal === "delete" && (
               <Text style={styles.modalHint}>{t.settings.deleteAccountDataHint}</Text>
             )}
+            {securityModal === "removePin" && (
+              <Text style={styles.modalHint}>{t.settings.removePinHint}</Text>
+            )}
             <InputField
               placeholder={
-                securityModal === "pin" ? t.settings.currentPin
+                securityModal === "pin" || securityModal === "removePin" ? t.settings.currentPin
                   : securityModal === "delete" ? t.settings.currentPassword
                     : t.settings.currentPassword
               }
               secureTextEntry
               value={field1}
               onChangeText={setField1}
-              keyboardType={securityModal === "pin" ? "number-pad" : "default"}
+              keyboardType={securityModal === "pin" || securityModal === "removePin" ? "number-pad" : "default"}
             />
-            {securityModal !== "delete" && (
+            {securityModal !== "delete" && securityModal !== "removePin" && (
               <InputField
                 placeholder={securityModal === "pin" ? t.settings.newPin : t.settings.newPassword}
                 secureTextEntry

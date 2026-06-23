@@ -120,6 +120,15 @@ class AuthService:
             raise I18nError("auth.pin_invalid")
         await self.set_pin(db, user_id, new_pin)
 
+    async def remove_pin(self, db: AsyncSession, user_id: UUID, pin: str) -> None:
+        user = await db.get(User, user_id)
+        if not user or not user.pin_code:
+            raise I18nError("auth.pin_not_set")
+        if not await self.verify_pin(db, user_id, pin):
+            raise I18nError("auth.pin_invalid")
+        user.pin_code = None
+        await db.commit()
+
     async def verify_pin(self, db: AsyncSession, user_id: UUID, pin: str) -> bool:
         user = await db.get(User, user_id)
         if not user or not user.pin_code:

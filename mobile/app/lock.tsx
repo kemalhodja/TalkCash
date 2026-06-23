@@ -12,15 +12,31 @@ import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { consumePendingAssistant } from "@/services/assistant";
+import { consumePendingInputVoice, consumePendingQuickVoice, consumePendingShare } from "@/hooks/useAssistantLinking";
 
 async function goAfterUnlock() {
   const pending = await consumePendingAssistant();
   if (pending) {
     const qs = new URLSearchParams({ text: pending.text, confirm: String(pending.confirm), source: pending.source });
     router.replace(`/command?${qs.toString()}`);
-  } else {
-    router.replace("/(tabs)");
+    return;
   }
+  const shared = await consumePendingShare();
+  if (shared) {
+    router.replace(`/share?text=${encodeURIComponent(shared)}&source=share`);
+    return;
+  }
+  const inputVoice = await consumePendingInputVoice();
+  if (inputVoice) {
+    router.replace(`/(tabs)/input?whisper=${inputVoice.whisper ? "1" : "0"}&hold=${inputVoice.hold ? "1" : "0"}`);
+    return;
+  }
+  const quickVoice = await consumePendingQuickVoice();
+  if (quickVoice) {
+    router.replace("/quick-voice?hold=1");
+    return;
+  }
+  router.replace("/(tabs)");
 }
 
 export default function LockScreen() {
@@ -86,12 +102,22 @@ export default function LockScreen() {
           onPress={user?.hasPin ? verifyPin : setupPin}
           style={styles.submitBtn}
         />
-        {user?.biometricEnabled && (
+        {user?.biometricEnabled && user?.hasPin && (
           <TextLink
             label={t.lock.biometric}
             onPress={async () => {
               const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
               if (ok) { auth.setUnlocked(true); await goAfterUnlock(); }
+            }}
+            style={styles.bioLink}
+          />
+        )}
+        {!user?.hasPin && (
+          <TextLink
+            label={t.lock.skipPin}
+            onPress={async () => {
+              auth.setUnlocked(true);
+              await goAfterUnlock();
             }}
             style={styles.bioLink}
           />

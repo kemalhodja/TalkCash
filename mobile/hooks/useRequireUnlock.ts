@@ -10,7 +10,7 @@ export function useRequireUnlock() {
       if (cancelled) return;
       if (!user) {
         router.replace("/login");
-      } else if (!auth.isUnlocked()) {
+      } else if (user.hasPin && !auth.isUnlocked()) {
         router.replace("/lock");
       }
     });

@@ -172,6 +172,8 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ current_pin: currentPin, new_pin: newPin }),
     }),
+  removePin: (pin: string) =>
+    request("/auth/pin", { method: "DELETE", body: JSON.stringify({ pin }) }),
   deleteAccount: (password: string) =>
     request("/auth/me", { method: "DELETE", body: JSON.stringify({ password }) }),
   forgotPassword: (email: string) =>

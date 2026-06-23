@@ -162,6 +162,21 @@ async def change_pin(
         raise HTTPException(status_code=401, detail=resolve_error(e, lang))
 
 
+@router.delete("/pin")
+async def remove_pin(
+    data: PinRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lang = user.locale or "tr"
+    try:
+        await auth_service.remove_pin(db, user.id, data.pin)
+        return {"status": "ok", "has_pin": False}
+    except I18nError as e:
+        status = 400 if e.key == "auth.pin_not_set" else 401
+        raise HTTPException(status_code=status, detail=resolve_error(e, lang))
+
+
 @router.post("/pin/verify")
 async def verify_pin(
     data: PinRequest,

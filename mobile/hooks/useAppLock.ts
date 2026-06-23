@@ -8,12 +8,14 @@ export function useAppLock() {
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "background" || state === "inactive") {
-        auth.setUnlocked(false);
+        auth.getUser().then((user) => {
+          if (user?.hasPin) auth.setUnlocked(false);
+        });
         return;
       }
       if (state === "active") {
         auth.getUser().then((user) => {
-          if (user && !auth.isUnlocked()) {
+          if (user?.hasPin && !auth.isUnlocked()) {
             router.replace("/lock");
           }
         });

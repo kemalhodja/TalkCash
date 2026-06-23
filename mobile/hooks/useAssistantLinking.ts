@@ -3,12 +3,28 @@ import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { auth } from "@/services/auth";
+import { parseAppDeepLink } from "@/services/deepLink";
 import { parseAssistantUrl, storePendingAssistant, type AssistantParams } from "@/services/assistant";
 import {
   addSiriShortcutListener,
   getInitialSiriShortcut,
   shortcutInfoToText,
 } from "@/services/siriShortcuts";
+
+const PENDING_SHARE_KEY = "talkcash_pending_share";
+const PENDING_INPUT_KEY = "talkcash_pending_input";
+const PENDING_QUICK_VOICE_KEY = "talkcash_pending_quick_voice";
+
+export async function storePendingShare(text: string): Promise<void> {
+  await SecureStore.setItemAsync(PENDING_SHARE_KEY, text);
+}
+
+export async function consumePendingShare(): Promise<string | null> {
+  const raw = await SecureStore.getItemAsync(PENDING_SHARE_KEY);
+  if (!raw) return null;
+  await SecureStore.deleteItemAsync(PENDING_SHARE_KEY);
+  return raw;
+}
 
 async function routeAssistantCommand(params: AssistantParams) {
   const user = await auth.getUser();
@@ -17,7 +33,7 @@ async function routeAssistantCommand(params: AssistantParams) {
     router.push("/login");
     return;
   }
-  if (!auth.isUnlocked()) {
+  if (user.hasPin && !auth.isUnlocked()) {
     await storePendingAssistant(params);
     router.push("/lock");
     return;
@@ -31,6 +47,54 @@ async function routeAssistantCommand(params: AssistantParams) {
   router.push(`/command?${qs.toString()}`);
 }
 
+async function routeShareText(text: string) {
+  const user = await auth.getUser();
+  if (!user) {
+    await storePendingShare(text);
+    router.push("/login");
+    return;
+  }
+  if (user.hasPin && !auth.isUnlocked()) {
+    await storePendingShare(text);
+    router.push("/lock");
+    return;
+  }
+  router.push(`/share?text=${encodeURIComponent(text)}&source=share`);
+}
+
+async function routeQuickVoice() {
+  const user = await auth.getUser();
+  if (!user) {
+    router.push("/login");
+    return;
+  }
+  if (user.hasPin && !auth.isUnlocked()) {
+    await SecureStore.setItemAsync(PENDING_QUICK_VOICE_KEY, "1");
+    router.push("/lock");
+    return;
+  }
+  router.push("/quick-voice?hold=1");
+}
+
+async function routeInputVoice(params: { whisper: boolean; hold: boolean }) {
+  const user = await auth.getUser();
+  if (!user) {
+    await SecureStore.setItemAsync(PENDING_INPUT_KEY, JSON.stringify(params));
+    router.push("/login");
+    return;
+  }
+  if (user.hasPin && !auth.isUnlocked()) {
+    await SecureStore.setItemAsync(PENDING_INPUT_KEY, JSON.stringify(params));
+    router.push("/lock");
+    return;
+  }
+  const qs = new URLSearchParams({
+    whisper: params.whisper ? "1" : "0",
+    hold: params.hold ? "1" : "0",
+  });
+  router.push(`/(tabs)/input?${qs.toString()}`);
+}
+
 export function useAssistantLinking(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
@@ -38,13 +102,18 @@ export function useAssistantLinking(enabled: boolean) {
     const handleUrl = async (url: string) => {
       const savedLocale = await SecureStore.getItemAsync("talkcash_locale");
       const locale = savedLocale === "en" ? "en" : "tr";
-      const params = parseAssistantUrl(url, locale);
-      if (!params) return;
-      await routeAssistantCommand(params);
+      const parsed = parseAppDeepLink(url, locale);
+      if (!parsed) return;
+      if (parsed.kind === "command") await routeAssistantCommand(parsed.params);
+      else if (parsed.kind === "share") await routeShareText(parsed.params.text);
+      else if (parsed.kind === "quick_voice") await routeQuickVoice();
+      else await routeInputVoice(parsed.params);
     };
 
     const handleSiriShortcut = async (info: { activityType: string; userInfo?: Record<string, unknown> }) => {
-      const text = shortcutInfoToText(info, parseAssistantUrl);
+      const savedLocale = await SecureStore.getItemAsync("talkcash_locale");
+      const siriLocale = savedLocale === "en" ? "en" : "tr";
+      const text = shortcutInfoToText(info, (url) => parseAssistantUrl(url, siriLocale));
       if (!text) return;
       await routeAssistantCommand({ text, confirm: false, source: "siri" });
     };
@@ -60,4 +129,22 @@ export function useAssistantLinking(enabled: boolean) {
       removeSiri?.();
     };
   }, [enabled]);
+}
+
+export async function consumePendingQuickVoice(): Promise<boolean> {
+  const raw = await SecureStore.getItemAsync(PENDING_QUICK_VOICE_KEY);
+  if (!raw) return false;
+  await SecureStore.deleteItemAsync(PENDING_QUICK_VOICE_KEY);
+  return true;
+}
+
+export async function consumePendingInputVoice(): Promise<{ whisper: boolean; hold: boolean } | null> {
+  const raw = await SecureStore.getItemAsync(PENDING_INPUT_KEY);
+  if (!raw) return null;
+  await SecureStore.deleteItemAsync(PENDING_INPUT_KEY);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
