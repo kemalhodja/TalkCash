@@ -1,6 +1,7 @@
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -10,6 +11,7 @@ from app.i18n import resolve_error
 from app.models.billing import PlanTier
 from app.models.user import User
 from app.schemas.billing import (
+    AdminUpgradeRequest,
     GoogleVerifyRequest,
     GoogleVerifyResponse,
     PremiumStatusResponse,
@@ -91,3 +93,25 @@ async def internal_upgrade(
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=resolve_error(exc, user_locale(user)))
+
+
+@router.post("/admin/upgrade", response_model=UpgradeResponse)
+async def admin_upgrade_by_email(
+    request: Request,
+    data: AdminUpgradeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    _allow_internal_upgrade(request)
+    email = data.email.strip().lower()
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="auth.user_not_found")
+    try:
+        subscription = await billing_service.set_internal_plan(db, user.id, data.plan)
+        return UpgradeResponse(
+            subscription_id=subscription.id,
+            status=await billing_service.get_status(db, user.id),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=resolve_error(exc, "tr"))

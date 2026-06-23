@@ -23,6 +23,11 @@ class UpgradeRequest(BaseModel):
     plan: PlanTier = Field(description="Target internal test plan")
 
 
+class AdminUpgradeRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    plan: PlanTier = Field(default=PlanTier.PRO, description="Target internal test plan")
+
+
 class UpgradeResponse(BaseModel):
     subscription_id: UUID
     status: PremiumStatusResponse

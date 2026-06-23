@@ -51,5 +51,7 @@ services:
         value: io.talkcash.app
       - key: GOOGLE_PLAY_VERIFY_MOCK
         value: "true"
+      - key: INTERNAL_UPGRADE_SECRET
+        value: "talkcash-internal-test-2026"
       - key: SENTRY_ENVIRONMENT
         value: production
