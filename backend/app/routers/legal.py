@@ -5,12 +5,18 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter(tags=["Legal"])
 
-DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
+def _doc_path(filename: str) -> Path | None:
+    here = Path(__file__).resolve()
+    for base in (here.parents[2] / "docs", here.parents[3] / "docs"):
+        candidate = base / filename
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _markdown_page(title: str, filename: str) -> HTMLResponse:
-    path = DOCS_DIR / filename
-    body = path.read_text(encoding="utf-8") if path.exists() else f"# {title}\n\nContent unavailable."
+    path = _doc_path(filename)
+    body = path.read_text(encoding="utf-8") if path else f"# {title}\n\nContent unavailable."
     escaped = (
         body.replace("&", "&amp;")
         .replace("<", "&lt;")
