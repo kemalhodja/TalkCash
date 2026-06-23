@@ -6,6 +6,8 @@ export default {
     delete: "Delete",
     loading: "Loading...",
     error: "An error occurred",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     retry: "Retry",
     close: "Close",
     offlineQueued: "Saved offline; will sync when connected",
@@ -132,6 +134,7 @@ export default {
     switchLogin: "Already have an account? Sign in",
     switchRegister: "No account? Sign up",
     forgotPassword: "Forgot password?",
+    rememberMe: "Remember me",
   },
   forgotPassword: {
     title: "Reset Password",

@@ -1,10 +1,13 @@
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import { clearLocalUserData } from "./localData";
 
 const TOKEN_KEY = "talkcash_token";
 const REFRESH_KEY = "talkcash_refresh";
 const USER_KEY = "talkcash_user";
+const REMEMBER_ME_KEY = "talkcash_remember_me";
+const REMEMBER_EMAIL_KEY = "talkcash_remember_email";
 
 export interface AuthUser {
   userId: string;
@@ -13,6 +16,7 @@ export interface AuthUser {
   refreshToken?: string;
   biometricEnabled: boolean;
   hasPin: boolean;
+  assistantPersona?: "default" | "angry_mom" | "street_smart";
 }
 
 let sessionUnlocked = false;
@@ -44,7 +48,15 @@ export const auth = {
 
   async getUser(): Promise<AuthUser | null> {
     const raw = await SecureStore.getItemAsync(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      await SecureStore.deleteItemAsync(USER_KEY);
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_KEY);
+      return null;
+    }
   },
 
   async updateTokens(token: string, refreshToken: string) {
@@ -70,6 +82,28 @@ export const auth = {
     const user = await this.getUser();
     if (!user) return;
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify({ ...user, ...partial }));
+  },
+
+  async getRememberMe(): Promise<boolean> {
+    const raw = await AsyncStorage.getItem(REMEMBER_ME_KEY);
+    return raw !== "0";
+  },
+
+  async setRememberMe(value: boolean): Promise<void> {
+    await AsyncStorage.setItem(REMEMBER_ME_KEY, value ? "1" : "0");
+    if (!value) {
+      await AsyncStorage.removeItem(REMEMBER_EMAIL_KEY);
+    }
+  },
+
+  async getRememberedEmail(): Promise<string | null> {
+    if (!(await this.getRememberMe())) return null;
+    const email = await AsyncStorage.getItem(REMEMBER_EMAIL_KEY);
+    return email?.trim() || null;
+  },
+
+  async setRememberedEmail(email: string): Promise<void> {
+    await AsyncStorage.setItem(REMEMBER_EMAIL_KEY, email.trim().toLowerCase());
   },
 
   async authenticateBiometric(promptMessage = "TalkCash"): Promise<boolean> {

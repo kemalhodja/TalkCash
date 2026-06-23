@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, Switch, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiConnectionCard } from "@/components/ApiConnectionCard";
@@ -12,6 +12,8 @@ import { Colors, Spacing, Typography } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
+import { track } from "@/services/analytics";
+import { isOnboardingComplete } from "@/app/onboarding";
 
 export default function LoginScreen() {
   const { t, setLocale } = useI18n();
@@ -20,8 +22,40 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [remember, rememberedEmail] = await Promise.all([
+        auth.getRememberMe(),
+        auth.getRememberedEmail(),
+      ]);
+      if (cancelled) return;
+      setRememberMe(remember);
+      if (rememberedEmail) setEmail(rememberedEmail);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const goAfterAuth = async (user: AuthUser) => {
+    const onboardingDone = await isOnboardingComplete();
+    auth.setUnlocked(false);
+    if (!onboardingDone) {
+      router.replace("/onboarding");
+      return;
+    }
+    if (user.hasPin) {
+      router.replace("/lock");
+      return;
+    }
+    auth.setUnlocked(true);
+    router.replace("/(tabs)");
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -38,13 +72,18 @@ export default function LoginScreen() {
         refreshToken: result.refresh_token,
         biometricEnabled: result.biometric_enabled,
         hasPin: result.has_pin,
+        assistantPersona: (result.assistant_persona as AuthUser["assistantPersona"]) || "default",
       };
       await auth.save(user);
+      await auth.setRememberMe(rememberMe);
+      if (rememberMe) {
+        await auth.setRememberedEmail(email);
+      }
+      track(isRegister ? "register_success" : "login_success");
       if (result.locale === "en" || result.locale === "tr") {
         await setLocale(result.locale);
       }
-      auth.setUnlocked(false);
-      router.replace("/onboarding");
+      await goAfterAuth(user);
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 0) {
         setError(t.errors.network);
@@ -75,21 +114,36 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          testID="login-email"
         />
         <InputField
           placeholder={t.login.password}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          testID="login-password"
         />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {!isRegister ? (
+          <View style={styles.rememberRow}>
+            <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
+            <Switch
+              value={rememberMe}
+              onValueChange={setRememberMe}
+              trackColor={{ true: Colors.accent }}
+              testID="login-remember-me"
+            />
+          </View>
+        ) : null}
 
         <PrimaryButton
           label={isRegister ? t.login.register : t.login.login}
           onPress={handleSubmit}
           loading={loading}
           style={styles.submitBtn}
+          testID="login-submit"
         />
 
         <TextLink
@@ -97,6 +151,13 @@ export default function LoginScreen() {
           onPress={() => setIsRegister(!isRegister)}
           style={styles.switch}
         />
+        {!isRegister ? (
+          <TextLink
+            label={t.login.forgotPassword}
+            onPress={() => router.push("/forgot-password")}
+            style={styles.forgot}
+          />
+        ) : null}
       </Surface>
     </View>
   );
@@ -108,7 +169,15 @@ const styles = StyleSheet.create({
   logo: { fontSize: 34, fontWeight: "800", color: Colors.text, textAlign: "center", letterSpacing: -0.8 },
   subtitle: { color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.lg, marginTop: Spacing.sm },
   formCard: { padding: Spacing.lg },
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: Spacing.sm,
+  },
+  rememberLabel: { color: Colors.textSecondary, fontSize: 14 },
   submitBtn: { marginTop: Spacing.md },
   switch: { marginTop: Spacing.lg, alignSelf: "center" },
+  forgot: { marginTop: Spacing.md, alignSelf: "center" },
   error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
 });

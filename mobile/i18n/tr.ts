@@ -6,6 +6,8 @@ export default {
     delete: "Sil",
     loading: "Yükleniyor...",
     error: "Bir hata oluştu",
+    showPassword: "Şifreyi göster",
+    hidePassword: "Şifreyi gizle",
     retry: "Tekrar Dene",
     close: "Kapat",
     offlineQueued: "Çevrimdışı kaydedildi, bağlantı gelince senkronize edilecek",
@@ -132,6 +134,7 @@ export default {
     switchLogin: "Zaten hesabın var mı? Giriş yap",
     switchRegister: "Hesabın yok mu? Kayıt ol",
     forgotPassword: "Şifremi unuttum",
+    rememberMe: "Beni hatırla",
   },
   forgotPassword: {
     title: "Şifre Sıfırlama",
