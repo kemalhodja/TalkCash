@@ -87,6 +87,7 @@
       "./plugins/withAssistant.js",
       "./plugins/withQuickWhisperWidget.js",
       "./plugins/withReactNativeIap.js",
+      "./plugins/withReleaseSigning.js",
       "./plugins/withShareIntent.js",
       [
         "@config-plugins/react-native-siri-shortcut",

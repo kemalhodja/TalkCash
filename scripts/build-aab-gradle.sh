@@ -73,14 +73,7 @@ if [ ! -f "$ANDROID/app/release.keystore" ] && [ ! -f "$ANDROID/keystore.propert
   exit 1
 fi
 
-# Production signing survives prebuild --clean (kept outside android/)
-cp "$MOBILE/talkcash-signing.gradle" "$ANDROID/talkcash-signing.gradle"
-
-# Apply production signing last so it overrides Expo's debug release fallback
-BUILD_GRADLE="$ANDROID/app/build.gradle"
-if ! grep -q "talkcash-signing.gradle" "$BUILD_GRADLE"; then
-  echo 'apply from: "../talkcash-signing.gradle"' >> "$BUILD_GRADLE"
-fi
+# Production signing is injected by plugins/withReleaseSigning.js during prebuild
 
 cd "$ANDROID"
 chmod +x gradlew
@@ -103,6 +96,10 @@ if command -v keytool >/dev/null 2>&1; then
     echo "==> AAB signing SHA1: $cert_sha1"
     if [ "$cert_sha1" = "5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25" ]; then
       echo "ERROR: AAB signed with debug keystore — production keystore was not applied."
+      exit 1
+    fi
+    if [ "$cert_sha1" != "0F:DA:5F:69:0A:9F:B5:50:54:67:3A:19:94:FF:A3:6A:09:2C:5F:0D" ]; then
+      echo "ERROR: AAB signing SHA1 mismatch (expected Play upload key)."
       exit 1
     fi
   fi
