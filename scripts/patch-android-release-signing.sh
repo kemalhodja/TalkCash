@@ -31,12 +31,11 @@ text = re.sub(
     r"signingConfigs \{\s*\n\s*debug \{",
     """signingConfigs {
         release {
-            def ksPath = talkcashReleaseKeystorePath
-            if (ksPath != null) {
-                storeFile file(ksPath)
-                storePassword talkcashSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
-                keyAlias talkcashSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
-                keyPassword talkcashSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
+            if (talkcashKsPath != null) {
+                storeFile file(talkcashKsPath)
+                storePassword talkcashSecretOrProp.call("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias talkcashSecretOrProp.call("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword talkcashSecretOrProp.call("keyPassword", "ANDROID_KEY_PASSWORD")
             }
         }
         debug {""",
@@ -51,7 +50,7 @@ text = re.sub(
             signingConfig signingConfigs.debug
         }
         release {
-            def ksPath = talkcashReleaseKeystorePath
+            def ksPath = talkcashKsPath
             signingConfig ksPath != null ? signingConfigs.release : signingConfigs.debug""",
     text,
     count=1,
