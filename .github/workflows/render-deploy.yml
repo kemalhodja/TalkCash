@@ -31,6 +31,8 @@ jobs:
     needs: verify
     if: github.repository == 'kemalhodja/TalkCash'
     steps:
+      - uses: actions/checkout@v4
+
       - name: Wait for Render deploy (Blueprint auto-sync)
         run: |
           API="https://talkcash-api-prod.onrender.com"
