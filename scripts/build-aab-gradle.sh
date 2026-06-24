@@ -31,9 +31,7 @@ fi
 
 mkdir -p "$DIST"
 cd "$MOBILE"
-if [ ! -d node_modules ]; then
-  npm ci --prefer-offline --no-audit
-fi
+npm ci --prefer-offline --no-audit
 
 cd "$ANDROID"
 chmod +x gradlew

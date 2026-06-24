@@ -94,7 +94,20 @@ def secretOrProp = { String propKey, String envKey ->
 
 def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: keystoreProperties.getProperty("storeFile")
 
-apply from: new File(["node", "--print", "require('path').dirname(require.resolve('@sentry/react-native/package.json'))"].execute().text.trim(), "sentry.gradle")
+def sentryGradleFile = null
+try {
+    def sentryProc = ["node", "-e", "try{const p=require('path');console.log(p.join(p.dirname(require.resolve('@sentry/react-native/package.json')),'sentry.gradle'))}catch(e){}"].execute(null, rootDir.parentFile)
+    sentryProc.waitFor()
+    def sentryPath = sentryProc.text.trim()
+    if (sentryPath && new File(sentryPath).exists()) {
+        sentryGradleFile = sentryPath
+    }
+} catch (Exception ignored) {
+    // Sentry optional for CI/local Gradle builds
+}
+if (sentryGradleFile != null) {
+    apply from: sentryGradleFile
+}
 
 android {
     ndkVersion rootProject.ext.ndkVersion
