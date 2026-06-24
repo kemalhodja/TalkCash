@@ -7,13 +7,13 @@ if (talkcashKeystorePropertiesFile.exists()) {
     talkcashKeystoreProperties.load(new FileInputStream(talkcashKeystorePropertiesFile))
 }
 
-def talkcashSecretOrProp = { String propKey, String envKey ->
+project.ext.talkcashSecretOrProp = { String propKey, String envKey ->
     def env = System.getenv(envKey)
     if (env != null && !env.isEmpty()) return env
     return talkcashKeystoreProperties.getProperty(propKey)
 }
 
-def talkcashReleaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: talkcashKeystoreProperties.getProperty("storeFile")
+project.ext.talkcashReleaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: talkcashKeystoreProperties.getProperty("storeFile")
 `;
 
 function withReleaseSigning(config) {
@@ -24,17 +24,21 @@ function withReleaseSigning(config) {
       return cfg;
     }
 
-    contents = contents.replace(/(def jscFlavor = .+\n)/, `$1${KEYSTORE_BLOCK}\n`);
+    if (contents.includes("def jscFlavor")) {
+      contents = contents.replace(/(def jscFlavor = .+\n)/, `$1${KEYSTORE_BLOCK}\n`);
+    } else {
+      contents = contents.replace(/(\nandroid \{\n)/, `\n${KEYSTORE_BLOCK}\n$1`);
+    }
 
     contents = contents.replace(
       /signingConfigs \{\s*\n\s*debug \{/,
       `signingConfigs {
         release {
-            if (talkcashReleaseKeystorePath != null) {
-                storeFile file(talkcashReleaseKeystorePath)
-                storePassword talkcashSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
-                keyAlias talkcashSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
-                keyPassword talkcashSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
+            if (project.ext.talkcashReleaseKeystorePath != null) {
+                storeFile file(project.ext.talkcashReleaseKeystorePath)
+                storePassword project.ext.talkcashSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias project.ext.talkcashSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword project.ext.talkcashSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
             }
         }
         debug {`,
@@ -47,7 +51,7 @@ function withReleaseSigning(config) {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig talkcashReleaseKeystorePath != null ? signingConfigs.release : signingConfigs.debug`,
+            signingConfig project.ext.talkcashReleaseKeystorePath != null ? signingConfigs.release : signingConfigs.debug`,
     );
 
     contents = contents.replace(/versionCode \d+/, "versionCode 25");
