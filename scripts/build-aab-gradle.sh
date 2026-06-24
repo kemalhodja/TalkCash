@@ -36,6 +36,9 @@ npm ci --prefer-offline --no-audit
 echo "==> Sync android/ with Expo (prebuild)"
 npx expo prebuild --platform android --no-install --clean
 
+# Production signing survives prebuild --clean (kept outside android/)
+cp "$MOBILE/talkcash-signing.gradle" "$ANDROID/talkcash-signing.gradle"
+
 # Re-apply production signing after prebuild
 SIGNING_LINE='apply from: "../talkcash-signing.gradle"'
 BUILD_GRADLE="$ANDROID/app/build.gradle"
