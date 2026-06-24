@@ -73,7 +73,8 @@ if [ ! -f "$ANDROID/app/release.keystore" ] && [ ! -f "$ANDROID/keystore.propert
   exit 1
 fi
 
-# Production signing is injected by plugins/withReleaseSigning.js during prebuild
+# Production signing is injected after prebuild (Expo template defaults to debug release signing)
+bash "$ROOT/scripts/patch-android-release-signing.sh" "$ANDROID/app/build.gradle"
 
 cd "$ANDROID"
 chmod +x gradlew
