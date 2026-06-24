@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Colors } from "@/constants/theme";
 import { I18nProvider } from "@/i18n";
 import { auth } from "@/services/auth";
@@ -17,42 +18,53 @@ import { initLocalDb } from "@/services/localDb";
 initObservability();
 initLocalDb();
 
+function waitForNavigationPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 export default function RootLayout() {
-  const [ready, setReady] = useState(false);
-  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+  const [bootPhase, setBootPhase] = useState<"loading" | "ready">("loading");
   useAppLock();
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const user = await auth.getUser();
         if (cancelled) return;
-        if (!user) {
-          setInitialRoute("/login");
-          return;
-        }
 
-        try {
-          const me = await api.getMe();
-          if (cancelled) return;
-          if (typeof me.has_pin === "boolean" && me.has_pin !== user.hasPin) {
-            await auth.updateUser({ hasPin: me.has_pin });
-            user.hasPin = me.has_pin;
+        let route = "/login";
+        if (user) {
+          try {
+            const me = await api.getMe();
+            if (cancelled) return;
+            if (typeof me.has_pin === "boolean" && me.has_pin !== user.hasPin) {
+              await auth.updateUser({ hasPin: me.has_pin });
+              user.hasPin = me.has_pin;
+            }
+          } catch {
+            /* offline — use cached user */
           }
-        } catch {
-          /* offline — use cached user */
+
+          if (user.hasPin && !auth.isUnlocked()) {
+            route = "/lock";
+          } else {
+            if (!user.hasPin) auth.setUnlocked(true);
+            route = "/(tabs)";
+          }
         }
 
-        if (user.hasPin && !auth.isUnlocked()) {
-          setInitialRoute("/lock");
-        } else {
-          if (!user.hasPin) auth.setUnlocked(true);
-          setInitialRoute("/(tabs)");
-        }
+        router.replace(route as any);
+        await waitForNavigationPaint();
+        if (!cancelled) setBootPhase("ready");
       } catch {
-        if (!cancelled) setInitialRoute("/login");
-      } finally {
-        if (!cancelled) setReady(true);
+        if (!cancelled) {
+          router.replace("/login");
+          await waitForNavigationPaint();
+          setBootPhase("ready");
+        }
       }
     })();
     return () => {
@@ -60,53 +72,55 @@ export default function RootLayout() {
     };
   }, []);
 
-  useEffect(() => {
-    if (ready && initialRoute) {
-      router.replace(initialRoute as any);
-    }
-  }, [ready, initialRoute]);
-
-  useAssistantLinking(ready);
-  useNotificationLinking(ready);
+  useAssistantLinking(bootPhase === "ready");
+  useNotificationLinking(bootPhase === "ready");
 
   return (
-    <ErrorBoundary>
-      <I18nProvider>
-        <StatusBar style="light" />
-        <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: Colors.bg },
-          headerTintColor: Colors.text,
-          contentStyle: { backgroundColor: Colors.bg },
-        }}
-      >
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="lock" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="command" options={{ headerShown: false, title: "Assistant" }} />
-        <Stack.Screen name="share" options={{ headerShown: false, title: "Share" }} />
-        <Stack.Screen name="notifications" />
-        <Stack.Screen name="notification-settings" />
-        <Stack.Screen name="roadmap" />
-        <Stack.Screen name="micro-savings-settings" />
-        <Stack.Screen name="receipts" />
-      </Stack>
-      {!ready ? (
-        <View style={styles.loadingOverlay}>
-          <LoadingScreen />
-        </View>
-      ) : null}
-    </I18nProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <I18nProvider>
+          <StatusBar style="light" backgroundColor={Colors.bg} translucent={false} />
+          <View style={styles.root}>
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: Colors.bg },
+                headerTintColor: Colors.text,
+                contentStyle: { backgroundColor: Colors.bg },
+                animation: "fade",
+              }}
+            >
+              <Stack.Screen name="login" options={{ headerShown: false }} />
+              <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+              <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="lock" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="command" options={{ headerShown: false, title: "Assistant" }} />
+              <Stack.Screen name="share" options={{ headerShown: false, title: "Share" }} />
+              <Stack.Screen name="quick-voice" options={{ headerShown: false }} />
+              <Stack.Screen name="notifications" />
+              <Stack.Screen name="notification-settings" />
+              <Stack.Screen name="roadmap" />
+              <Stack.Screen name="micro-savings-settings" />
+              <Stack.Screen name="receipts" />
+            </Stack>
+            {bootPhase === "loading" ? (
+              <View style={styles.bootOverlay} pointerEvents="auto">
+                <LoadingScreen />
+              </View>
+            ) : null}
+          </View>
+        </I18nProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingOverlay: {
+  root: { flex: 1, backgroundColor: Colors.bg },
+  bootOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.bg,
+    zIndex: 100,
   },
 });

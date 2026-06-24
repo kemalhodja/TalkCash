@@ -1,11 +1,13 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConflictModal } from "@/components/ConflictModal";
 import { Colors, Layout, Radius, Shadow, Spacing } from "@/constants/theme";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { useI18n } from "@/i18n";
+import { tabBarBottomOffset } from "@/utils/screenInsets";
 
 function TabIcon({ name, color, focused }: { name: keyof typeof Ionicons.glyphMap; color: string; focused: boolean }) {
   return (
@@ -17,6 +19,8 @@ function TabIcon({ name, color, focused }: { name: keyof typeof Ionicons.glyphMa
 
 export default function TabLayout() {
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+  const tabBottom = tabBarBottomOffset(insets);
   useRequireUnlock();
   const { conflict, resolveConflict, pendingCount } = useOfflineSync();
 
@@ -30,7 +34,14 @@ export default function TabLayout() {
     />
     <Tabs screenOptions={{
       headerShown: false,
-      tabBarStyle: styles.tabBar,
+      sceneStyle: { backgroundColor: Colors.bg },
+      tabBarStyle: [
+        styles.tabBar,
+        {
+          bottom: tabBottom,
+          height: Layout.tabBarHeight,
+        },
+      ],
       tabBarActiveTintColor: Colors.accent,
       tabBarInactiveTintColor: Colors.textMuted,
       tabBarLabelStyle: styles.tabLabel,
@@ -74,13 +85,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: Spacing.md,
     right: Spacing.md,
-    bottom: Platform.OS === "ios" ? 24 : Layout.tabBarBottom,
-    height: Layout.tabBarHeight,
     borderRadius: Radius.xl,
     backgroundColor: "transparent",
     borderTopWidth: 0,
     borderWidth: 0,
-    paddingBottom: 6,
+    paddingBottom: Platform.OS === "ios" ? 8 : 6,
     paddingTop: 8,
     elevation: 0,
   },

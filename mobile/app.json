@@ -2,7 +2,7 @@
   "expo": {
     "name": "TalkCash",
     "slug": "talkcash",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "talkcash",
@@ -27,6 +27,11 @@
         "backgroundColor": "#0A0E17"
       },
       "package": "io.talkcash.app",
+      "softwareKeyboardLayoutMode": "resize",
+      "navigationBar": {
+        "backgroundColor": "#06080F",
+        "barStyle": "light-content"
+      },
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",

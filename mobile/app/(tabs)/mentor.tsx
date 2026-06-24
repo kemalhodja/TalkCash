@@ -63,7 +63,7 @@ export default function MentorScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScreenShell scroll={false} ambient="subtle" bottomInset={false} style={styles.flex}>
+      <ScreenShell scroll={false} ambient="subtle" style={styles.flex}>
         <ScreenHeader title={t.mentor.title} subtitle={t.mentor.subtitle} />
 
         <ScrollView

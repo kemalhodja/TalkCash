@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Layout, Spacing } from "@/constants/theme";
+import { stackBottomPadding, tabBarScrollClearance } from "@/utils/screenInsets";
 import { AmbientBackground } from "./AmbientBackground";
 
 type Props = {
@@ -18,6 +19,7 @@ type Props = {
   onRefresh?: () => void;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  /** When true (default), reserve space for the floating tab bar. */
   bottomInset?: boolean;
   ambient?: boolean | "subtle";
 };
@@ -33,9 +35,8 @@ export function ScreenShell({
   ambient = false,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const padBottom = bottomInset
-    ? insets.bottom + Layout.tabBarClearance
-    : insets.bottom + Spacing.md;
+  const padTop = insets.top + Spacing.sm;
+  const padBottom = bottomInset ? tabBarScrollClearance(insets) : stackBottomPadding(insets);
   const ambientVariant = ambient === "subtle" ? "subtle" : "default";
 
   const shell = (
@@ -47,7 +48,13 @@ export function ScreenShell({
 
   if (!scroll) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top + Spacing.sm }, style]}>
+      <View
+        style={[
+          styles.root,
+          { paddingTop: padTop, paddingBottom: padBottom },
+          style,
+        ]}
+      >
         {shell}
       </View>
     );
@@ -58,10 +65,11 @@ export function ScreenShell({
       style={[styles.root, style]}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + Spacing.sm, paddingBottom: padBottom },
+        { paddingTop: padTop, paddingBottom: padBottom },
         contentStyle,
       ]}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
       refreshControl={
         onRefresh ? (
           <RefreshControl
@@ -80,5 +88,8 @@ export function ScreenShell({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  content: { paddingHorizontal: Layout.screenPadding },
+  content: {
+    paddingHorizontal: Layout.screenPadding,
+    flexGrow: 1,
+  },
 });
