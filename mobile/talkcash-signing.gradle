@@ -25,6 +25,9 @@ afterEvaluate {
         throw new GradleException("TalkCash: release keystore not found at ${store.absolutePath}")
     }
 
+    if (android.signingConfigs.findByName("release") == null) {
+        android.signingConfigs.create("release")
+    }
     android.signingConfigs.release {
         storeFile store
         storePassword tcSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
