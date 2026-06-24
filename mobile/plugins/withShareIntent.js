@@ -8,11 +8,23 @@ const path = require("path");
 
 const SEND_INTENT_MARK = "TalkCashShareIntentRewrite";
 
+function findMainActivity(app) {
+  const activities = app.activity || [];
+  return activities.find(
+    (activity) =>
+      activity.$?.["android:name"]?.includes("MainActivity") ||
+      (activity["intent-filter"] || []).some((filter) =>
+        (filter.action || []).some((a) => a.$?.["android:name"] === "android.intent.action.MAIN"),
+      ),
+  );
+}
+
 function withAndroidSendIntentFilter(config) {
   return withAndroidManifest(config, (cfg) => {
     const manifest = cfg.modResults;
     const app = AndroidConfig.Manifest.getMainApplicationOrThrow(manifest);
-    const activity = AndroidConfig.Manifest.getMainActivityOrThrow(app);
+    const activity = findMainActivity(app);
+    if (!activity) return cfg;
     activity["intent-filter"] = activity["intent-filter"] || [];
     const exists = activity["intent-filter"].some((filter) =>
       (filter.action || []).some((action) => action.$?.["android:name"] === "android.intent.action.SEND"),
