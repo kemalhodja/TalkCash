@@ -1,0 +1,38 @@
+// TalkCash production signing — applied after expo prebuild in CI/local Gradle builds.
+def tcKeystoreProperties = new Properties()
+def tcKeystorePropertiesFile = rootProject.file("keystore.properties")
+if (tcKeystorePropertiesFile.exists()) {
+    tcKeystoreProperties.load(new FileInputStream(tcKeystorePropertiesFile))
+}
+
+def tcSecretOrProp = { String propKey, String envKey ->
+    def env = System.getenv(envKey)
+    if (env != null && !env.isEmpty()) return env
+    return tcKeystoreProperties.getProperty(propKey)
+}
+
+def tcReleaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: tcKeystoreProperties.getProperty("storeFile")
+
+android {
+    signingConfigs {
+        release {
+            if (tcReleaseKeystorePath != null) {
+                storeFile file(tcReleaseKeystorePath)
+                storePassword tcSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias tcSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword tcSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (tcReleaseKeystorePath != null) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+    defaultConfig {
+        versionCode 24
+        versionName "1.2.1"
+    }
+}
