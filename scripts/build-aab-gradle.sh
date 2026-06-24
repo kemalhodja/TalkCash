@@ -76,11 +76,10 @@ fi
 # Production signing survives prebuild --clean (kept outside android/)
 cp "$MOBILE/talkcash-signing.gradle" "$ANDROID/talkcash-signing.gradle"
 
-# Re-apply production signing after prebuild
-SIGNING_LINE='apply from: "../talkcash-signing.gradle"'
+# Apply production signing last so it overrides Expo's debug release fallback
 BUILD_GRADLE="$ANDROID/app/build.gradle"
 if ! grep -q "talkcash-signing.gradle" "$BUILD_GRADLE"; then
-  sed -i "/^android {/i $SIGNING_LINE" "$BUILD_GRADLE"
+  echo 'apply from: "../talkcash-signing.gradle"' >> "$BUILD_GRADLE"
 fi
 
 cd "$ANDROID"

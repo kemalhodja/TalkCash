@@ -1,4 +1,5 @@
-// TalkCash production signing — applied after expo prebuild in CI/local Gradle builds.
+// TalkCash production signing — applied after expo prebuild (overrides debug release signing).
+
 def tcKeystoreProperties = new Properties()
 def tcKeystorePropertiesFile = rootProject.file("keystore.properties")
 if (tcKeystorePropertiesFile.exists()) {
@@ -13,26 +14,24 @@ def tcSecretOrProp = { String propKey, String envKey ->
 
 def tcReleaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: tcKeystoreProperties.getProperty("storeFile")
 
-android {
-    signingConfigs {
-        release {
-            if (tcReleaseKeystorePath != null) {
-                storeFile file(tcReleaseKeystorePath)
-                storePassword tcSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
-                keyAlias tcSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
-                keyPassword tcSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
-            }
-        }
+afterEvaluate {
+    if (tcReleaseKeystorePath == null) {
+        logger.warn("TalkCash: no release keystore configured")
+        return
     }
-    buildTypes {
-        release {
-            if (tcReleaseKeystorePath != null) {
-                signingConfig signingConfigs.release
-            }
-        }
+
+    def store = file(tcReleaseKeystorePath)
+    if (!store.exists()) {
+        throw new GradleException("TalkCash: release keystore not found at ${store.absolutePath}")
     }
-    defaultConfig {
-        versionCode 25
-        versionName "1.2.1"
+
+    android.signingConfigs.release {
+        storeFile store
+        storePassword tcSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+        keyAlias tcSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
+        keyPassword tcSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
     }
+    android.buildTypes.release.signingConfig = android.signingConfigs.release
+    android.defaultConfig.versionCode = 25
+    android.defaultConfig.versionName = "1.2.1"
 }
