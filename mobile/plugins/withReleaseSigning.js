@@ -1,25 +1,25 @@
 const { withAppBuildGradle } = require("@expo/config-plugins");
 
 const KEYSTORE_BLOCK = `
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file("keystore.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+def talkcashKeystoreProperties = new Properties()
+def talkcashKeystorePropertiesFile = rootProject.file("keystore.properties")
+if (talkcashKeystorePropertiesFile.exists()) {
+    talkcashKeystoreProperties.load(new FileInputStream(talkcashKeystorePropertiesFile))
 }
 
-def secretOrProp = { String propKey, String envKey ->
+def talkcashSecretOrProp = { String propKey, String envKey ->
     def env = System.getenv(envKey)
     if (env != null && !env.isEmpty()) return env
-    return keystoreProperties.getProperty(propKey)
+    return talkcashKeystoreProperties.getProperty(propKey)
 }
 
-def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: keystoreProperties.getProperty("storeFile")
+def talkcashReleaseKeystorePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: talkcashKeystoreProperties.getProperty("storeFile")
 `;
 
 function withReleaseSigning(config) {
   return withAppBuildGradle(config, (cfg) => {
     let contents = cfg.modResults.contents;
-    if (contents.includes("releaseKeystorePath")) {
+    if (contents.includes("talkcashReleaseKeystorePath")) {
       cfg.modResults.contents = contents;
       return cfg;
     }
@@ -30,20 +30,24 @@ function withReleaseSigning(config) {
       /signingConfigs \{\s*\n\s*debug \{/,
       `signingConfigs {
         release {
-            if (releaseKeystorePath != null) {
-                storeFile file(releaseKeystorePath)
-                storePassword secretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
-                keyAlias secretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
-                keyPassword secretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
+            if (talkcashReleaseKeystorePath != null) {
+                storeFile file(talkcashReleaseKeystorePath)
+                storePassword talkcashSecretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias talkcashSecretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword talkcashSecretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
             }
         }
         debug {`,
     );
 
     contents = contents.replace(
-      /release \{\s*\n\s*signingConfig signingConfigs\.debug/,
-      `release {
-            signingConfig releaseKeystorePath != null ? signingConfigs.release : signingConfigs.debug`,
+      /buildTypes \{\s*\n\s*debug \{\s*\n\s*signingConfig signingConfigs\.debug\s*\n\s*\}\s*\n\s*release \{\s*\n\s*signingConfig signingConfigs\.debug/,
+      `buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig talkcashReleaseKeystorePath != null ? signingConfigs.release : signingConfigs.debug`,
     );
 
     contents = contents.replace(/versionCode \d+/, "versionCode 25");
