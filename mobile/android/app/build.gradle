@@ -121,7 +121,7 @@ android {
         applicationId 'io.talkcash.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 24
+        versionCode 26
         versionName "1.2.1"
     }
     signingConfigs {
@@ -132,11 +132,22 @@ android {
             keyPassword 'android'
         }
         release {
-            if (releaseKeystorePath != null) {
-                storeFile file(releaseKeystorePath)
-                storePassword secretOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
-                keyAlias secretOrProp("keyAlias", "ANDROID_KEY_ALIAS")
-                keyPassword secretOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
+            def props = new Properties()
+            def propsFile = rootProject.file("keystore.properties")
+            if (propsFile.exists()) {
+                props.load(new FileInputStream(propsFile))
+            }
+            def envOrProp = { String propKey, String envKey ->
+                def env = System.getenv(envKey)
+                if (env != null && !env.isEmpty()) return env
+                return props.getProperty(propKey)
+            }
+            def storePath = System.getenv("ANDROID_KEYSTORE_FILE") ?: props.getProperty("storeFile")
+            if (storePath != null) {
+                storeFile file(storePath)
+                storePassword envOrProp("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias envOrProp("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword envOrProp("keyPassword", "ANDROID_KEY_PASSWORD")
             }
         }
     }
@@ -145,7 +156,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig releaseKeystorePath != null ? signingConfigs.release : signingConfigs.debug
+            signingConfig signingConfigs.release
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
