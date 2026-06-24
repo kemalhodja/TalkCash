@@ -9,6 +9,9 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Surface } from "@/components/ui/Surface";
 import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing, Typography } from "@/constants/theme";
+import { ChipPicker } from "@/components/ui/ChipPicker";
+import { LANGUAGE_OPTIONS } from "@/constants/languages";
+import type { Locale } from "@/i18n";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
@@ -16,7 +19,7 @@ import { track } from "@/services/analytics";
 import { isOnboardingComplete } from "@/app/onboarding";
 
 export default function LoginScreen() {
-  const { t, setLocale } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const insets = useSafeAreaInsets();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
@@ -44,16 +47,12 @@ export default function LoginScreen() {
 
   const goAfterAuth = async (user: AuthUser) => {
     const onboardingDone = await isOnboardingComplete();
-    auth.setUnlocked(false);
+    // Password login counts as full auth — don't ask PIN again immediately.
+    auth.setUnlocked(true);
     if (!onboardingDone) {
       router.replace("/onboarding");
       return;
     }
-    if (user.hasPin) {
-      router.replace("/lock");
-      return;
-    }
-    auth.setUnlocked(true);
     router.replace("/(tabs)");
   };
 
@@ -101,6 +100,15 @@ export default function LoginScreen() {
       <Text style={styles.brand}>TalkCash</Text>
       <Text style={styles.logo}>{t.login.title}</Text>
       <Text style={styles.subtitle}>{t.login.subtitle}</Text>
+
+      <View style={styles.languageRow}>
+        <ChipPicker
+          label={t.settings.language}
+          options={[...LANGUAGE_OPTIONS]}
+          value={locale}
+          onChange={(id) => setLocale(id as Locale)}
+        />
+      </View>
 
       <Surface variant="glass" glow style={styles.formCard}>
         <ApiConnectionCard compact />
@@ -168,6 +176,7 @@ const styles = StyleSheet.create({
   brand: { color: Colors.accent, ...Typography.label, textAlign: "center", marginBottom: Spacing.sm },
   logo: { fontSize: 34, fontWeight: "800", color: Colors.text, textAlign: "center", letterSpacing: -0.8 },
   subtitle: { color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.lg, marginTop: Spacing.sm },
+  languageRow: { marginBottom: Spacing.md, paddingHorizontal: Spacing.xs },
   formCard: { padding: Spacing.lg },
   rememberRow: {
     flexDirection: "row",

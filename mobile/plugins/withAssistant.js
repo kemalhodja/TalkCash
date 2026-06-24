@@ -5,9 +5,13 @@ const {
 } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
-const { PACKAGE, SHORTCUTS, encodeDeepLink } = require("../config/assistantShortcuts");
+const { PACKAGE, SHORTCUTS, encodeDeepLink, encodeShortcutLink } = require("../config/assistantShortcuts");
 
 const STRING_RESOURCES = {
+  assistant_shortcut_whisper_short: "Fısıltı",
+  assistant_shortcut_whisper_long: "TalkCash Fısıltı ile Harcama",
+  assistant_shortcut_quick_short: "Hızlı Fısıltı",
+  assistant_shortcut_quick_long: "TalkCash Hızlı Fısıltı",
   assistant_shortcut_add_expense_short: "Harcama",
   assistant_shortcut_add_expense_long: "TalkCash Harcama Ekle",
   assistant_shortcut_add_income_short: "Gelir",
@@ -88,7 +92,7 @@ function buildShortcutsXml() {
   </capability>`;
 
   const staticShortcuts = SHORTCUTS.map((shortcut) => {
-    const data = encodeDeepLink(shortcut.text, "google").replace(/&/g, "&amp;");
+    const data = encodeShortcutLink(shortcut).replace(/&/g, "&amp;");
     return `
   <shortcut
     android:shortcutId="${shortcut.id}"
@@ -174,6 +178,8 @@ function withIosAssistantActivities(config) {
       infoPlist: {
         ...(config.ios?.infoPlist || {}),
         NSUserActivityTypes: [
+          "io.talkcash.app.whisper-expense",
+          "io.talkcash.app.quick-whisper",
           "io.talkcash.app.add-expense",
           "io.talkcash.app.add-income",
           "io.talkcash.app.add-shopping",

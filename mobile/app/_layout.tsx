@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { Colors } from "@/constants/theme";
 import { I18nProvider } from "@/i18n";
 import { auth } from "@/services/auth";
+import { api } from "@/services/api";
 import { useAssistantLinking } from "@/hooks/useAssistantLinking";
 import { useNotificationLinking } from "@/hooks/useNotificationLinking";
 import { useAppLock } from "@/hooks/useAppLock";
@@ -22,28 +23,38 @@ export default function RootLayout() {
   useAppLock();
   useEffect(() => {
     let cancelled = false;
-    auth.getUser()
-      .then((user) => {
+    (async () => {
+      try {
+        const user = await auth.getUser();
         if (cancelled) return;
         if (!user) {
           setInitialRoute("/login");
-        } else if (user.hasPin && !auth.isUnlocked()) {
+          return;
+        }
+
+        try {
+          const me = await api.getMe();
+          if (cancelled) return;
+          if (typeof me.has_pin === "boolean" && me.has_pin !== user.hasPin) {
+            await auth.updateUser({ hasPin: me.has_pin });
+            user.hasPin = me.has_pin;
+          }
+        } catch {
+          /* offline — use cached user */
+        }
+
+        if (user.hasPin && !auth.isUnlocked()) {
           setInitialRoute("/lock");
         } else {
           if (!user.hasPin) auth.setUnlocked(true);
           setInitialRoute("/(tabs)");
         }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setInitialRoute("/login");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setReady(true);
-        }
-      });
+      } catch {
+        if (!cancelled) setInitialRoute("/login");
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
     return () => {
       cancelled = true;
     };

@@ -49,6 +49,20 @@ export default function LockScreen() {
   useEffect(() => {
     auth.getUser().then(async (u) => {
       if (!u) { router.replace("/login"); return; }
+      try {
+        const me = await api.getMe();
+        if (typeof me.has_pin === "boolean" && me.has_pin !== u.hasPin) {
+          await auth.updateUser({ hasPin: me.has_pin });
+          u = { ...u, hasPin: me.has_pin };
+        }
+        if (!u.hasPin) {
+          auth.setUnlocked(true);
+          await goAfterUnlock();
+          return;
+        }
+      } catch {
+        /* offline — use cached user */
+      }
       setUser(u);
       if (u.biometricEnabled) {
         const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
