@@ -4,6 +4,30 @@ const PACKAGE = "io.talkcash.app";
 
 const SHORTCUTS = [
   {
+    id: "whisper_expense",
+    shortLabel: "assistant_shortcut_whisper_short",
+    longLabel: "assistant_shortcut_whisper_long",
+    text: "100 lira market",
+    capability: "actions.intent.OPEN_APP_FEATURE",
+    action: "whisper_expense",
+    feature: "whisper_expense",
+    voiceExampleTr: "TalkCash fısıltı ile harcama",
+    voiceExampleEn: "TalkCash whisper expense",
+    deepLink: "talkcash://input?whisper=1&hold=1&source=shortcut",
+  },
+  {
+    id: "quick_whisper",
+    shortLabel: "assistant_shortcut_quick_short",
+    longLabel: "assistant_shortcut_quick_long",
+    text: "taksi 200",
+    capability: "actions.intent.OPEN_APP_FEATURE",
+    action: "quick_whisper",
+    feature: "quick_whisper",
+    voiceExampleTr: "TalkCash hızlı fısıltı",
+    voiceExampleEn: "TalkCash quick whisper",
+    deepLink: "talkcash://quick-voice?hold=1&source=shortcut",
+  },
+  {
     id: "add_expense",
     shortLabel: "assistant_shortcut_add_expense_short",
     longLabel: "assistant_shortcut_add_expense_long",
@@ -51,8 +75,14 @@ function encodeDeepLink(text, source = "google") {
   return `talkcash://command?text=${encodeURIComponent(text)}&source=${source}`;
 }
 
+function encodeShortcutLink(shortcut) {
+  if (shortcut.deepLink) return shortcut.deepLink;
+  return encodeDeepLink(shortcut.text, "shortcut");
+}
+
 module.exports = {
   PACKAGE,
   SHORTCUTS,
   encodeDeepLink,
+  encodeShortcutLink,
 };
