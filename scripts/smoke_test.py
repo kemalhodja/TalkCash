@@ -46,10 +46,15 @@ def main() -> int:
             failures.append(msg)
             print(f"  FAIL {msg}")
 
-    print(f"Smoke test → {root}")
+    print(f"Smoke test -> {root}")
 
     status, health = request("GET", f"{root}/health")
     check("health", status == 200 and health.get("status") in ("ok", "degraded"), str(health))
+    check(
+        "health micro-savings feature",
+        health.get("features", {}).get("micro_savings") is True,
+        str(health.get("features")),
+    )
 
     email = f"smoke_{uuid.uuid4().hex[:8]}@talkcash.io"
     status, reg = request("POST", f"{base}/auth/register", {
@@ -126,6 +131,103 @@ def main() -> int:
 
     status, sync_pull = request("GET", f"{base}/sync/pull", headers=auth)
     check("sync pull", status == 200 and "budgets" in sync_pull, str(sync_pull))
+
+    status, billing = request("GET", f"{base}/billing/me", headers=auth)
+    check("billing me", status == 200 and "is_premium" in billing and "plan" in billing, str(billing))
+
+    status, products = request("GET", f"{base}/billing/products", headers=auth)
+    check("billing products", status == 200 and len(products.get("products", [])) >= 1, str(products))
+
+    premium_unlocked = health.get("features", {}).get("premium_unlocked") is True
+
+    status, premium_check = request("GET", f"{base}/billing/premium-check", headers=auth)
+    if premium_unlocked:
+        check(
+            "premium check open access",
+            status == 200 and premium_check.get("is_premium") is True,
+            str(premium_check),
+        )
+    else:
+        check("premium check free blocked", status == 403, str(premium_check))
+
+    status, ms_prefs = request("PATCH", f"{base}/micro-savings/prefs", {
+        "round_up_enabled": True,
+        "round_up_step": 10,
+    }, headers=auth)
+    check("micro-savings prefs", status == 200 and ms_prefs.get("round_up_enabled") is True, str(ms_prefs))
+
+    status, auto_denied = request("PATCH", f"{base}/micro-savings/prefs", {"auto_round_up": True}, headers=auth)
+    if premium_unlocked:
+        check(
+            "auto round-up open access",
+            status == 200 and auto_denied.get("auto_round_up") is True,
+            str(auto_denied),
+        )
+    else:
+        check("auto round-up requires premium", status == 402, str(auto_denied))
+
+    status, brokers = request("GET", f"{base}/micro-savings/brokers", headers=auth)
+    check("micro-savings brokers", status == 200 and len(brokers.get("brokers", [])) >= 1, str(brokers))
+
+    status, coffee_expense = request("POST", f"{base}/execute/confirm", {
+        "parsed": {
+            "intent": "add_expense",
+            "amount": 55,
+            "category": "Yeme",
+            "description": "Starbucks kahve",
+            "wallet_name": "Nakit",
+        },
+        "action": {"confirmed": True},
+    }, headers=auth)
+    result = coffee_expense.get("result", {}) if isinstance(coffee_expense, dict) else {}
+    swap = result.get("swap_nudge") or {}
+    round_up = result.get("round_up") or {}
+    check(
+        "micro-savings swap nudge",
+        status == 200 and swap.get("saved_amount", 0) > 0 and not swap.get("locked"),
+        str(coffee_expense),
+    )
+    check("micro-savings round-up nudge", status == 200 and round_up.get("spare_amount", 0) > 0, str(coffee_expense))
+
+    if swap.get("source_wallet_id") and swap.get("target_wallet_id"):
+        status, ms_transfer = request("POST", f"{base}/micro-savings/transfer", {
+            "from_wallet_id": swap["source_wallet_id"],
+            "to_wallet_id": swap["target_wallet_id"],
+            "amount": swap["saved_amount"],
+            "rule_key": swap.get("rule_key", "coffee"),
+        }, headers=auth)
+        check("micro-savings transfer", status == 200 and ms_transfer.get("status") == "success", str(ms_transfer))
+
+        status, ms_summary = request("GET", f"{base}/micro-savings/summary", headers=auth)
+        check(
+            "micro-savings summary",
+            status == 200 and ms_summary.get("week_saved", 0) >= swap.get("saved_amount", 0),
+            str(ms_summary),
+        )
+
+    status, ms_rates = request("GET", f"{base}/micro-savings/rates", headers=auth)
+    check(
+        "micro-savings live rates",
+        status == 200 and ms_rates.get("live_rates", {}).get("gold_try_per_gram", 0) > 0,
+        str(ms_rates),
+    )
+
+    status, ms_sim = request("POST", f"{base}/micro-savings/simulate", {
+        "monthly_contribution": 100,
+        "months": 12,
+    }, headers=auth)
+    check(
+        "micro-savings simulate",
+        status == 200 and ms_sim.get("final_balance", 0) > 0 and ms_sim.get("disclaimer"),
+        str(ms_sim),
+    )
+
+    try:
+        with urllib.request.urlopen(f"{root}/privacy", timeout=15) as resp:
+            privacy_html = resp.read().decode()
+        check("privacy page", resp.status == 200 and "TalkCash" in privacy_html, "missing privacy")
+    except Exception as exc:
+        check("privacy page", False, str(exc))
 
     if failures:
         print(f"\nSmoke test FAILED ({len(failures)} checks)")

@@ -7,6 +7,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { parsePositiveAmount } from "@/utils/amount";
 
 interface Props {
   visible: boolean;
@@ -34,10 +35,19 @@ export function TransferModal({ visible, onClose, onSuccess }: Props) {
   }, [visible]);
 
   const handleTransfer = async () => {
-    if (!fromId || !toId || !amount) return;
+    if (loading) return;
+    const parsedAmount = parsePositiveAmount(amount);
+    if (!fromId || !toId || !parsedAmount) {
+      Alert.alert(t.common.error, t.common.invalidAmount);
+      return;
+    }
+    if (fromId === toId) {
+      Alert.alert(t.common.error, t.transfer.sameWallet);
+      return;
+    }
     setLoading(true);
     try {
-      const res: any = await api.transfer(fromId, toId, parseFloat(amount), description);
+      const res: any = await api.transfer(fromId, toId, parsedAmount, description);
       if (res?.status === "queued") {
         Alert.alert(t.common.confirm, t.common.offlineQueued);
       } else {

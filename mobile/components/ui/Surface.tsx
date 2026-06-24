@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, View, ViewProps, ViewStyle } from "react-native";
 import { Colors, Radius, Shadow } from "@/constants/theme";
 
 type Variant = "default" | "elevated" | "glass" | "accent" | "interactive";
@@ -20,14 +20,16 @@ export function Surface({
   style,
   variant = "default",
   glow = false,
+  testID,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   variant?: Variant;
   glow?: boolean;
-}) {
+} & Pick<ViewProps, "testID">) {
   return (
     <View
+      testID={testID}
       style={[
         styles.base,
         variantStyle[variant],

@@ -27,12 +27,14 @@ jest.mock("@/services/syncCache", () => ({
   applyOptimisticForQueuedOp: jest.fn().mockResolvedValue(undefined),
 }));
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/services/api";
 import { enqueue, flushQueue, getPendingCount, shouldQueueError } from "@/services/offlineQueue";
 
 describe("offlineQueue", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await AsyncStorage.removeItem("talkcash_offline_queue");
   });
 
   it("shouldQueueError queues network and 5xx errors", () => {
@@ -49,6 +51,19 @@ describe("offlineQueue", () => {
 
     const result = await flushQueue();
     expect(result.failed).toBeGreaterThan(0);
+    expect(await getPendingCount()).toBe(1);
+  });
+
+  it("queues micro_savings_transfer operations", async () => {
+    await enqueue({
+      type: "micro_savings_transfer",
+      payload: {
+        from_wallet_id: "cash-id",
+        to_wallet_id: "gold-id",
+        amount: 47,
+        rule_key: "coffee",
+      },
+    });
     expect(await getPendingCount()).toBe(1);
   });
 });

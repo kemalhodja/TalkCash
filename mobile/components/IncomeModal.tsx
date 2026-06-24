@@ -7,6 +7,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { parsePositiveAmount } from "@/utils/amount";
 
 interface Props {
   visible: boolean;
@@ -33,10 +34,15 @@ export function IncomeModal({ visible, onClose, onSuccess }: Props) {
   }, [visible]);
 
   const handleSubmit = async () => {
-    if (!selectedWallet || !amount) return;
+    if (loading) return;
+    const parsedAmount = parsePositiveAmount(amount);
+    if (!selectedWallet || !parsedAmount) {
+      Alert.alert(t.common.error, t.common.invalidAmount);
+      return;
+    }
     setLoading(true);
     try {
-      const res: any = await api.addIncome(selectedWallet, parseFloat(amount), description);
+      const res: any = await api.addIncome(selectedWallet, parsedAmount, description);
       if (res?.status === "queued") {
         Alert.alert(t.common.confirm, t.common.offlineQueued);
       } else {

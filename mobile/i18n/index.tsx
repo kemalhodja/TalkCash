@@ -49,3 +49,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 export function useI18n() {
   return useContext(I18nContext);
 }
+
+export async function getStoredLocale(): Promise<Locale> {
+  const saved = await SecureStore.getItemAsync(LOCALE_KEY);
+  return saved === "en" ? "en" : "tr";
+}

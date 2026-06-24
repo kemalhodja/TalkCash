@@ -5,7 +5,7 @@ type Option = { id: string; label: string };
 
 type Props = {
   label?: string;
-  options: Option[];
+  options: readonly Option[];
   value: string | null;
   onChange: (id: string) => void;
 };

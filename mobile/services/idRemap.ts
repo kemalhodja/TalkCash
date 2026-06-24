@@ -8,7 +8,14 @@ type IdMap = Record<string, string>;
 
 export async function getIdMap(): Promise<IdMap> {
   const raw = await AsyncStorage.getItem(ID_MAP_KEY);
-  return raw ? JSON.parse(raw) : {};
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    await AsyncStorage.removeItem(ID_MAP_KEY);
+    return {};
+  }
 }
 
 export async function registerMapping(localId: string, serverId: string): Promise<void> {

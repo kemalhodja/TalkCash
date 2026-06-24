@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import { Stack } from "expo-router";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { ListRow } from "@/components/ui/ListRow";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -19,12 +20,15 @@ export default function NotificationsScreen() {
   useRequireUnlock();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const load = async () => {
+    setError("");
     try {
       setItems(await api.getNotifications());
-    } catch {
+    } catch (e: any) {
       setItems([]);
+      setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
@@ -36,6 +40,14 @@ export default function NotificationsScreen() {
   const unread = items.filter((n) => !n.is_read).length;
 
   if (loading) return <LoadingScreen />;
+  if (error && items.length === 0) {
+    return (
+      <ScreenShell bottomInset={false}>
+        <Stack.Screen options={{ title: t.settings.notifications, headerStyle: { backgroundColor: Colors.bg }, headerTintColor: Colors.text }} />
+        <ErrorState message={error} onRetry={load} />
+      </ScreenShell>
+    );
+  }
 
   return (
     <ScreenShell bottomInset={false}>

@@ -13,8 +13,9 @@ import { api, ApiError } from "@/services/api";
 import { parseAssistantUrl, storePendingAssistant, type AssistantParams } from "@/services/assistant";
 import { auth } from "@/services/auth";
 import { useRequireUnlock } from "@/hooks/useRequireUnlock";
-import { scheduleAgendaReminder } from "@/services/notifications";
+import { scheduleAgendaReminder, scheduleSubscriptionReminder } from "@/services/notifications";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
+import { playExpenseFeedback } from "@/utils/voiceAlert";
 
 export default function AssistantCommandScreen() {
   const { t, locale } = useI18n();
@@ -72,6 +73,15 @@ export default function AssistantCommandScreen() {
     }
     if (parsed?.intent === "add_expense") {
       await speakBudgetAlertsAfterSpend(locale);
+      playExpenseFeedback(res, locale);
+      if (res?.result?.subscription?.next_billing_date && res?.result?.subscription?.subscription_name) {
+        await scheduleSubscriptionReminder(
+          res.result.subscription.subscription_name,
+          Number(res.result.amount || parsed.amount || 0),
+          new Date(res.result.subscription.next_billing_date),
+          locale,
+        );
+      }
     }
     if (parsed?.receipt_id && parsed?.amount) {
       const receiptTotal = parsed.receipt_total_amount ?? parsed.amount;
@@ -132,13 +142,14 @@ export default function AssistantCommandScreen() {
     })();
   }, []);
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (confirmed?: any) => {
+    const payload = confirmed ?? parsedData;
     setConfirmVisible(false);
-    if (!parsedData) return;
+    if (!payload) return;
     try {
-      await executeParsed(parsedData);
+      await executeParsed(payload);
     } catch (e: any) {
-      if (e instanceof ApiError && e.status === 409 && parsedData?.intent === "add_bill") {
+      if (e instanceof ApiError && e.status === 409 && payload?.intent === "add_bill") {
         setDuplicateMsg(e.message);
         return;
       }
@@ -162,8 +173,13 @@ export default function AssistantCommandScreen() {
           <Text style={styles.error}>{error}</Text>
         </Surface>
       ) : null}
-      <ConfirmationCard visible={confirmVisible} message={confirmMessage}
-        onConfirm={handleConfirm} onCancel={() => router.replace("/(tabs)")} />
+      <ConfirmationCard
+        visible={confirmVisible}
+        message={confirmMessage}
+        parsed={parsedData}
+        onConfirm={handleConfirm}
+        onCancel={() => router.replace("/(tabs)")}
+      />
       <DuplicateBillDialog
         visible={!!duplicateMsg}
         message={duplicateMsg}

@@ -7,7 +7,11 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { completeShoppingLocalFirst } from "@/services/shoppingRepository";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
+import { extractVoiceAlert, playVoiceAlert } from "@/utils/voiceAlert";
+import { extractSwapNudge, type SwapNudge } from "@/utils/swapNudge";
+import { parsePositiveAmount } from "@/utils/amount";
 
 interface Props {
   visible: boolean;
@@ -15,14 +19,18 @@ interface Props {
   itemName: string;
   onComplete: () => void;
   onCancel: () => void;
+  onSwapNudge?: (nudge: SwapNudge) => void;
+  onMicroExtras?: (res: any) => void;
 }
 
-export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCancel }: Props) {
+export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCancel, onSwapNudge, onMicroExtras }: Props) {
   const { t, locale } = useI18n();
   const [price, setPrice] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [wallets, setWallets] = useState<any[]>([]);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -34,20 +42,32 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
   }, [visible]);
 
   const handleConfirm = async () => {
-    if (!price) { setError(t.shopping.priceRequired); return; }
+    if (loading) return;
+    const parsedPrice = parsePositiveAmount(price);
+    if (!parsedPrice) { setError(t.common.invalidAmount); return; }
+    if (!storeName.trim()) { setError(t.input.confirmStoreRequired); return; }
+    setLoading(true);
     try {
-      const res: any = await api.completeShoppingItem(itemId, parseFloat(price), selectedWallet || undefined);
+      const res: any = await completeShoppingLocalFirst(itemId, parsedPrice, selectedWallet || undefined, storeName.trim());
       if (res?.status === "queued") {
         Alert.alert(t.common.confirm, t.shopping.queuedOffline);
         setPrice("");
+        setStoreName("");
         onComplete();
         return;
       }
       await speakBudgetAlertsAfterSpend(locale);
+      playVoiceAlert(extractVoiceAlert(res), locale);
+      const swap = extractSwapNudge(res);
+      if (swap) onSwapNudge?.(swap);
+      onMicroExtras?.(res);
       setPrice("");
+      setStoreName("");
       onComplete();
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,12 +80,13 @@ export function BuyToSpendModal({ visible, itemId, itemName, onComplete, onCance
       footer={
         <View style={styles.actions}>
           <PrimaryButton label={t.common.cancel} onPress={onCancel} variant="ghost" style={styles.btn} />
-          <PrimaryButton label={t.shopping.deduct} onPress={handleConfirm} style={styles.btn} />
+          <PrimaryButton label={t.shopping.deduct} onPress={handleConfirm} loading={loading} disabled={loading} style={styles.btn} />
         </View>
       }
     >
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <InputField placeholder={t.shopping.pricePlaceholder} keyboardType="decimal-pad" value={price} onChangeText={setPrice} />
+      <InputField placeholder={t.input.confirmStorePlaceholder} value={storeName} onChangeText={setStoreName} />
       <ChipPicker
         options={wallets.map((w) => ({ id: w.id, label: w.name }))}
         value={selectedWallet}

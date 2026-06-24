@@ -12,6 +12,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
   accessibilityLabel?: string;
+  testID?: string;
 };
 
 const variantStyles: Record<Variant, ViewStyle> = {
@@ -37,9 +38,11 @@ export function PrimaryButton({
   style,
   compact,
   accessibilityLabel,
+  testID,
 }: Props) {
   return (
     <TouchableOpacity
+      testID={testID}
       style={[
         styles.base,
         variantStyles[variant],

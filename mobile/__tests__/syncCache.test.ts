@@ -59,6 +59,23 @@ describe("syncCache optimistic", () => {
     expect(snap?.shopping?.length).toBe(0);
   });
 
+  it("deletes shopping item optimistically", async () => {
+    await applyOptimisticForQueuedOp("shopping_delete", { item_id: "s1" });
+    const snap = await getCachedSnapshot();
+    expect(snap?.shopping?.length).toBe(0);
+  });
+
+  it("updates shopping routine optimistically", async () => {
+    await applyOptimisticForQueuedOp("shopping_routine", {
+      item_id: "s1",
+      is_routine: true,
+      routine_type: "weekly",
+    });
+    const snap = await getCachedSnapshot();
+    expect(snap?.shopping?.[0].is_routine).toBe(true);
+    expect(snap?.shopping?.[0].routine_type).toBe("weekly");
+  });
+
   it("adjusts wallet income optimistically", async () => {
     await applyOptimisticForQueuedOp("wallet_income", { wallet_id: "w1", amount: 500 });
     const snap = await getCachedSnapshot();

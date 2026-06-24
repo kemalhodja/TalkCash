@@ -10,14 +10,20 @@ logger = logging.getLogger(__name__)
 
 GOOGLE_PRODUCT_TO_TIER: dict[str, PlanTier] = {
     "talkcash_pro_monthly": PlanTier.PRO,
+    "talkcash_pro_yearly": PlanTier.PRO,
     "talkcash_family_monthly": PlanTier.FAMILY,
+    "talkcash_family_yearly": PlanTier.FAMILY,
     "talkcash_business_monthly": PlanTier.BUSINESS,
+    "talkcash_business_yearly": PlanTier.BUSINESS,
 }
 
 GOOGLE_PRODUCT_CATALOG: list[dict] = [
-    {"product_id": "talkcash_pro_monthly", "plan": PlanTier.PRO.value, "name": "TalkCash Pro"},
-    {"product_id": "talkcash_family_monthly", "plan": PlanTier.FAMILY.value, "name": "TalkCash Family"},
-    {"product_id": "talkcash_business_monthly", "plan": PlanTier.BUSINESS.value, "name": "TalkCash Business"},
+    {"product_id": "talkcash_pro_monthly", "plan": PlanTier.PRO.value, "name": "TalkCash Pro", "period": "monthly"},
+    {"product_id": "talkcash_pro_yearly", "plan": PlanTier.PRO.value, "name": "TalkCash Pro", "period": "yearly"},
+    {"product_id": "talkcash_family_monthly", "plan": PlanTier.FAMILY.value, "name": "TalkCash Family", "period": "monthly"},
+    {"product_id": "talkcash_family_yearly", "plan": PlanTier.FAMILY.value, "name": "TalkCash Family", "period": "yearly"},
+    {"product_id": "talkcash_business_monthly", "plan": PlanTier.BUSINESS.value, "name": "TalkCash Business", "period": "monthly"},
+    {"product_id": "talkcash_business_yearly", "plan": PlanTier.BUSINESS.value, "name": "TalkCash Business", "period": "yearly"},
 ]
 
 
@@ -43,11 +49,12 @@ class GooglePlayVerifier:
             raise ValueError("billing.invalid_product")
 
         if settings.google_play_verify_mock:
+            days = 365 if "yearly" in product_id else 30
             return VerifiedGooglePurchase(
                 product_id=product_id,
                 purchase_token=purchase_token,
                 tier=tier,
-                expires_at=datetime.utcnow() + timedelta(days=30),
+                expires_at=datetime.utcnow() + timedelta(days=days),
                 order_id=f"mock-{purchase_token[:12]}",
             )
 

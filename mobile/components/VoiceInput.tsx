@@ -1,19 +1,32 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Shadow, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { getPremiumStatus } from "@/services/premium";
+import { track } from "@/services/analytics";
 
 interface Props {
   onResult: (text: string, parsed?: any) => void;
+  onAudioCaptured?: (uri: string) => Promise<void>;
   whisperMode?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  holdToRecord?: boolean;
+  autoRecord?: boolean;
 }
 
-export function VoiceInput({ onResult, whisperMode = false, disabled = false, compact = false }: Props) {
+export function VoiceInput({
+  onResult,
+  onAudioCaptured,
+  whisperMode = false,
+  disabled = false,
+  compact = false,
+  holdToRecord = false,
+  autoRecord = false,
+}: Props) {
   const { t } = useI18n();
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -43,6 +56,11 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
     return () => loop.stop();
   }, [recording, pulse, glow]);
 
+  useEffect(() => {
+    if (!autoRecord || disabled || recording || processing) return;
+    startRecording();
+  }, [autoRecord, disabled]);
+
   const startRecording = async () => {
     if (disabled) {
       Alert.alert(t.input.aiUnavailable);
@@ -70,8 +88,24 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
       if (uri) {
-        const result = await api.parseVoice(uri, whisperMode);
-        onResult(result.parsed?.raw_text || result.message, result);
+        if (onAudioCaptured) {
+          await onAudioCaptured(uri);
+          return;
+        }
+        const premium = await getPremiumStatus();
+        if (premium.is_premium) {
+          track("premium_voice_command");
+          const result = await api.processPremiumVoice(uri, whisperMode);
+          if (result?.status === "needs_confirmation" || result?.status === "easter_egg") {
+            onResult(result.transcript || result.parsed?.raw_text || "", result);
+          } else {
+            onResult(result.transcript || result.parsed?.raw_text || "", result);
+            Alert.alert(t.premium.title, result.message || t.input.voiceSaved);
+          }
+        } else {
+          const result = await api.parseVoice(uri, whisperMode);
+          onResult(result.parsed?.raw_text || result.message, result);
+        }
       }
     } catch {
       Alert.alert(t.common.error, t.input.voiceFailed);
@@ -89,9 +123,11 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
     ? t.input.processing
     : recording
       ? t.input.listeningStop
-      : whisperMode
-        ? t.input.whisperMode
-        : t.input.voiceCommand;
+      : holdToRecord
+        ? t.input.holdToRecord
+        : whisperMode
+          ? t.input.whisperMode
+          : t.input.voiceCommand;
 
   const btnSize = compact ? 48 : 72;
   const iconSize = compact ? 22 : 28;
@@ -113,7 +149,7 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
         />
       ) : null}
       <Animated.View style={{ transform: [{ scale: recording ? pulse : 1 }] }}>
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.micBtn,
             { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
@@ -121,16 +157,17 @@ export function VoiceInput({ onResult, whisperMode = false, disabled = false, co
             disabled && styles.micDisabled,
             recording && Shadow.glowStrong,
           ]}
-          onPress={handlePress}
+          onPress={holdToRecord ? undefined : handlePress}
+          onPressIn={holdToRecord ? () => { if (!processing && !disabled && !recording) startRecording(); } : undefined}
+          onPressOut={holdToRecord ? () => { if (recording) stopRecording(); } : undefined}
           disabled={processing || disabled}
-          activeOpacity={0.85}
         >
           {processing ? (
             <ActivityIndicator color={Colors.bg} />
           ) : (
             <Ionicons name={recording ? "stop" : "mic"} size={iconSize} color={Colors.bg} />
           )}
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
       {!compact && <Text style={[styles.hint, recording && styles.hintActive]}>{hint}</Text>}
     </View>

@@ -1,0 +1,21 @@
+appId: io.talkcash.app
+---
+# Full quick-expense flow (requires logged-in dev build + backend)
+- runFlow: smoke.yaml
+- tapOn:
+    id: "quick-expense-btn"
+- tapOn:
+    id: "quick-expense-amount"
+- inputText: "42"
+- tapOn:
+    id: "quick-expense-desc"
+- inputText: "Kahve"
+- hideKeyboard
+- tapOn:
+    id: "quick-expense-save"
+- tapOn:
+    text: "Tamam|OK|Confirm|Onayla"
+    optional: true
+- assertVisible:
+    text: "Gider kaydedildi|Expense saved|kaydedildi|saved"
+    optional: true

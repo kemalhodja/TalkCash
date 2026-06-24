@@ -8,6 +8,10 @@ import { ErrorState } from "@/components/ErrorState";
 import { TransferModal } from "@/components/TransferModal";
 import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletEditModal } from "@/components/WalletEditModal";
+import { MicroSavingsIntroBanner } from "@/components/MicroSavingsIntroBanner";
+import { MicroSavingsHeroCard } from "@/components/MicroSavingsHeroCard";
+import { WeeklyPodcastCard } from "@/components/WeeklyPodcastCard";
+import { UpcomingSubscriptionsCard } from "@/components/UpcomingSubscriptionsCard";
 import { WalletCard } from "@/components/WalletCard";
 import { AppBrandHeader } from "@/components/ui/AppBrandHeader";
 import { ChipPicker } from "@/components/ui/ChipPicker";
@@ -30,6 +34,7 @@ import { registerForPushNotifications } from "@/services/notifications";
 import { formatMoney } from "@/utils/format";
 import { speakBudgetAlert } from "@/services/speech";
 import { getCachedSnapshot } from "@/services/syncCache";
+import { extractUpcomingSubscriptions } from "@/utils/subscriptions";
 
 export default function DashboardScreen() {
   const { t, locale } = useI18n();
@@ -50,6 +55,8 @@ export default function DashboardScreen() {
   const [watchProduct, setWatchProduct] = useState("");
   const [trackProduct, setTrackProduct] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [microSavings, setMicroSavings] = useState<any | null>(null);
+  const [upcomingSubs, setUpcomingSubs] = useState<any[]>([]);
   const trackProductRef = useRef(trackProduct);
   const lastSpokenAlert = useRef("");
   trackProductRef.current = trackProduct;
@@ -66,11 +73,14 @@ export default function DashboardScreen() {
         setNetWorth(Number(snapshot.net_worth_total || 0));
         setWallets(snapshot.wallets);
       }
-      const [nw, budgetAlerts, priceReportData, watchItems] = await Promise.all([
+      setUpcomingSubs(extractUpcomingSubscriptions(snapshot?.transactions));
+      const [nw, budgetAlerts, priceReportData, watchItems, savingsSummary, subsData] = await Promise.all([
         api.getNetWorth(),
         api.getBudgetAlerts(),
         api.getPriceTracker(productQuery),
         api.getWatchlist().catch(() => []),
+        api.getMicroSavingsSummary().catch(() => null),
+        api.getUpcomingSubscriptions().catch(() => ({ subscriptions: [] })),
       ]);
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
@@ -85,6 +95,15 @@ export default function DashboardScreen() {
         }
       }
       setPriceReport(priceReportData);
+      setMicroSavings(savingsSummary);
+      if (subsData?.subscriptions?.length) {
+        setUpcomingSubs(subsData.subscriptions.map((s) => ({
+          subscription_name: s.subscription_name,
+          amount: s.amount,
+          next_billing_date: s.next_billing_date,
+          cancel_url: s.cancel_url,
+        })));
+      }
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 0) {
         setError(t.errors.network);
@@ -97,7 +116,10 @@ export default function DashboardScreen() {
     }
   }, [locale, t.home.loadError, t.errors.network]);
 
-  useEffect(() => { loadData(); registerForPushNotifications(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    registerForPushNotifications().catch(() => {});
+  }, [loadData]);
   useEffect(() => {
     setTrackProduct((prev) => prev || t.home.defaultProduct);
   }, [t.home.defaultProduct]);
@@ -127,12 +149,23 @@ export default function DashboardScreen() {
 
       <HeroNetWorth label={t.home.netWorth} amount={formatMoney(Number(netWorth), locale)} />
 
+      <MicroSavingsHeroCard summary={microSavings} />
+
+      {!(microSavings?.week_saved || microSavings?.investment_total) ? (
+        <MicroSavingsIntroBanner />
+      ) : null}
+
+      <WeeklyPodcastCard />
+
+      <UpcomingSubscriptionsCard items={upcomingSubs} />
+
       <QuickActionGrid
         actions={[
           { key: "income", label: t.home.addIncome, icon: "add-circle-outline", onPress: () => setIncomeVisible(true), primary: true },
+          { key: "whisper", label: t.quickVoice.title, icon: "ear-outline", onPress: () => router.push("/quick-voice?hold=1") },
           { key: "transfer", label: t.home.transfer, icon: "swap-horizontal-outline", onPress: () => setTransferVisible(true) },
           { key: "wallet", label: t.home.createWallet, icon: "wallet-outline", onPress: () => setWalletCreateVisible(true) },
-          { key: "voice", label: t.tabs.input, icon: "mic-outline", onPress: () => router.push("/input") },
+          { key: "voice", label: t.tabs.input, icon: "mic-outline", onPress: () => router.push("/(tabs)/input") },
         ]}
       />
 

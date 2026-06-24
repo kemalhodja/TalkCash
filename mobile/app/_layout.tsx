@@ -90,6 +90,8 @@ export default function RootLayout() {
         <Stack.Screen name="share" options={{ headerShown: false, title: "Share" }} />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="notification-settings" />
+        <Stack.Screen name="roadmap" />
+        <Stack.Screen name="micro-savings-settings" />
         <Stack.Screen name="receipts" />
       </Stack>
       {!ready ? (

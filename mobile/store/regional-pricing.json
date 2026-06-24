@@ -1,0 +1,217 @@
+{
+  "version": "2026-06",
+  "pricing_anchor": "USD",
+  "tax_inclusive": true,
+  "launch_intro_days": 90,
+  "trial_days": 7,
+  "plans": ["pro", "family"],
+  "deferred_plans": ["business"],
+  "google_play_skus": {
+    "monthly": [
+      "talkcash_pro_monthly",
+      "talkcash_family_monthly",
+      "talkcash_business_monthly"
+    ],
+    "yearly": [
+      "talkcash_pro_yearly",
+      "talkcash_family_yearly",
+      "talkcash_business_yearly"
+    ]
+  },
+  "regions": [
+    {
+      "code": "US",
+      "name": "United States",
+      "play": true,
+      "currency": "USD",
+      "pro_monthly": "8.99",
+      "pro_yearly": "79.99",
+      "family_monthly": "14.99",
+      "family_yearly": "134.99",
+      "intro_pro_monthly": "4.99"
+    },
+    {
+      "code": "TR",
+      "name": "Turkey",
+      "play": true,
+      "currency": "TRY",
+      "pro_monthly": "89.99",
+      "pro_yearly": "749.99",
+      "family_monthly": "149.99",
+      "family_yearly": "1299.99",
+      "intro_pro_monthly": "39.99"
+    },
+    {
+      "code": "GB",
+      "name": "United Kingdom",
+      "play": true,
+      "currency": "GBP",
+      "pro_monthly": "7.99",
+      "pro_yearly": "69.99",
+      "family_monthly": "12.99",
+      "family_yearly": "119.99"
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "play": true,
+      "currency": "EUR",
+      "pro_monthly": "8.99",
+      "pro_yearly": "79.99",
+      "family_monthly": "14.99",
+      "family_yearly": "134.99"
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "play": true,
+      "currency": "EUR",
+      "pro_monthly": "8.99",
+      "pro_yearly": "79.99",
+      "family_monthly": "14.99",
+      "family_yearly": "134.99"
+    },
+    {
+      "code": "IN",
+      "name": "India",
+      "play": true,
+      "currency": "INR",
+      "pro_monthly": "399",
+      "pro_yearly": "3499",
+      "family_monthly": "649",
+      "family_yearly": "5499",
+      "note": "PPP tier"
+    },
+    {
+      "code": "BR",
+      "name": "Brazil",
+      "play": true,
+      "currency": "BRL",
+      "pro_monthly": "24.90",
+      "pro_yearly": "219.90",
+      "family_monthly": "44.90",
+      "family_yearly": "389.90",
+      "note": "PPP tier"
+    },
+    {
+      "code": "MX",
+      "name": "Mexico",
+      "play": true,
+      "currency": "MXN",
+      "pro_monthly": "129",
+      "pro_yearly": "1099",
+      "family_monthly": "219",
+      "family_yearly": "1899"
+    },
+    {
+      "code": "ID",
+      "name": "Indonesia",
+      "play": true,
+      "currency": "IDR",
+      "pro_monthly": "69000",
+      "pro_yearly": "599000",
+      "family_monthly": "119000",
+      "family_yearly": "999000",
+      "note": "PPP tier"
+    },
+    {
+      "code": "PK",
+      "name": "Pakistan",
+      "play": true,
+      "currency": "PKR",
+      "pro_monthly": "699",
+      "pro_yearly": "5999",
+      "family_monthly": "1199",
+      "family_yearly": "9999",
+      "note": "PPP tier"
+    },
+    {
+      "code": "NG",
+      "name": "Nigeria",
+      "play": true,
+      "currency": "NGN",
+      "pro_monthly": "3999",
+      "pro_yearly": "34999",
+      "family_monthly": "6999",
+      "family_yearly": "59999",
+      "note": "PPP tier"
+    },
+    {
+      "code": "BD",
+      "name": "Bangladesh",
+      "play": true,
+      "currency": "BDT",
+      "pro_monthly": "499",
+      "pro_yearly": "4299",
+      "family_monthly": "849",
+      "family_yearly": "7299"
+    },
+    {
+      "code": "PH",
+      "name": "Philippines",
+      "play": true,
+      "currency": "PHP",
+      "pro_monthly": "249",
+      "pro_yearly": "2199",
+      "family_monthly": "449",
+      "family_yearly": "3899"
+    },
+    {
+      "code": "VN",
+      "name": "Vietnam",
+      "play": true,
+      "currency": "VND",
+      "pro_monthly": "99000",
+      "pro_yearly": "849000",
+      "family_monthly": "169000",
+      "family_yearly": "1449000"
+    },
+    {
+      "code": "EG",
+      "name": "Egypt",
+      "play": true,
+      "currency": "EGP",
+      "pro_monthly": "149.99",
+      "pro_yearly": "1299.99",
+      "family_monthly": "249.99",
+      "family_yearly": "2199.99"
+    },
+    {
+      "code": "JP",
+      "name": "Japan",
+      "play": true,
+      "currency": "JPY",
+      "pro_monthly": "1200",
+      "pro_yearly": "10800",
+      "family_monthly": "2000",
+      "family_yearly": "18000"
+    },
+    {
+      "code": "RU",
+      "name": "Russia",
+      "play": false,
+      "currency": "RUB",
+      "pro_monthly": "449",
+      "pro_yearly": "3990",
+      "family_monthly": "749",
+      "family_yearly": "6490",
+      "note": "Google Play billing limited since 2022 — RuStore / direct APK future"
+    },
+    {
+      "code": "CN",
+      "name": "China (mainland)",
+      "play": false,
+      "currency": "CNY",
+      "pro_monthly": "38",
+      "pro_yearly": "328",
+      "family_monthly": "68",
+      "family_yearly": "588",
+      "note": "Google Play not available — Huawei AppGallery / Tencent MyApp future"
+    }
+  ],
+  "play_console_countries_recommended": [
+    "US", "CA", "GB", "DE", "FR", "ES", "IT", "NL", "PL", "TR",
+    "IN", "BR", "MX", "ID", "PK", "NG", "BD", "PH", "VN", "EG", "JP",
+    "AU", "ZA", "SA", "AE", "AR", "CO", "CL", "MY", "TH", "KR"
+  ]
+}

@@ -42,8 +42,13 @@ async def premium_status(user: User = Depends(get_current_user), db: AsyncSessio
 
 
 @router.get("/premium-check")
-async def premium_check(subscription=Depends(require_premium())):
-    return {"status": "ok", "is_premium": subscription.is_premium}
+async def premium_check(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _subscription=Depends(require_premium()),
+):
+    status = await billing_service.get_status(db, user.id)
+    return {"status": "ok", "is_premium": status.is_premium}
 
 
 @router.get("/products", response_model=ProductCatalogResponse)

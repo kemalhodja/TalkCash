@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { BuyToSpendModal } from "@/components/BuyToSpendModal";
+import { SmartBasketScanner } from "@/components/SmartBasketScanner";
+import { ShoppingSuggestionLoop } from "@/components/ShoppingSuggestionLoop";
+import { MicroSavingsNudges } from "@/components/MicroSavingsNudges";
 import { VoiceInput } from "@/components/VoiceInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InsightChip } from "@/components/ui/InsightChip";
@@ -16,7 +19,12 @@ import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
-import { getCachedSnapshot, groupShoppingFromSnapshot } from "@/services/syncCache";
+import { getCachedSnapshot } from "@/services/syncCache";
+import { addShoppingLocalFirst, deleteShoppingLocalFirst, loadShoppingLocalFirst, refreshShoppingWithSync, setRoutineLocalFirst } from "@/services/shoppingRepository";
+import { hasActiveSuggestion, type ShoppingSuggestion } from "@/utils/shoppingSuggestionVoice";
+import { extractSwapNudge, type SwapNudge } from "@/utils/swapNudge";
+import { extractRoundUp, type RoundUpNudge } from "@/utils/roundUp";
+import { buildShoppingDepletionHints } from "@/utils/shoppingSuggestions";
 
 export default function ShoppingScreen() {
   const { t } = useI18n();
@@ -25,16 +33,38 @@ export default function ShoppingScreen() {
   const [newItem, setNewItem] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [depletionHints, setDepletionHints] = useState<{ item: string; daysSince: number }[]>([]);
+  const [smartBasketOpen, setSmartBasketOpen] = useState(false);
+  const [pendingSuggestion, setPendingSuggestion] = useState<ShoppingSuggestion | null>(null);
+  const [pendingSwap, setPendingSwap] = useState<SwapNudge | null>(null);
+  const [pendingRoundUp, setPendingRoundUp] = useState<RoundUpNudge | null>(null);
+
+  const handleMicroExtras = (res: any) => {
+    const swap = extractSwapNudge(res);
+    if (swap) setPendingSwap(swap);
+    const roundUp = extractRoundUp(res);
+    if (roundUp) setPendingRoundUp(roundUp);
+  };
+
+  const handleAddResponse = (res: any) => {
+    if (hasActiveSuggestion(res)) {
+      setPendingSuggestion(res.suggestion);
+    }
+  };
 
   const loadList = useCallback(async () => {
     try {
       setError("");
+      const cached = await loadShoppingLocalFirst();
+      if (Object.keys(cached).length) setGrouped(cached);
+      const list = await refreshShoppingWithSync();
+      setGrouped(list);
       const snapshot = await getCachedSnapshot();
-      if (snapshot?.shopping?.length) {
-        setGrouped(groupShoppingFromSnapshot(snapshot.shopping));
-      }
-      setGrouped(await api.getShoppingList());
+      const activeNames = Object.values(list).flat().map((item: any) => item.name);
+      setDepletionHints(buildShoppingDepletionHints(snapshot?.transactions, activeNames));
     } catch (e: any) {
+      const fallback = await loadShoppingLocalFirst();
+      setGrouped(fallback);
       setError(e.message);
     } finally {
       setLoading(false);
@@ -47,10 +77,11 @@ export default function ShoppingScreen() {
 
   const handleAdd = async () => {
     if (!newItem.trim()) return;
-    const res: any = await api.addShoppingItems([newItem.trim()]);
+    const res: any = await addShoppingLocalFirst([newItem.trim()]);
     if (res?.status === "queued") {
-      setGrouped(groupShoppingFromSnapshot((await getCachedSnapshot())?.shopping));
       Alert.alert(t.common.confirm, t.common.offlineQueued);
+    } else {
+      handleAddResponse(res);
     }
     setNewItem("");
     loadList();
@@ -79,12 +110,14 @@ export default function ShoppingScreen() {
             <VoiceInput compact whisperMode={false} onResult={async (_text, result) => {
               let res: any;
               if (result?.parsed?.intent === "add_shopping" && result.parsed.items?.length) {
-                res = await api.addShoppingItems(result.parsed.items);
+                res = await addShoppingLocalFirst(result.parsed.items);
               } else if (result?.parsed?.description) {
-                res = await api.addShoppingItems([result.parsed.description]);
+                res = await addShoppingLocalFirst([result.parsed.description]);
               }
               if (res?.status === "queued") {
                 Alert.alert(t.common.confirm, t.common.offlineQueued);
+              } else if (res) {
+                handleAddResponse(res);
               }
               loadList();
             }} />
@@ -92,9 +125,26 @@ export default function ShoppingScreen() {
           <PrimaryButton label="+" onPress={handleAdd} compact style={styles.addBtn} />
         </View>
         <Text style={styles.voiceHint}>{t.shopping.voiceHint}</Text>
+        <PrimaryButton
+          label={`📷 ${t.shopping.smartBasket}`}
+          onPress={() => setSmartBasketOpen(true)}
+          variant="secondary"
+          compact
+          style={styles.smartBasketBtn}
+        />
       </Surface>
 
       {error ? <InsightChip tone="warning" text={error} /> : null}
+
+      <ShoppingSuggestionLoop
+        suggestion={pendingSuggestion}
+        onAccepted={async (item) => {
+          setPendingSuggestion(null);
+          await addShoppingLocalFirst([item], true);
+          loadList();
+        }}
+        onDismiss={() => setPendingSuggestion(null)}
+      />
 
       {Object.entries(grouped).map(([category, items]) => (
         <SectionBlock key={category} title={categoryLabel(category)} bare>
@@ -102,16 +152,21 @@ export default function ShoppingScreen() {
             <TouchableOpacity key={item.id} activeOpacity={0.85}
               onPress={() => setBuyModal({ id: item.id, name: item.name })}
               onLongPress={() => {
+                const run = async (fn: () => Promise<any>) => {
+                  const res = await fn();
+                  if (res?.status === "queued") Alert.alert(t.common.confirm, t.common.offlineQueued);
+                  loadList();
+                };
                 if (item.is_routine) {
                   Alert.alert(t.shopping.title, t.agenda.cancel, [
                     { text: t.common.cancel, style: "cancel" },
-                    { text: t.common.delete, onPress: async () => { await api.setRoutine(item.id, false); loadList(); } },
+                    { text: t.common.delete, onPress: () => run(() => setRoutineLocalFirst(item.id, false)) },
                   ]);
                 } else {
                   Alert.alert(t.shopping.title, "", [
-                    { text: t.agenda.routineDaily, onPress: async () => { await api.setRoutine(item.id, true, "daily"); loadList(); } },
-                    { text: t.agenda.routineWeekly, onPress: async () => { await api.setRoutine(item.id, true, "weekly"); loadList(); } },
-                    { text: t.common.delete, style: "destructive", onPress: async () => { await api.deleteShoppingItem(item.id); loadList(); } },
+                    { text: t.agenda.routineDaily, onPress: () => run(() => setRoutineLocalFirst(item.id, true, "daily")) },
+                    { text: t.agenda.routineWeekly, onPress: () => run(() => setRoutineLocalFirst(item.id, true, "weekly")) },
+                    { text: t.common.delete, style: "destructive", onPress: () => run(() => deleteShoppingLocalFirst(item.id)) },
                     { text: t.common.cancel, style: "cancel" },
                   ]);
                 }
@@ -135,10 +190,60 @@ export default function ShoppingScreen() {
         <EmptyState message={t.shopping.empty} icon="🛒" />
       )}
 
+      {depletionHints.length > 0 ? (
+        <View style={styles.hintsSection}>
+          <Text style={styles.hintsTitle}>{t.shopping.depletionTitle}</Text>
+          {depletionHints.map((hint) => (
+            <TouchableOpacity
+              key={hint.item}
+              activeOpacity={0.85}
+              onPress={async () => {
+                await api.addShoppingItems([hint.item]);
+                loadList();
+              }}
+            >
+              <Text style={styles.hintText}>
+                {t.shopping.depletionHint
+                  .replace("{item}", hint.item)
+                  .replace("{days}", String(hint.daysSince))}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+
+      {pendingSwap || pendingRoundUp ? (
+        <MicroSavingsNudges
+          swap={pendingSwap}
+          roundUp={pendingRoundUp}
+          onDismiss={() => {
+            setPendingSwap(null);
+            setPendingRoundUp(null);
+          }}
+          onRefresh={loadList}
+        />
+      ) : null}
+
       {buyModal && (
         <BuyToSpendModal visible={!!buyModal} itemId={buyModal.id} itemName={buyModal.name}
-          onComplete={() => { setBuyModal(null); loadList(); }} onCancel={() => setBuyModal(null)} />
+          onComplete={() => { setBuyModal(null); loadList(); }}
+          onMicroExtras={handleMicroExtras}
+          onCancel={() => setBuyModal(null)} />
       )}
+
+      <SmartBasketScanner
+        visible={smartBasketOpen}
+        onClose={() => setSmartBasketOpen(false)}
+        onItems={async (items) => {
+          const res: any = await addShoppingLocalFirst(items);
+          if (res?.status === "queued") Alert.alert(t.common.confirm, t.common.offlineQueued);
+          else {
+            if (hasActiveSuggestion(res)) handleAddResponse(res);
+            else Alert.alert(t.common.confirm, t.shopping.smartBasketAdded.replace("{count}", String(items.length)));
+          }
+          loadList();
+        }}
+      />
     </ScreenShell>
   );
 }
@@ -150,6 +255,10 @@ const styles = StyleSheet.create({
   input: { marginBottom: 0 },
   voiceWrap: { justifyContent: "center" },
   voiceHint: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm },
+  smartBasketBtn: { marginTop: Spacing.sm, alignSelf: "flex-start" },
+  hintsSection: { marginTop: Spacing.lg, paddingHorizontal: Spacing.xs, gap: Spacing.sm },
+  hintsTitle: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", marginBottom: Spacing.xs },
+  hintText: { color: Colors.textMuted, fontSize: 14, lineHeight: 22, opacity: 0.85 },
   addBtn: {
     backgroundColor: Colors.accent,
     width: 48,

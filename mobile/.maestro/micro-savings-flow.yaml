@@ -1,0 +1,22 @@
+appId: io.talkcash.app
+---
+# Micro-savings flow: quick expense with coffee keyword -> swap nudge
+- runFlow: expense-flow.yaml
+- assertVisible:
+    id: "micro-savings-nudge"
+    optional: true
+- assertVisible:
+    text: "Mikro yatırım|Micro-investment|Akıllı Tasarruf|Smart savings"
+    optional: true
+- tapOn:
+    id: "micro-savings-transfer"
+    optional: true
+- tapOn:
+    text: "Tamam|OK"
+    optional: true
+- tapOn:
+    text: "Ana Sayfa|Home|Giriş"
+    optional: true
+- assertVisible:
+    id: "micro-savings-hero"
+    optional: true

@@ -45,23 +45,25 @@ export default function TabLayout() {
         title: t.tabs.transactions,
         tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "list" : "list-outline"} color={color} focused={focused} />,
       }} />
-      <Tabs.Screen name="shopping" options={{
-        title: t.tabs.shopping,
-        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "cart" : "cart-outline"} color={color} focused={focused} />,
+      <Tabs.Screen name="insights" options={{
+        title: t.tabs.insights,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "analytics" : "analytics-outline"} color={color} focused={focused} />,
       }} />
-      <Tabs.Screen name="agenda" options={{
-        title: t.tabs.agenda,
-        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "calendar" : "calendar-outline"} color={color} focused={focused} />,
+      <Tabs.Screen name="input" options={{
+        title: t.tabs.input,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "add-circle" : "add-circle-outline"} color={color} focused={focused} />,
       }} />
       <Tabs.Screen name="settings" options={{
-        title: t.tabs.settings,
+        title: t.tabs.more,
         tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "settings" : "settings-outline"} color={color} focused={focused} />,
+        tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "grid" : "grid-outline"} color={color} focused={focused} />,
       }} />
-      <Tabs.Screen name="input" options={{ href: null }} />
+      <Tabs.Screen name="shopping" options={{ href: null }} />
+      <Tabs.Screen name="agenda" options={{ href: null }} />
       <Tabs.Screen name="budgets" options={{ href: null }} />
       <Tabs.Screen name="mentor" options={{ href: null }} />
       <Tabs.Screen name="social" options={{ href: null }} />
+      <Tabs.Screen name="workspaces" options={{ href: null }} />
     </Tabs>
     </>
   );

@@ -7,6 +7,7 @@ import { Surface } from "@/components/ui/Surface";
 import { Colors, Radius, Shadow, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { scanReceiptWithOfflineQueue } from "@/services/receiptQueue";
 
 interface Props {
   onResult: (data: any) => void;
@@ -24,7 +25,7 @@ export function ReceiptScanner({ onResult, onClose }: Props) {
     setScanning(true);
     setError("");
     try {
-      const result = await api.scanReceipt(uri);
+      const result = await scanReceiptWithOfflineQueue(uri);
       onResult(result);
     } catch (e: any) {
       setError(e.message || t.scanner.scanFailed);

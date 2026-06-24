@@ -1,0 +1,50 @@
+appId: io.talkcash.app
+---
+# TalkCash smoke — requires dev build on device/emulator
+- launchApp
+- assertVisible: "TalkCash"
+- runFlow:
+    when:
+      visible:
+        id: "login-email"
+    commands:
+      - tapOn:
+          id: "login-email"
+      - inputText: "smoke@talkcash.io"
+      - tapOn:
+          id: "login-password"
+      - inputText: "SmokeTest123!"
+      - hideKeyboard
+      - tapOn:
+          id: "login-submit"
+          optional: true
+- tapOn:
+    text: "Giriş|Sign In|Giriş Yap"
+    optional: true
+- tapOn:
+    text: "Giriş|Input"
+    optional: true
+- tapOn:
+    id: "quick-expense-btn"
+    optional: true
+- tapOn:
+    text: "İptal|Cancel"
+    optional: true
+- tapOn:
+    text: "Ayarlar|Settings|Daha|More"
+    optional: true
+- tapOn:
+    id: "settings-load-demo"
+    optional: true
+- assertVisible:
+    text: "Örnek veri|Sample data|Senkron|Sync"
+    optional: true
+- tapOn:
+    text: "Ayarlar|Settings"
+    optional: true
+- assertVisible:
+    text: "Asistan Kişiliği|Assistant Persona|Agresif Anne|Angry Mom"
+    optional: true
+- assertVisible:
+    text: "Fısıltı Modu|Quick Whisper|Whisper"
+    optional: true
