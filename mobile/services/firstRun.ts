@@ -6,6 +6,7 @@ const SIMPLE_INPUT_KEY = "talkcash_simple_input";
 const SIMPLE_HOME_KEY = "talkcash_simple_home";
 const DEMO_OFFER_KEY = "talkcash_demo_offer_shown";
 const PENDING_DEMO_OFFER_KEY = "talkcash_pending_demo_offer";
+const PENDING_INPUT_TEXT_KEY = "talkcash_pending_input_text";
 
 export async function hasAddedFirstExpense(): Promise<boolean> {
   return (await AsyncStorage.getItem(FIRST_EXPENSE_KEY)) === "1";
@@ -73,4 +74,14 @@ export async function consumePendingDemoOffer(): Promise<boolean> {
   const pending = (await AsyncStorage.getItem(PENDING_DEMO_OFFER_KEY)) === "1";
   if (pending) await AsyncStorage.removeItem(PENDING_DEMO_OFFER_KEY);
   return pending;
+}
+
+export async function setPendingInputText(text: string): Promise<void> {
+  await AsyncStorage.setItem(PENDING_INPUT_TEXT_KEY, text.trim());
+}
+
+export async function consumePendingInputText(): Promise<string | null> {
+  const raw = await AsyncStorage.getItem(PENDING_INPUT_TEXT_KEY);
+  if (raw) await AsyncStorage.removeItem(PENDING_INPUT_TEXT_KEY);
+  return raw?.trim() || null;
 }

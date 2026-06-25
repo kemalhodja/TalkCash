@@ -58,7 +58,7 @@ export function MicroSavingsHeroCard({ summary, compact }: Props) {
         <View style={styles.actions}>
           <PrimaryButton
             label={t.microSavings.heroCtaExpense}
-            onPress={() => router.push("/input")}
+            onPress={() => router.push("/(tabs)/input")}
             style={styles.btn}
             testID="micro-savings-hero-expense"
           />

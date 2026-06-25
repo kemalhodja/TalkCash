@@ -5,6 +5,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { PaywallCard } from "@/components/PaywallCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -13,6 +14,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
+import { getPremiumStatus, hasEntitlement, PremiumStatus, refreshPremiumStatus } from "@/services/premium";
 
 type ChatMsg = { id: string; role: string; content: string; created_at?: string };
 
@@ -22,11 +24,17 @@ export default function MentorScreen() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [premium, setPremium] = useState<PremiumStatus | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const load = async () => {
     try {
-      setMessages(await api.getChatHistory());
+      const [history, status] = await Promise.all([
+        api.getChatHistory(),
+        getPremiumStatus(),
+      ]);
+      setMessages(history);
+      setPremium(status);
     } catch {
       setMessages([]);
     } finally {
@@ -37,9 +45,17 @@ export default function MentorScreen() {
   useEffect(() => { load(); }, []);
   const { refreshing, onRefresh } = usePullRefresh(load);
 
+  const aiEnt = premium?.entitlements?.ai_coach;
+  const aiLocked = premium ? !hasEntitlement(premium, "ai_coach") : false;
+  const usageLabel = aiEnt?.limit != null
+    ? t.mentor.usage
+      .replace("{used}", String(aiEnt.used ?? 0))
+      .replace("{limit}", String(aiEnt.limit))
+    : null;
+
   const send = async () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || aiLocked) return;
     setSending(true);
     setInput("");
     const optimistic: ChatMsg = { id: `local-${Date.now()}`, role: "user", content: text };
@@ -47,6 +63,7 @@ export default function MentorScreen() {
     try {
       const reply = await api.sendChatMessage(text);
       setMessages((prev) => [...prev.filter((m) => m.id !== optimistic.id), optimistic, reply]);
+      setPremium(await refreshPremiumStatus());
     } catch (e: any) {
       setMessages((prev) => [
         ...prev.filter((m) => m.id !== optimistic.id),
@@ -64,7 +81,15 @@ export default function MentorScreen() {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScreenShell scroll={false} ambient="subtle" style={styles.flex}>
-        <ScreenHeader title={t.mentor.title} subtitle={t.mentor.subtitle} />
+        <ScreenHeader title={t.mentor.title} subtitle={usageLabel || t.mentor.subtitle} />
+
+        {aiLocked ? (
+          <PaywallCard
+            title={t.mentor.limitReached}
+            message={t.premium.lockedMessage}
+            onUpgraded={() => refreshPremiumStatus().then(setPremium)}
+          />
+        ) : null}
 
         <ScrollView
           ref={scrollRef}
@@ -96,11 +121,12 @@ export default function MentorScreen() {
             multiline
             containerStyle={styles.inputWrap}
             style={styles.input}
+            editable={!aiLocked}
           />
           <PrimaryButton
             label={sending ? t.mentor.sending : t.mentor.send}
             onPress={send}
-            disabled={sending || !input.trim()}
+            disabled={sending || !input.trim() || aiLocked}
             loading={sending}
             compact
             style={styles.sendBtn}
@@ -118,9 +144,9 @@ const styles = StyleSheet.create({
   bubble: { padding: Spacing.md, marginBottom: Spacing.sm, maxWidth: "85%" },
   userBubble: { alignSelf: "flex-end" },
   aiBubble: { alignSelf: "flex-start" },
-  bubbleText: { color: Colors.text, lineHeight: 20 },
-  inputRow: { flexDirection: "row", gap: Spacing.sm, alignItems: "flex-end", paddingBottom: Spacing.md },
+  bubbleText: { color: Colors.text, lineHeight: 21 },
+  inputRow: { flexDirection: "row", alignItems: "flex-end", gap: Spacing.sm, paddingTop: Spacing.sm },
   inputWrap: { flex: 1, marginBottom: 0 },
-  input: { maxHeight: 100 },
-  sendBtn: { minWidth: 88 },
+  input: { minHeight: 44, maxHeight: 120 },
+  sendBtn: { marginBottom: Spacing.sm },
 });

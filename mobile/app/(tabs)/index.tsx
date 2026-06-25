@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View,
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { router } from "expo-router";
 import { IncomeModal } from "@/components/IncomeModal";
 import { ErrorState } from "@/components/ErrorState";
@@ -160,7 +159,7 @@ export default function DashboardScreen() {
       setSimpleHome(await isSimpleHomeMode());
       loadData();
     } catch {
-      /* ignore */
+      Alert.alert(t.onboarding.demoTitle, t.onboarding.demoFailed);
     } finally {
       setDemoLoading(false);
     }
@@ -189,7 +188,7 @@ export default function DashboardScreen() {
   );
 
   if (loading) {
-    return <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>;
+    return <LoadingScreen />;
   }
 
   if (error && wallets.length === 0) {
@@ -237,6 +236,8 @@ export default function DashboardScreen() {
           ...(simpleHome ? [
             { key: "shopping", label: t.firstRun.quickShopping, icon: "cart-outline" as const, onPress: () => router.push("/(tabs)/shopping") },
             { key: "agenda", label: t.firstRun.quickAgenda, icon: "calendar-outline" as const, onPress: () => router.push("/(tabs)/agenda") },
+            { key: "budget", label: t.firstRun.quickBudget, icon: "pie-chart-outline" as const, onPress: () => router.push("/(tabs)/budgets") },
+            { key: "mentor", label: t.firstRun.quickMentor, icon: "chatbubble-ellipses-outline" as const, onPress: () => router.push("/(tabs)/mentor") },
           ] : [
             { key: "whisper", label: t.quickVoice.title, icon: "ear-outline" as const, onPress: () => router.push("/quick-voice?hold=1") },
           ]),

@@ -126,7 +126,7 @@ export default function LockScreen() {
       if (e instanceof ApiError && e.status === 401) {
         setError(t.lock.wrongPin);
       } else if (e instanceof ApiError && e.status === 0) {
-        setError(t.errors.network);
+        setError(t.lock.offlineRequired);
       } else if (e instanceof ApiError && e.message === "Session expired") {
         setError(t.lock.sessionExpired);
       } else {

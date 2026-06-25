@@ -1,0 +1,49 @@
+﻿{
+  "id": "7399da72-994d-4aa2-802c-9aebbb1655aa",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+    "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+  },
+  "artifacts": {},
+  "fingerprint": {
+    "id": "019ed860-172b-71bc-878a-c85e09e90f96",
+    "hash": "ae2ca62c1d6f788cc43fcf4ee0331affb69cd8e9"
+  },
+  "initiatingActor": {
+    "id": "bc4e1dc8-6b5e-42e3-a5c8-efcce5a97c21",
+    "displayName": "muallim35"
+  },
+  "logFiles": [
+    "https://storage.googleapis.com/eas-workflows-production/logs/d7cfbb2e-a657-49a6-bfc9-bcfc4e120230/7399da72-994d-4aa2-802c-9aebbb1655aa/2026-06-18T01%3A37%3A21Z-f4ef87d1-6fda-4748-8347-50d8d2057585.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260618%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260618T013829Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=1c0302c742ae7e327cddc5696d666dec95c4656f4c44b86227320847218c111dd0e3fc937e2bdc0de847ea1ca97d3ccd3e87dd3de435b044ce98bc2dd163512b98a7148d8a42962b5e42ae61a860157d713ab0b497803f6ff48b49d422f91e3891e7b8bee105c8b79680ff62de8db47a5463a27cc6fc651f09f46c14d27ee1717e66bb5ebc6c619656c275e8453bca4ce84506b1d2c5fed4e030ed9e2c3b688000d9ae71d5aa1fcd5de96b8498fa9d73c363c02afdcd4d4852f11ca1b0d34b06ce58349971dbb097f499a7cf612006fcdf83b4b046261ec11212ee26a68cfb887c05cfabe7e194a611351811339f5adedb495520b1a158822063cd7a99a28eed"
+  ],
+  "project": {
+    "id": "d7cfbb2e-a657-49a6-bfc9-bcfc4e120230",
+    "name": "talkcash",
+    "slug": "talkcash",
+    "ownerAccount": {
+      "id": "0191ded6-7d12-4b59-a69f-f636c3b4cc12",
+      "name": "muallim35"
+    }
+  },
+  "distribution": "STORE",
+  "buildProfile": "production",
+  "sdkVersion": "52.0.0",
+  "appVersion": "1.0.0",
+  "appBuildVersion": "6",
+  "runtimeVersion": "1.0.0",
+  "gitCommitHash": "dd431ecf10c1c2ee3cef98d3ef352e4f20bfe214",
+  "gitCommitMessage": "Merge pull request #31 from kemalhodja/cursor/complete-polish-9b40\n\nComplete UI rollout and release setup automation",
+  "priority": "NORMAL",
+  "createdAt": "2026-06-18T01:37:16.560Z",
+  "updatedAt": "2026-06-18T01:40:29.633Z",
+  "completedAt": "2026-06-18T01:40:29.465Z",
+  "expirationDate": "2026-07-18T01:37:16.582Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 4576,
+    "buildQueueTime": 5024,
+    "buildDuration": 183305
+  }
+}

@@ -60,16 +60,14 @@ export function FirstRunCoach({ active }: Props) {
       router.push("/(tabs)/input");
       return;
     }
-    if (step >= STEPS.length - 1) {
-      await finish();
+    if (key === "wallets") {
+      setVisible(false);
+      await setCoachStep(2);
+      router.push("/(tabs)");
       return;
     }
-    const nextStep = step + 1;
-    setStep(nextStep);
-    await setCoachStep(nextStep);
-    if (key === "wallets") {
-      router.push("/(tabs)/transactions");
-    }
+    await finish();
+    router.push("/(tabs)/transactions");
   };
 
   return (

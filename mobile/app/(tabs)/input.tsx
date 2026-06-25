@@ -32,6 +32,7 @@ import * as Speech from "expo-speech";
 import {
   isSimpleInputMode,
   markFirstExpenseAdded,
+  consumePendingInputText,
 } from "@/services/firstRun";
 
 export default function InputScreen() {
@@ -65,6 +66,9 @@ export default function InputScreen() {
 
   useEffect(() => {
     isSimpleInputMode().then(setSimpleMode);
+    consumePendingInputText().then((pending) => {
+      if (pending) setText(pending);
+    });
   }, []);
 
   useEffect(() => {
@@ -81,8 +85,8 @@ export default function InputScreen() {
     })();
   }, [voiceParams.hold, voiceParams.whisper]);
 
-  const slashHints = locale === "en"
-    ? ["/150 coffee bank", "/500 transfer bank cash", "/bill electricity 200"]
+  const slashHints: string[] = Array.isArray(t.input.slashHints)
+    ? t.input.slashHints
     : ["/150 kahve banka", "/500 transfer banka nakit", "/fatura elektrik 200"];
 
   const showConfirmation = (message: string, parsed: any) => {
@@ -238,7 +242,7 @@ export default function InputScreen() {
         {
           intent: "add_expense",
           amount: data.total_amount,
-          category: data.category || data.suggested_category || "Genel",
+          category: data.category || data.suggested_category || t.categories.general,
           description: data.merchant,
           receipt_id: data.receipt_id,
           receipt_total_amount: data.total_amount,
@@ -303,7 +307,7 @@ export default function InputScreen() {
       const res: any = await api.executeAction({
         intent: "add_expense",
         amount,
-        category: "Genel",
+        category: t.categories.general,
         description: quickDesc.trim() || t.input.quickExpenseDefault,
         wallet_name: "Nakit",
       }, true);
@@ -354,7 +358,7 @@ export default function InputScreen() {
         {
           intent: "add_expense",
           amount: draft.amount,
-          category: "Genel",
+          category: t.categories.general,
           description: draft.description,
           raw_text: clip,
         },

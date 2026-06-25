@@ -34,7 +34,7 @@ export function MicroSavingsIntroBanner({ visibleWhenEmpty = true }: Props) {
     track("micro_savings_intro_cta");
     await dismissMicroSavingsIntro();
     setVisible(false);
-    router.push("/input");
+    router.push("/(tabs)/input");
   };
 
   return (

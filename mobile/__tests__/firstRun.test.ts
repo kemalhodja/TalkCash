@@ -19,6 +19,7 @@ jest.mock("@react-native-async-storage/async-storage", () => {
 
 import {
   consumePendingDemoOffer,
+  consumePendingInputText,
   getCoachStep,
   hasAddedFirstExpense,
   isSimpleHomeMode,
@@ -27,6 +28,7 @@ import {
   markFirstExpenseAdded,
   setCoachStep,
   setPendingDemoOffer,
+  setPendingInputText,
   setSimpleHomeMode,
   setSimpleInputMode,
 } from "@/services/firstRun";
@@ -58,5 +60,11 @@ describe("firstRun service", () => {
     await setPendingDemoOffer();
     expect(await consumePendingDemoOffer()).toBe(true);
     expect(await consumePendingDemoOffer()).toBe(false);
+  });
+
+  it("consumes pending input text once", async () => {
+    await setPendingInputText("50 coffee");
+    expect(await consumePendingInputText()).toBe("50 coffee");
+    expect(await consumePendingInputText()).toBeNull();
   });
 });

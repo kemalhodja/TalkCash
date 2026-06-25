@@ -78,7 +78,7 @@ export default function InsightsScreen() {
         <PaywallCard onUpgraded={() => load(true)} />
       ) : locked && !showAdvancedInsights ? (
         <Surface variant="default" style={{ padding: Spacing.md, marginBottom: Spacing.md }}>
-          <Text style={{ color: Colors.textSecondary, lineHeight: 20 }}>{t.firstRun.simpleHomeHint}</Text>
+          <Text style={{ color: Colors.textSecondary, lineHeight: 20 }}>{t.insightsScreen.unlockAfterFirstExpense}</Text>
         </Surface>
       ) : (
         <>

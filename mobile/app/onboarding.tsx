@@ -15,6 +15,7 @@ import { useI18n, type Locale } from "@/i18n";
 import { track } from "@/services/analytics";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
+import { setPendingInputText } from "@/services/firstRun";
 import { registerForPushNotifications } from "@/services/notifications";
 
 const ONBOARDING_KEY = "talkcash_onboarding_done";
@@ -75,7 +76,11 @@ export default function OnboardingScreen() {
     try {
       const result = await api.parseText(text, false);
       if (result?.parsed?.intent === "add_expense") {
-        Alert.alert(t.onboarding.welcomeTitle, t.firstRun.onboardingTrySuccess);
+        await setPendingInputText(text);
+        Alert.alert(t.onboarding.welcomeTitle, t.firstRun.onboardingTrySuccess, [
+          { text: t.firstRun.onboardingTryGo, onPress: () => router.replace("/(tabs)/input") },
+          { text: t.common.close, style: "cancel" },
+        ]);
       } else {
         Alert.alert(t.onboarding.welcomeTitle, result?.message || t.firstRun.onboardingTrySuccess);
       }

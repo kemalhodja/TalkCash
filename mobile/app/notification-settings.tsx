@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import { Stack } from "expo-router";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { SectionBlock } from "@/components/ui/SectionBlock";
 import { SettingSwitchRow } from "@/components/ui/SettingSwitchRow";
@@ -26,9 +27,11 @@ export default function NotificationSettingsScreen() {
   const { t } = useI18n();
   useRequireUnlock();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setPrefs(await api.getNotificationPrefs());
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -44,7 +47,7 @@ export default function NotificationSettingsScreen() {
     }
   };
 
-  if (!prefs) return null;
+  if (loading || !prefs) return <LoadingScreen />;
 
   return (
     <ScreenShell bottomInset={false}>

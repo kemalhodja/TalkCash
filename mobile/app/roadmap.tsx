@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text } from "react-native";
 import { Stack } from "expo-router";
 import { RoadmapTimeline } from "@/components/RoadmapTimeline";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Colors, Spacing, Typography } from "@/constants/theme";
 import { useI18n } from "@/i18n";
@@ -15,11 +16,13 @@ export default function RoadmapScreen() {
   const { t } = useI18n();
   useRequireUnlock();
   const [data, setData] = useState<RoadmapData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [votingId, setVotingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setData(await api.getRoadmap());
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -58,7 +61,7 @@ export default function RoadmapScreen() {
     }
   };
 
-  if (!data) return null;
+  if (loading || !data) return <LoadingScreen />;
 
   return (
     <ScreenShell bottomInset={false}>

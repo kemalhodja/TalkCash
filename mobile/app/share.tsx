@@ -48,9 +48,9 @@ export default function ShareImportScreen() {
         {
           intent: "add_expense",
           amount: smsDraft.amount,
-          category: "Genel",
+          category: t.categories.general,
           description: smsDraft.description,
-          store_name: smsDraft.merchant || "Genel",
+          store_name: smsDraft.merchant || t.categories.general,
           place: smsDraft.merchant || "",
           raw_text: text,
         },

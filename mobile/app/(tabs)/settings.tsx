@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert, Linking, Modal, StyleSheet, Text, View,
 } from "react-native";
+import Constants from "expo-constants";
 import { router, useFocusEffect } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
@@ -40,12 +41,8 @@ import {
   setSimpleInputMode,
 } from "@/services/firstRun";
 
-const TIMEZONES = [
-  { id: "Europe/Istanbul", label: "🇹🇷 Istanbul" },
-  { id: "Europe/London", label: "🇬🇧 London" },
-  { id: "America/New_York", label: "🇺🇸 New York" },
-  { id: "Asia/Tokyo", label: "🇯🇵 Tokyo" },
-];
+const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
+const APP_BUILD = Constants.expoConfig?.android?.versionCode;
 
 export default function SettingsScreen() {
   const { t, locale, setLocale } = useI18n();
@@ -63,6 +60,21 @@ export default function SettingsScreen() {
   const [simpleHome, setSimpleHome] = useState(true);
   const [simpleInput, setSimpleInput] = useState(true);
   const showDevConnection = getAppEnv() !== "production";
+  const timezones = useMemo(
+    () => [
+      { id: "Europe/Istanbul", label: t.settings.timezoneIstanbul },
+      { id: "Europe/London", label: t.settings.timezoneLondon },
+      { id: "America/New_York", label: t.settings.timezoneNewYork },
+      { id: "Asia/Tokyo", label: t.settings.timezoneTokyo },
+    ],
+    [t.settings.timezoneIstanbul, t.settings.timezoneLondon, t.settings.timezoneNewYork, t.settings.timezoneTokyo],
+  );
+  const settingsSubtitle = showDevConnection
+    ? `${t.settings.appEnv}: ${getAppEnv()}`
+    : t.settings.subtitle;
+  const versionLabel = APP_BUILD
+    ? `${t.settings.version}: ${APP_VERSION} (${APP_BUILD})`
+    : `${t.settings.version}: ${APP_VERSION}`;
   const [securityModal, setSecurityModal] = useState<"pin" | "removePin" | "password" | "delete" | null>(null);
   const [field1, setField1] = useState("");
   const [field2, setField2] = useState("");
@@ -268,7 +280,7 @@ export default function SettingsScreen() {
   return (
     <>
       <ScreenShell ambient="subtle">
-        <ScreenHeader title={t.settings.title} subtitle={`${t.settings.appEnv}: ${getAppEnv()}`} />
+        <ScreenHeader title={t.settings.title} subtitle={settingsSubtitle} />
 
         {showDevConnection ? <ApiConnectionCard /> : null}
 
@@ -291,12 +303,17 @@ export default function SettingsScreen() {
           />
           <PrimaryButton label={t.firstRun.quickShopping} onPress={() => router.push("/(tabs)/shopping")} variant="secondary" style={styles.actionBtn} />
           <PrimaryButton label={t.firstRun.quickAgenda} onPress={() => router.push("/(tabs)/agenda")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.firstRun.quickBudget} onPress={() => router.push("/(tabs)/budgets")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.firstRun.quickMentor} onPress={() => router.push("/(tabs)/mentor")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.features.hubLink} onPress={() => router.push("/feature-hub")} variant="ghost" style={styles.actionBtn} />
         </SectionBlock>
 
         <SectionBlock title={t.premium.title} bare>
           <Surface variant="elevated" style={styles.premiumSummary}>
             <Text style={styles.premiumPlan}>{(premiumStatus?.plan || "free").toUpperCase()}</Text>
-            <Text style={styles.premiumMeta}>{t.premium.usage}: AI {premiumStatus?.entitlements.ai_coach?.used ?? 0}/{premiumStatus?.entitlements.ai_coach?.limit ?? "∞"}</Text>
+            <Text style={styles.premiumMeta}>
+              {t.premium.usage}: {t.mentor.usage.replace("{used}", String(premiumStatus?.entitlements.ai_coach?.used ?? 0)).replace("{limit}", String(premiumStatus?.entitlements.ai_coach?.limit ?? "∞"))}
+            </Text>
           </Surface>
           {premiumStatus?.plan === "free" || !premiumStatus ? (
             <PaywallCard onUpgraded={() => getPremiumStatus(true).then(setPremiumStatus)} />
@@ -329,7 +346,7 @@ export default function SettingsScreen() {
 
         <SectionBlock title={t.settings.timezone} bare>
           <ChipPicker
-            options={TIMEZONES}
+            options={timezones}
             value={timezone}
             onChange={selectTimezone}
           />
@@ -406,18 +423,20 @@ export default function SettingsScreen() {
           )}
         </SectionBlock>
 
-        <SectionBlock title={t.onboarding.demoTitle} bare>
-          <Text style={styles.demoHint}>{t.settings.loadDemoHint}</Text>
-          <PrimaryButton
-            label={t.settings.loadDemo}
-            onPress={handleDemoSeed}
-            variant="secondary"
-            loading={seedingDemo}
-            disabled={seedingDemo}
-            style={styles.actionBtn}
-            testID="settings-load-demo"
-          />
-        </SectionBlock>
+        {showDevConnection ? (
+          <SectionBlock title={t.onboarding.demoTitle} bare>
+            <Text style={styles.demoHint}>{t.settings.loadDemoHint}</Text>
+            <PrimaryButton
+              label={t.settings.loadDemo}
+              onPress={handleDemoSeed}
+              variant="secondary"
+              loading={seedingDemo}
+              disabled={seedingDemo}
+              style={styles.actionBtn}
+              testID="settings-load-demo"
+            />
+          </SectionBlock>
+        ) : null}
 
         <SectionBlock title={t.settings.notifications} bare>
           <PrimaryButton label={t.settings.push} onPress={() => registerForPushNotifications()} variant="ghost" style={styles.actionBtn} />
@@ -449,7 +468,7 @@ export default function SettingsScreen() {
         </SectionBlock>
 
         <SectionBlock title={t.settings.about} bare>
-          <ListRow title={`${t.settings.version}: 1.0.0`} />
+          <ListRow title={versionLabel} />
           <PrimaryButton
             label={t.settings.privacyPolicy}
             onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}

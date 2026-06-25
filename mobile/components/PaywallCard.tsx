@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import { FEEDBACK_MAILTO } from "@/constants/links";
 import { Surface } from "@/components/ui/Surface";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -60,7 +61,11 @@ export function PaywallCard({
       } else if (isStoreBillingSupported()) {
         await purchaseSubscription(recommendedPlan, period);
       } else {
-        Alert.alert(t.premium.title, t.premium.storeComingSoon);
+        Alert.alert(t.premium.title, t.premium.storeComingSoon, [
+          { text: t.premium.openPlayStore, onPress: () => Linking.openURL("https://play.google.com/store/apps/details?id=io.talkcash.app") },
+          { text: t.premium.contactSupport, onPress: () => Linking.openURL(FEEDBACK_MAILTO) },
+          { text: t.common.close, style: "cancel" },
+        ]);
         return;
       }
       Alert.alert(t.premium.title, t.premium.upgraded);
