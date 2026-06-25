@@ -207,6 +207,7 @@ export default {
     create: "Create PIN",
     skipPin: "Skip for now",
     wrongPin: "Wrong PIN",
+    sessionExpired: "Session expired. Please sign in again with your email and password.",
     pinTooShort: "PIN must be at least 4 digits",
     pinFailed: "Could not set PIN",
     biometric: "Face ID / Touch ID",

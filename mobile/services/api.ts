@@ -47,6 +47,15 @@ function shouldRetry(status: number): boolean {
   return status >= 500 || status === 429;
 }
 
+/** 401 on these routes means wrong PIN/password — not an expired session. */
+function isCredential401(path: string, method?: string): boolean {
+  if (path === "/auth/pin/verify") return true;
+  if (path === "/auth/pin" && method === "DELETE") return true;
+  if (path === "/auth/pin" && method === "PUT") return true;
+  if (path === "/auth/password" && method === "PUT") return true;
+  return false;
+}
+
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function tryRefreshToken(): Promise<boolean> {
@@ -98,6 +107,10 @@ async function request<T>(path: string, options?: RequestInit, attempt = 0, auth
     if (res.status === 401) {
       if (!authRetry && await tryRefreshToken()) {
         return request<T>(path, options, attempt, true);
+      }
+      if (isCredential401(path, options?.method) && authRetry) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new ApiError(parseErrorDetail(errBody, 401), 401);
       }
       await handleUnauthorized();
       throw new ApiError("Session expired", 401);

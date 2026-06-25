@@ -207,6 +207,7 @@ export default {
     create: "PIN Oluştur",
     skipPin: "Şimdilik atla",
     wrongPin: "PIN hatalı",
+    sessionExpired: "Oturum süresi doldu. Lütfen e-posta ve şifre ile tekrar giriş yapın.",
     pinTooShort: "PIN en az 4 haneli olmalı",
     pinFailed: "PIN ayarlanamadı",
     biometric: "Face ID / Touch ID",
