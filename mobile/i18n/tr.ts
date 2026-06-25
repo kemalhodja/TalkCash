@@ -182,6 +182,7 @@ export default {
     switchRegister: "Hesabın yok mu? Kayıt ol",
     forgotPassword: "Şifremi unuttum",
     rememberMe: "Beni hatırla",
+    rememberMeHint: "Açıkken çıkış yapmadığınız sürece uygulama doğrudan açılır.",
   },
   forgotPassword: {
     title: "Şifre Sıfırlama",

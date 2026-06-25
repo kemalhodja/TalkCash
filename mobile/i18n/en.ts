@@ -182,6 +182,7 @@ export default {
     switchRegister: "No account? Sign up",
     forgotPassword: "Forgot password?",
     rememberMe: "Remember me",
+    rememberMeHint: "Stay signed in and open the app instantly until you log out.",
   },
   forgotPassword: {
     title: "Reset Password",

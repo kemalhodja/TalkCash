@@ -57,6 +57,7 @@ export default function LockScreen() {
         }
         if (!u.hasPin) {
           auth.setUnlocked(true);
+          await auth.clearBackgroundTimestamp();
           await goAfterUnlock();
           return;
         }
@@ -66,7 +67,7 @@ export default function LockScreen() {
       setUser(u);
       if (u.biometricEnabled) {
         const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
-        if (ok) { auth.setUnlocked(true); await goAfterUnlock(); }
+        if (ok) { auth.setUnlocked(true); await auth.clearBackgroundTimestamp(); await goAfterUnlock(); }
       }
     });
   }, [t.lock.biometricPrompt]);
@@ -75,6 +76,7 @@ export default function LockScreen() {
     try {
       await api.verifyPin(pin);
       auth.setUnlocked(true);
+      await auth.clearBackgroundTimestamp();
       await goAfterUnlock();
     } catch {
       setError(t.lock.wrongPin);
@@ -88,6 +90,7 @@ export default function LockScreen() {
       await api.setPin(pin);
       await auth.updateUser({ hasPin: true });
       auth.setUnlocked(true);
+      await auth.clearBackgroundTimestamp();
       await goAfterUnlock();
     } catch {
       setError(t.lock.pinFailed);
@@ -121,7 +124,7 @@ export default function LockScreen() {
             label={t.lock.biometric}
             onPress={async () => {
               const ok = await auth.authenticateBiometric(t.lock.biometricPrompt);
-              if (ok) { auth.setUnlocked(true); await goAfterUnlock(); }
+              if (ok) { auth.setUnlocked(true); await auth.clearBackgroundTimestamp(); await goAfterUnlock(); }
             }}
             style={styles.bioLink}
           />
@@ -131,6 +134,7 @@ export default function LockScreen() {
             label={t.lock.skipPin}
             onPress={async () => {
               auth.setUnlocked(true);
+              await auth.clearBackgroundTimestamp();
               await goAfterUnlock();
             }}
             style={styles.bioLink}

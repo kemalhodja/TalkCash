@@ -1,10 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { router } from "expo-router";
-import { auth } from "@/services/auth";
-
-/** Re-lock only after the app was in background for a while (not on every blur/inactive). */
-const RELOCK_AFTER_MS = 60_000;
+import { auth, RELOCK_AFTER_MS } from "@/services/auth";
 
 export function useAppLock() {
   const appState = useRef(AppState.currentState);
@@ -17,6 +14,7 @@ export function useAppLock() {
 
       if (nextState === "background") {
         backgroundedAt.current = Date.now();
+        void auth.recordBackgroundAt();
         return;
       }
 
@@ -25,9 +23,12 @@ export function useAppLock() {
 
       const bgAt = backgroundedAt.current;
       backgroundedAt.current = null;
-      if (bgAt == null || Date.now() - bgAt < RELOCK_AFTER_MS) return;
+      if (bgAt == null || Date.now() - bgAt < RELOCK_AFTER_MS) {
+        void auth.clearBackgroundTimestamp();
+        return;
+      }
 
-      auth.getUser().then((user) => {
+      auth.getUser().then(async (user) => {
         if (!user?.hasPin || !auth.isUnlocked()) return;
         auth.setUnlocked(false);
         router.replace("/lock");

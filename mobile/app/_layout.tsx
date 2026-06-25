@@ -37,22 +37,27 @@ export default function RootLayout() {
 
         let route = "/login";
         if (user) {
-          try {
-            const me = await api.getMe();
-            if (cancelled) return;
-            if (typeof me.has_pin === "boolean" && me.has_pin !== user.hasPin) {
-              await auth.updateUser({ hasPin: me.has_pin });
-              user.hasPin = me.has_pin;
-            }
-          } catch {
-            /* offline — use cached user */
-          }
-
-          if (user.hasPin && !auth.isUnlocked()) {
-            route = "/lock";
+          if (!(await auth.keepStoredSession())) {
+            await auth.clear({ preserveOffline: true });
           } else {
-            if (!user.hasPin) auth.setUnlocked(true);
-            route = "/(tabs)";
+        await auth.restoreSessionState();
+            try {
+              const me = await api.getMe();
+              if (cancelled) return;
+              if (typeof me.has_pin === "boolean" && me.has_pin !== user.hasPin) {
+                await auth.updateUser({ hasPin: me.has_pin });
+                user.hasPin = me.has_pin;
+              }
+            } catch {
+              /* offline — use cached user */
+            }
+
+            if (user.hasPin && !auth.isUnlocked()) {
+              route = "/lock";
+            } else {
+              if (!user.hasPin) auth.setUnlocked(true);
+              route = "/(tabs)";
+            }
           }
         }
 

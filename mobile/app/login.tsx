@@ -141,16 +141,32 @@ export default function LoginScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {!isRegister ? (
-          <View style={styles.rememberRow}>
-            <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
-            <Switch
-              value={rememberMe}
-              onValueChange={setRememberMe}
-              trackColor={{ true: Colors.accent }}
-              testID="login-remember-me"
-            />
+          <View style={styles.rememberBlock}>
+            <View style={styles.rememberRow}>
+              <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                trackColor={{ true: Colors.accent }}
+                testID="login-remember-me"
+              />
+            </View>
+            <Text style={styles.rememberHint}>{t.login.rememberMeHint}</Text>
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.rememberBlock}>
+            <View style={styles.rememberRow}>
+              <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                trackColor={{ true: Colors.accent }}
+                testID="register-remember-me"
+              />
+            </View>
+            <Text style={styles.rememberHint}>{t.login.rememberMeHint}</Text>
+          </View>
+        )}
 
         <PrimaryButton
           label={isRegister ? t.login.register : t.login.login}
@@ -188,8 +204,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: Spacing.sm,
   },
+  rememberBlock: { marginTop: Spacing.sm },
+  rememberHint: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
   rememberLabel: { color: Colors.textSecondary, fontSize: 14 },
   submitBtn: { marginTop: Spacing.md },
   switch: { marginTop: Spacing.lg, alignSelf: "center" },

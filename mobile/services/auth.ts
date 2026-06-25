@@ -8,6 +8,11 @@ const REFRESH_KEY = "talkcash_refresh";
 const USER_KEY = "talkcash_user";
 const REMEMBER_ME_KEY = "talkcash_remember_me";
 const REMEMBER_EMAIL_KEY = "talkcash_remember_email";
+const SESSION_UNLOCKED_KEY = "talkcash_session_unlocked";
+const LAST_BACKGROUND_AT_KEY = "talkcash_last_background_at";
+
+/** Re-lock PIN after this long in background (while app process stays alive). */
+export const RELOCK_AFTER_MS = 60_000;
 
 export interface AuthUser {
   userId: string;
@@ -26,8 +31,51 @@ export const auth = {
     return sessionUnlocked;
   },
 
+  /** Clears in-memory unlock flag without touching persisted session (cold start). */
+  clearSessionMemory() {
+    sessionUnlocked = false;
+  },
+
   setUnlocked(value: boolean) {
     sessionUnlocked = value;
+    void this.persistSessionIfRemembered();
+  },
+
+  async persistSessionIfRemembered(): Promise<void> {
+    if (!(await this.getRememberMe())) return;
+    if (sessionUnlocked) {
+      await SecureStore.setItemAsync(SESSION_UNLOCKED_KEY, "1");
+    } else {
+      await SecureStore.deleteItemAsync(SESSION_UNLOCKED_KEY);
+    }
+  },
+
+  async restoreSessionState(): Promise<void> {
+    if (!(await this.getRememberMe())) {
+      sessionUnlocked = false;
+      return;
+    }
+    const raw = await SecureStore.getItemAsync(SESSION_UNLOCKED_KEY);
+    sessionUnlocked = raw === "1";
+  },
+
+  async recordBackgroundAt(): Promise<void> {
+    await AsyncStorage.setItem(LAST_BACKGROUND_AT_KEY, String(Date.now()));
+  },
+
+  async shouldRelockAfterResume(): Promise<boolean> {
+    const raw = await AsyncStorage.getItem(LAST_BACKGROUND_AT_KEY);
+    if (!raw) return false;
+    return Date.now() - Number(raw) >= RELOCK_AFTER_MS;
+  },
+
+  async clearBackgroundTimestamp(): Promise<void> {
+    await AsyncStorage.removeItem(LAST_BACKGROUND_AT_KEY);
+  },
+
+  /** Returns false when stored session should be discarded (remember-me off). */
+  async keepStoredSession(): Promise<boolean> {
+    return this.getRememberMe();
   },
 
   async save(user: AuthUser) {
@@ -76,6 +124,8 @@ export const auth = {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(REFRESH_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
+    await SecureStore.deleteItemAsync(SESSION_UNLOCKED_KEY);
+    await AsyncStorage.removeItem(LAST_BACKGROUND_AT_KEY);
   },
 
   async updateUser(partial: Partial<AuthUser>) {
