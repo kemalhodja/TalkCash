@@ -17,6 +17,7 @@ import { usePullRefresh } from "@/hooks/usePullRefresh";
 import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { track } from "@/services/analytics";
+import { hasAddedFirstExpense } from "@/services/firstRun";
 import { getPremiumStatus, hasEntitlement, PremiumStatus, refreshPremiumStatus } from "@/services/premium";
 import { formatMoney } from "@/utils/format";
 
@@ -28,6 +29,7 @@ export default function InsightsScreen() {
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showAdvancedInsights, setShowAdvancedInsights] = useState(false);
 
   const load = useCallback(async (force = false) => {
     setError("");
@@ -57,6 +59,7 @@ export default function InsightsScreen() {
   useEffect(() => {
     track("insights_screen_opened");
     load();
+    hasAddedFirstExpense().then((done) => setShowAdvancedInsights(done));
   }, [load]);
   const { refreshing, onRefresh } = usePullRefresh(() => load(true));
 
@@ -70,9 +73,13 @@ export default function InsightsScreen() {
     <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title={t.tabs.insights} subtitle={`${t.premium.currentPlan}: ${(premium?.plan || "free").toUpperCase()}`} />
       <MicroSavingsHeroCard summary={savingsData} compact />
-      <BrokerLinksCard />
-      {locked ? (
+      {showAdvancedInsights ? <BrokerLinksCard /> : null}
+      {locked && showAdvancedInsights ? (
         <PaywallCard onUpgraded={() => load(true)} />
+      ) : locked && !showAdvancedInsights ? (
+        <Surface variant="default" style={{ padding: Spacing.md, marginBottom: Spacing.md }}>
+          <Text style={{ color: Colors.textSecondary, lineHeight: 20 }}>{t.firstRun.simpleHomeHint}</Text>
+        </Surface>
       ) : (
         <>
           {summary?.month ? (

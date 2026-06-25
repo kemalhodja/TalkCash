@@ -33,6 +33,12 @@ import { getPremiumStatus, PremiumStatus } from "@/services/premium";
 import { isStoreBillingSupported, restoreSubscriptions } from "@/services/storeBilling";
 import { pullAndCacheSnapshot } from "@/services/syncCache";
 import { isBudgetTtsEnabled, setBudgetTtsEnabled } from "@/services/speech";
+import {
+  isSimpleHomeMode,
+  isSimpleInputMode,
+  setSimpleHomeMode,
+  setSimpleInputMode,
+} from "@/services/firstRun";
 
 const TIMEZONES = [
   { id: "Europe/Istanbul", label: "🇹🇷 Istanbul" },
@@ -54,6 +60,9 @@ export default function SettingsScreen() {
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [premiumStatus, setPremiumStatus] = useState<PremiumStatus | null>(null);
   const [persona, setPersona] = useState<"default" | "angry_mom" | "street_smart">("default");
+  const [simpleHome, setSimpleHome] = useState(true);
+  const [simpleInput, setSimpleInput] = useState(true);
+  const showDevConnection = getAppEnv() !== "production";
   const [securityModal, setSecurityModal] = useState<"pin" | "removePin" | "password" | "delete" | null>(null);
   const [field1, setField1] = useState("");
   const [field2, setField2] = useState("");
@@ -81,6 +90,8 @@ export default function SettingsScreen() {
     isGeofencingEnabled().then(setGeofence).catch(() => {});
     refreshPending();
     getPremiumStatus().then(setPremiumStatus).catch(() => {});
+    isSimpleHomeMode().then(setSimpleHome).catch(() => {});
+    isSimpleInputMode().then(setSimpleInput).catch(() => {});
   }, [refreshPending]);
 
   useFocusEffect(
@@ -259,7 +270,28 @@ export default function SettingsScreen() {
       <ScreenShell ambient="subtle">
         <ScreenHeader title={t.settings.title} subtitle={`${t.settings.appEnv}: ${getAppEnv()}`} />
 
-        <ApiConnectionCard />
+        {showDevConnection ? <ApiConnectionCard /> : null}
+
+        <SectionBlock title={t.firstRun.sectionGettingStarted} bare>
+          <SettingSwitchRow
+            label={t.firstRun.simpleHomeMode}
+            value={simpleHome}
+            onValueChange={async (v) => {
+              setSimpleHome(v);
+              await setSimpleHomeMode(v);
+            }}
+          />
+          <SettingSwitchRow
+            label={t.firstRun.simpleInputMode}
+            value={simpleInput}
+            onValueChange={async (v) => {
+              setSimpleInput(v);
+              await setSimpleInputMode(v);
+            }}
+          />
+          <PrimaryButton label={t.firstRun.quickShopping} onPress={() => router.push("/(tabs)/shopping")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.firstRun.quickAgenda} onPress={() => router.push("/(tabs)/agenda")} variant="secondary" style={styles.actionBtn} />
+        </SectionBlock>
 
         <SectionBlock title={t.premium.title} bare>
           <Surface variant="elevated" style={styles.premiumSummary}>
@@ -333,6 +365,7 @@ export default function SettingsScreen() {
           />
         </SectionBlock>
 
+        <Text style={styles.groupTitle}>{t.firstRun.sectionAdvanced}</Text>
         <SectionBlock title={t.quickVoice.title} bare>
           <Text style={styles.demoHint}>{t.quickVoice.hint}</Text>
           <Text style={styles.demoHint}>{t.quickVoice.tileHint}</Text>
@@ -341,6 +374,7 @@ export default function SettingsScreen() {
 
         <AssistantSetup />
 
+        <Text style={styles.groupTitle}>{t.firstRun.sectionAccount}</Text>
         <SectionBlock title={t.settings.security} bare>
           {hasPin ? (
             <>
@@ -494,6 +528,15 @@ const styles = StyleSheet.create({
   premiumMeta: { color: Colors.textSecondary, marginTop: 4 },
   pendingHint: { color: Colors.warning, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
   demoHint: { color: Colors.textSecondary, fontSize: 13, marginBottom: Spacing.sm },
+  groupTitle: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
   modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
   modalCard: { padding: Spacing.lg },
   modalTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },

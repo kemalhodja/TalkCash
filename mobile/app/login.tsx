@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, StyleSheet, Switch, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiConnectionCard } from "@/components/ApiConnectionCard";
@@ -17,6 +17,7 @@ import { api, ApiError } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
 import { track } from "@/services/analytics";
 import { isOnboardingComplete } from "@/app/onboarding";
+import { getAppEnv } from "@/services/config";
 
 export default function LoginScreen() {
   const { t, locale, setLocale } = useI18n();
@@ -47,7 +48,6 @@ export default function LoginScreen() {
 
   const goAfterAuth = async (user: AuthUser) => {
     const onboardingDone = await isOnboardingComplete();
-    // Password login counts as full auth — don't ask PIN again immediately.
     auth.setUnlocked(true);
     if (!onboardingDone) {
       router.replace("/onboarding");
@@ -94,6 +94,8 @@ export default function LoginScreen() {
     }
   };
 
+  const showDevConnection = getAppEnv() !== "production";
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.lg }]}>
       <AmbientBackground variant="auth" />
@@ -111,7 +113,7 @@ export default function LoginScreen() {
       </View>
 
       <Surface variant="glass" glow style={styles.formCard}>
-        <ApiConnectionCard compact />
+        {showDevConnection ? <ApiConnectionCard compact /> : null}
 
         {isRegister && (
           <InputField placeholder={t.login.fullName} value={fullName} onChangeText={setFullName} />

@@ -29,6 +29,10 @@ import { parseBankSms } from "@/utils/smsExpenseParser";
 import * as Clipboard from "expo-clipboard";
 import { consumePendingInputVoice } from "@/hooks/useAssistantLinking";
 import * as Speech from "expo-speech";
+import {
+  isSimpleInputMode,
+  markFirstExpenseAdded,
+} from "@/services/firstRun";
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
@@ -55,7 +59,13 @@ export default function InputScreen() {
   const [pendingSwap, setPendingSwap] = useState<SwapNudge | null>(null);
   const [pendingRoundUp, setPendingRoundUp] = useState<RoundUpNudge | null>(null);
   const [receiptReview, setReceiptReview] = useState<ReceiptScanData | null>(null);
+  const [simpleMode, setSimpleMode] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    isSimpleInputMode().then(setSimpleMode);
+  }, []);
 
   useEffect(() => {
     api.getInputCapabilities()
@@ -163,6 +173,7 @@ export default function InputScreen() {
           );
         }
         if (payload.intent === "add_expense") {
+          await markFirstExpenseAdded();
           await speakBudgetAlertsAfterSpend(locale);
           playExpenseFeedback(res, locale);
           if (res?.result?.subscription?.next_billing_date && res?.result?.subscription?.subscription_name) {
@@ -297,6 +308,7 @@ export default function InputScreen() {
         wallet_name: "Nakit",
       }, true);
       track("quick_expense_added");
+      await markFirstExpenseAdded();
       if (res?.status === "queued") {
         Alert.alert(t.common.confirm, t.input.queuedOffline);
       } else {
@@ -354,6 +366,38 @@ export default function InputScreen() {
 
   return (
     <ScreenShell ambient contentStyle={styles.content}>
+      {simpleMode && !showAdvanced ? (
+        <>
+          <Text style={styles.simpleHint}>{t.firstRun.simpleInputHint}</Text>
+          <Surface variant="glass" style={styles.voicePanel}>
+            <VoiceInput
+              onResult={handleVoiceResult}
+              whisperMode={whisperMode}
+              holdToRecord={holdToRecord}
+              disabled={!aiAvailable}
+            />
+          </Surface>
+          <View style={styles.divider}>
+            <View style={styles.line} /><Text style={styles.dividerText}>{t.input.orType}</Text><View style={styles.line} />
+          </View>
+          <InputField
+            style={styles.textInput}
+            placeholder={t.input.placeholder}
+            value={text}
+            onChangeText={handleTextChange}
+            onSubmitEditing={handleTextSubmit}
+            returnKeyType="done"
+            containerStyle={styles.inputWrap}
+          />
+          <PrimaryButton label={t.input.send} onPress={handleTextSubmit} loading={isSubmitting} style={styles.submitBtn} />
+          <PrimaryButton
+            label={t.firstRun.showAdvancedInput}
+            onPress={() => setShowAdvanced(true)}
+            variant="ghost"
+          />
+        </>
+      ) : (
+        <>
       <SegmentedControl
         options={[
           { key: "normal", label: t.input.normal },
@@ -462,6 +506,8 @@ export default function InputScreen() {
         loading={isSubmitting}
         style={styles.submitBtn}
       />
+        </>
+      )}
 
       <ConfirmationCard
         visible={confirmVisible}
@@ -607,6 +653,7 @@ const styles = StyleSheet.create({
   chipBtn: { alignSelf: "flex-start" },
   keypadToggle: { marginTop: Spacing.md },
   submitBtn: { marginTop: Spacing.md },
+  simpleHint: { color: Colors.textMuted, fontSize: 13, marginBottom: Spacing.sm, lineHeight: 20 },
   error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
   modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
   modalCard: { padding: Spacing.lg },

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert, Linking, Modal, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
+import { router } from "expo-router";
 import { AuthImage } from "@/components/AuthImage";
 import { ChipPicker } from "@/components/ui/ChipPicker";
 import { ErrorState } from "@/components/ErrorState";
@@ -237,7 +238,14 @@ export default function TransactionsScreen() {
             </Surface>
           </TouchableOpacity>
         ))}
-        {visibleTransactions.length === 0 && <EmptyState message={t.transactions.empty} icon="↕" />}
+        {visibleTransactions.length === 0 && (
+          <EmptyState
+            message={t.transactions.empty}
+            icon="↕"
+            actionLabel={t.transactions.emptyAction}
+            onAction={() => router.push("/(tabs)/input")}
+          />
+        )}
       </ScreenShell>
 
       <Modal visible={!!previewUrl} transparent animationType="fade" onRequestClose={() => setPreviewUrl(null)}>

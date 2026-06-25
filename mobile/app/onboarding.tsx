@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { InputField } from "@/components/ui/InputField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ChipPicker } from "@/components/ui/ChipPicker";
 import { AmbientBackground } from "@/components/ui/AmbientBackground";
@@ -30,6 +31,8 @@ export default function OnboardingScreen() {
   const { t, locale, setLocale } = useI18n();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
+  const [tryText, setTryText] = useState("");
+  const [tryLoading, setTryLoading] = useState(false);
 
   useEffect(() => {
     isOnboardingComplete().then((done) => {
@@ -59,15 +62,33 @@ export default function OnboardingScreen() {
     router.replace("/(tabs)");
   };
 
+  const finishWithPin = async () => {
+    await markOnboardingComplete();
+    auth.setUnlocked(true);
+    router.replace("/lock");
+  };
+
+  const tryParse = async () => {
+    const text = tryText.trim();
+    if (!text) return;
+    setTryLoading(true);
+    try {
+      const result = await api.parseText(text, false);
+      if (result?.parsed?.intent === "add_expense") {
+        Alert.alert(t.onboarding.welcomeTitle, t.firstRun.onboardingTrySuccess);
+      } else {
+        Alert.alert(t.onboarding.welcomeTitle, result?.message || t.firstRun.onboardingTrySuccess);
+      }
+    } catch {
+      Alert.alert(t.common.error, t.common.error);
+    } finally {
+      setTryLoading(false);
+    }
+  };
+
   const next = async () => {
     if (step === 2) {
       try { await registerForPushNotifications(); } catch { /* optional */ }
-    }
-    if (step === 3) {
-      track("onboarding_micro_savings_viewed", { variant: "default" });
-      try {
-        await api.updateMicroSavingsPrefs({ round_up_enabled: true, round_up_step: 10 });
-      } catch { /* optional */ }
     }
     if (step >= 4) {
       await finish();
@@ -112,18 +133,42 @@ export default function OnboardingScreen() {
         <Text style={styles.title}>{current.title}</Text>
         <Text style={styles.body}>{current.body}</Text>
         {step === 1 ? (
-          <View style={styles.voiceExamples}>
-            <Text style={styles.voiceExample}>{t.onboarding.voiceExample1}</Text>
-            <Text style={styles.voiceExample}>{t.onboarding.voiceExample2}</Text>
-            <Text style={styles.voiceHint}>{t.onboarding.voiceHint}</Text>
-          </View>
+          <>
+            <View style={styles.voiceExamples}>
+              <Text style={styles.voiceExample}>{t.onboarding.voiceExample1}</Text>
+              <Text style={styles.voiceExample}>{t.onboarding.voiceExample2}</Text>
+              <Text style={styles.voiceHint}>{t.onboarding.voiceHint}</Text>
+            </View>
+            <Text style={styles.tryLabel}>{t.firstRun.onboardingTryTitle}</Text>
+            <Text style={styles.tryBody}>{t.firstRun.onboardingTryBody}</Text>
+            <InputField
+              placeholder={t.firstRun.onboardingTryPlaceholder}
+              value={tryText}
+              onChangeText={setTryText}
+              onSubmitEditing={tryParse}
+            />
+            <PrimaryButton
+              label={t.firstRun.onboardingTrySubmit}
+              onPress={tryParse}
+              loading={tryLoading}
+              variant="secondary"
+              style={styles.tryBtn}
+            />
+          </>
         ) : null}
         <View style={styles.dots}>
           {steps.map((_, i) => (
             <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
           ))}
         </View>
-        <PrimaryButton label={step >= 4 ? t.onboarding.start : t.onboarding.next} onPress={next} />
+        {step === 4 ? (
+          <View style={styles.pinActions}>
+            <PrimaryButton label={t.firstRun.pinSetupNow} onPress={finishWithPin} />
+            <PrimaryButton label={t.firstRun.pinSkipStart} onPress={finish} variant="secondary" />
+          </View>
+        ) : (
+          <PrimaryButton label={step >= 4 ? t.onboarding.start : t.onboarding.next} onPress={next} />
+        )}
         {step === 0 && (
           <PrimaryButton
             label={t.onboarding.loadDemo}
@@ -156,9 +201,13 @@ const styles = StyleSheet.create({
   voiceExamples: { marginBottom: Spacing.lg, gap: Spacing.sm },
   voiceExample: { color: Colors.text, fontSize: 15, fontWeight: "600", textAlign: "center" },
   voiceHint: { color: Colors.textMuted, fontSize: 13, lineHeight: 20, textAlign: "center", marginTop: Spacing.sm },
+  tryLabel: { color: Colors.text, fontWeight: "700", marginBottom: Spacing.xs },
+  tryBody: { color: Colors.textSecondary, fontSize: 13, marginBottom: Spacing.sm },
+  tryBtn: { marginBottom: Spacing.md },
   dots: { flexDirection: "row", gap: 8, marginBottom: Spacing.lg },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.border },
   dotActive: { backgroundColor: Colors.accent, width: 24, borderRadius: Radius.pill },
   skip: { textAlign: "center", marginTop: Spacing.lg },
   demoBtn: { marginTop: Spacing.md },
+  pinActions: { gap: Spacing.sm },
 });

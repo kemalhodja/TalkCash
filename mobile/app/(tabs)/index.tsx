@@ -8,7 +8,8 @@ import { ErrorState } from "@/components/ErrorState";
 import { TransferModal } from "@/components/TransferModal";
 import { WalletCreateModal } from "@/components/WalletCreateModal";
 import { WalletEditModal } from "@/components/WalletEditModal";
-import { MicroSavingsIntroBanner } from "@/components/MicroSavingsIntroBanner";
+import { FirstRunCoach } from "@/components/FirstRunCoach";
+import { FirstRunHeroCard } from "@/components/FirstRunHeroCard";
 import { MicroSavingsHeroCard } from "@/components/MicroSavingsHeroCard";
 import { WeeklyPodcastCard } from "@/components/WeeklyPodcastCard";
 import { UpcomingSubscriptionsCard } from "@/components/UpcomingSubscriptionsCard";
@@ -34,6 +35,11 @@ import { registerForPushNotifications } from "@/services/notifications";
 import { formatMoney } from "@/utils/format";
 import { speakBudgetAlert } from "@/services/speech";
 import { getCachedSnapshot } from "@/services/syncCache";
+import { MicroSavingsIntroBanner } from "@/components/MicroSavingsIntroBanner";
+import {
+  hasAddedFirstExpense,
+  isSimpleHomeMode,
+} from "@/services/firstRun";
 import { extractUpcomingSubscriptions } from "@/utils/subscriptions";
 
 export default function DashboardScreen() {
@@ -57,6 +63,9 @@ export default function DashboardScreen() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [microSavings, setMicroSavings] = useState<any | null>(null);
   const [upcomingSubs, setUpcomingSubs] = useState<any[]>([]);
+  const [showFirstRunHero, setShowFirstRunHero] = useState(false);
+  const [simpleHome, setSimpleHome] = useState(true);
+  const [demoLoading, setDemoLoading] = useState(false);
   const trackProductRef = useRef(trackProduct);
   const lastSpokenAlert = useRef("");
   trackProductRef.current = trackProduct;
@@ -119,11 +128,38 @@ export default function DashboardScreen() {
   useEffect(() => {
     loadData();
     registerForPushNotifications().catch(() => {});
+    (async () => {
+      const [firstDone, simple] = await Promise.all([hasAddedFirstExpense(), isSimpleHomeMode()]);
+      setShowFirstRunHero(!firstDone);
+      setSimpleHome(simple);
+    })();
   }, [loadData]);
   useEffect(() => {
     setTrackProduct((prev) => prev || t.home.defaultProduct);
   }, [t.home.defaultProduct]);
-  useRefreshOnFocus(loadData);
+  useRefreshOnFocus(async () => {
+    loadData();
+    const firstDone = await hasAddedFirstExpense();
+    setShowFirstRunHero(!firstDone);
+    setSimpleHome(await isSimpleHomeMode());
+  });
+
+  const handleDemoLoad = async () => {
+    setDemoLoading(true);
+    try {
+      await api.seedDemoData();
+      setShowFirstRunHero(false);
+      loadData();
+    } catch {
+      /* ignore */
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  const microHasActivity = Boolean(
+    microSavings?.week_saved || microSavings?.month_saved || microSavings?.investment_total,
+  );
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator color={Colors.accent} size="large" /></View>;
@@ -147,31 +183,51 @@ export default function DashboardScreen() {
 
       {error ? <InsightChip text={error} tone="danger" /> : null}
 
+      {showFirstRunHero ? (
+        <FirstRunHeroCard onTryDemo={handleDemoLoad} loadingDemo={demoLoading} />
+      ) : null}
+
       <HeroNetWorth label={t.home.netWorth} amount={formatMoney(Number(netWorth), locale)} />
 
-      <MicroSavingsHeroCard summary={microSavings} />
+      {!simpleHome && microHasActivity ? (
+        <MicroSavingsHeroCard summary={microSavings} />
+      ) : null}
 
-      {!(microSavings?.week_saved || microSavings?.investment_total) ? (
+      {showFirstRunHero || (!simpleHome && !microHasActivity) ? (
         <MicroSavingsIntroBanner />
       ) : null}
 
-      <WeeklyPodcastCard />
+      {!simpleHome ? <WeeklyPodcastCard /> : null}
 
-      <UpcomingSubscriptionsCard items={upcomingSubs} />
+      {!simpleHome ? <UpcomingSubscriptionsCard items={upcomingSubs} /> : null}
 
       <QuickActionGrid
         actions={[
-          { key: "income", label: t.home.addIncome, icon: "add-circle-outline", onPress: () => setIncomeVisible(true), primary: true },
-          { key: "whisper", label: t.quickVoice.title, icon: "ear-outline", onPress: () => router.push("/quick-voice?hold=1") },
+          { key: "expense", label: t.tabs.input, icon: "mic-outline", onPress: () => router.push("/(tabs)/input"), primary: true },
+          { key: "income", label: t.home.addIncome, icon: "add-circle-outline", onPress: () => setIncomeVisible(true) },
           { key: "transfer", label: t.home.transfer, icon: "swap-horizontal-outline", onPress: () => setTransferVisible(true) },
           { key: "wallet", label: t.home.createWallet, icon: "wallet-outline", onPress: () => setWalletCreateVisible(true) },
-          { key: "voice", label: t.tabs.input, icon: "mic-outline", onPress: () => router.push("/(tabs)/input") },
+          ...(simpleHome ? [
+            { key: "shopping", label: t.firstRun.quickShopping, icon: "cart-outline" as const, onPress: () => router.push("/(tabs)/shopping") },
+            { key: "agenda", label: t.firstRun.quickAgenda, icon: "calendar-outline" as const, onPress: () => router.push("/(tabs)/agenda") },
+          ] : [
+            { key: "whisper", label: t.quickVoice.title, icon: "ear-outline" as const, onPress: () => router.push("/quick-voice?hold=1") },
+          ]),
         ]}
       />
 
+      {simpleHome ? (
+        <Text style={styles.simpleHint}>{t.firstRun.simpleHomeHint}</Text>
+      ) : null}
+
       <SectionBlock title={t.home.wallets} bare>
         {wallets.length === 0 ? (
-          <EmptyState message={t.home.createWallet} icon="💰" />
+          <EmptyState
+            message={t.home.createWallet}
+            icon="💰"
+            actionLabel={t.home.createWallet}
+            onAction={() => setWalletCreateVisible(true)}
+          />
         ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletScroll}>
           {wallets.map((w) => (
@@ -211,6 +267,7 @@ export default function DashboardScreen() {
         </SectionBlock>
       )}
 
+      {!simpleHome ? (
       <SectionBlock
         title={t.home.moreTools}
         actionLabel={toolsOpen ? "▾" : "▸"}
@@ -280,7 +337,9 @@ export default function DashboardScreen() {
           </Surface>
         ) : null}
       </SectionBlock>
+      ) : null}
 
+      {!simpleHome ? (
       <SectionBlock title={t.home.allWallets} bare>
         {wallets.map((w) => (
           <TouchableOpacity key={`full-${w.id}`} onLongPress={() => setWalletEdit(w)} activeOpacity={0.9}>
@@ -294,7 +353,9 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         ))}
       </SectionBlock>
+      ) : null}
 
+      <FirstRunCoach active={!showFirstRunHero} />
       <IncomeModal visible={incomeVisible} onClose={() => setIncomeVisible(false)} onSuccess={loadData} />
       <TransferModal visible={transferVisible} onClose={() => setTransferVisible(false)} onSuccess={loadData} />
       <WalletCreateModal visible={walletCreateVisible} onClose={() => setWalletCreateVisible(false)} onSuccess={loadData} />
@@ -312,4 +373,5 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.sm, alignItems: "center" },
   flexInput: { flex: 1, marginBottom: 0 },
   watchRemove: { color: Colors.danger, fontSize: 16, padding: 4 },
+  simpleHint: { color: Colors.textMuted, fontSize: 12, textAlign: "center", marginBottom: Spacing.md },
 });
