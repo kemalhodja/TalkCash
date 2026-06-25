@@ -5,6 +5,7 @@ const COACH_DONE_KEY = "talkcash_coach_done";
 const SIMPLE_INPUT_KEY = "talkcash_simple_input";
 const SIMPLE_HOME_KEY = "talkcash_simple_home";
 const DEMO_OFFER_KEY = "talkcash_demo_offer_shown";
+const PENDING_DEMO_OFFER_KEY = "talkcash_pending_demo_offer";
 
 export async function hasAddedFirstExpense(): Promise<boolean> {
   return (await AsyncStorage.getItem(FIRST_EXPENSE_KEY)) === "1";
@@ -61,4 +62,15 @@ export async function wasDemoOfferShown(): Promise<boolean> {
 
 export async function markDemoOfferShown(): Promise<void> {
   await AsyncStorage.setItem(DEMO_OFFER_KEY, "1");
+}
+
+/** Set after successful registration; consumed once on home screen. */
+export async function setPendingDemoOffer(): Promise<void> {
+  await AsyncStorage.setItem(PENDING_DEMO_OFFER_KEY, "1");
+}
+
+export async function consumePendingDemoOffer(): Promise<boolean> {
+  const pending = (await AsyncStorage.getItem(PENDING_DEMO_OFFER_KEY)) === "1";
+  if (pending) await AsyncStorage.removeItem(PENDING_DEMO_OFFER_KEY);
+  return pending;
 }

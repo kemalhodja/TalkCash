@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import { router } from "expo-router";
 import { IncomeModal } from "@/components/IncomeModal";
@@ -37,8 +37,12 @@ import { speakBudgetAlert } from "@/services/speech";
 import { getCachedSnapshot } from "@/services/syncCache";
 import { MicroSavingsIntroBanner } from "@/components/MicroSavingsIntroBanner";
 import {
+  consumePendingDemoOffer,
   hasAddedFirstExpense,
   isSimpleHomeMode,
+  markDemoOfferShown,
+  markFirstExpenseAdded,
+  wasDemoOfferShown,
 } from "@/services/firstRun";
 import { extractUpcomingSubscriptions } from "@/utils/subscriptions";
 
@@ -66,6 +70,7 @@ export default function DashboardScreen() {
   const [showFirstRunHero, setShowFirstRunHero] = useState(false);
   const [simpleHome, setSimpleHome] = useState(true);
   const [demoLoading, setDemoLoading] = useState(false);
+  const demoOfferShownRef = useRef(false);
   const trackProductRef = useRef(trackProduct);
   const lastSpokenAlert = useRef("");
   trackProductRef.current = trackProduct;
@@ -147,8 +152,12 @@ export default function DashboardScreen() {
   const handleDemoLoad = async () => {
     setDemoLoading(true);
     try {
-      await api.seedDemoData();
+      const res = await api.seedDemoData();
+      if (res.status === "seeded") {
+        await markFirstExpenseAdded();
+      }
       setShowFirstRunHero(false);
+      setSimpleHome(await isSimpleHomeMode());
       loadData();
     } catch {
       /* ignore */
@@ -156,6 +165,24 @@ export default function DashboardScreen() {
       setDemoLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (loading || demoOfferShownRef.current) return;
+    (async () => {
+      const pending = await consumePendingDemoOffer();
+      if (!pending || await wasDemoOfferShown()) return;
+      demoOfferShownRef.current = true;
+      await markDemoOfferShown();
+      Alert.alert(
+        t.firstRun.demoOfferTitle,
+        t.firstRun.demoOfferBody,
+        [
+          { text: t.firstRun.demoOfferSkip, style: "cancel" },
+          { text: t.firstRun.demoOfferAccept, onPress: () => { void handleDemoLoad(); } },
+        ],
+      );
+    })();
+  }, [loading, t.firstRun.demoOfferAccept, t.firstRun.demoOfferBody, t.firstRun.demoOfferSkip, t.firstRun.demoOfferTitle]);
 
   const microHasActivity = Boolean(
     microSavings?.week_saved || microSavings?.month_saved || microSavings?.investment_total,

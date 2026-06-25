@@ -18,6 +18,7 @@ jest.mock("@react-native-async-storage/async-storage", () => {
 });
 
 import {
+  consumePendingDemoOffer,
   getCoachStep,
   hasAddedFirstExpense,
   isSimpleHomeMode,
@@ -25,6 +26,7 @@ import {
   markCoachDone,
   markFirstExpenseAdded,
   setCoachStep,
+  setPendingDemoOffer,
   setSimpleHomeMode,
   setSimpleInputMode,
 } from "@/services/firstRun";
@@ -50,5 +52,11 @@ describe("firstRun service", () => {
     await setSimpleInputMode(false);
     expect(await isSimpleHomeMode()).toBe(false);
     expect(await isSimpleInputMode()).toBe(false);
+  });
+
+  it("consumes pending demo offer once after register", async () => {
+    await setPendingDemoOffer();
+    expect(await consumePendingDemoOffer()).toBe(true);
+    expect(await consumePendingDemoOffer()).toBe(false);
   });
 });

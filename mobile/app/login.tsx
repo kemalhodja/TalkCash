@@ -18,6 +18,7 @@ import { auth, AuthUser } from "@/services/auth";
 import { track } from "@/services/analytics";
 import { isOnboardingComplete } from "@/app/onboarding";
 import { getAppEnv } from "@/services/config";
+import { setPendingDemoOffer } from "@/services/firstRun";
 
 export default function LoginScreen() {
   const { t, locale, setLocale } = useI18n();
@@ -79,6 +80,9 @@ export default function LoginScreen() {
         await auth.setRememberedEmail(email);
       }
       track(isRegister ? "register_success" : "login_success");
+      if (isRegister) {
+        await setPendingDemoOffer();
+      }
       if (result.locale === "en" || result.locale === "tr") {
         await setLocale(result.locale);
       }
