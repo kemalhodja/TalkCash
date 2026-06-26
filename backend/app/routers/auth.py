@@ -86,10 +86,11 @@ async def forgot_password(
 ):
     await check_rate_limit(request, "auth", settings.auth_rate_limit, strict=True)
     lang = locale_from_request(request)
-    reset_token = await auth_service.request_password_reset(db, data.email)
+    reset_token, email_sent = await auth_service.request_password_reset(db, data.email)
     return ForgotPasswordResponse(
         message=t("auth.password_reset_sent", lang),
         reset_token=reset_token,
+        email_sent=email_sent,
     )
 
 

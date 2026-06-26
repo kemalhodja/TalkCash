@@ -203,6 +203,8 @@ export default {
     subtitle: "Kayıtlı e-posta adresinize sıfırlama bağlantısı gönderilir.",
     submit: "Bağlantı Gönder",
     sent: "E-posta kayıtlıysa sıfırlama bağlantısı gönderildi.",
+    inAppResetTitle: "E-posta gönderilemedi",
+    inAppResetBody: "Sunucuda e-posta ayarı yok. Yeni şifrenizi uygulama içinde belirleyebilirsiniz.",
     backToLogin: "Giriş ekranına dön",
     devTokenHint: "Geliştirme modu: sıfırlama kodu",
   },

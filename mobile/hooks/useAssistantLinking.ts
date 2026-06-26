@@ -107,7 +107,9 @@ export function useAssistantLinking(enabled: boolean) {
       if (parsed.kind === "command") await routeAssistantCommand(parsed.params);
       else if (parsed.kind === "share") await routeShareText(parsed.params.text);
       else if (parsed.kind === "quick_voice") await routeQuickVoice();
-      else await routeInputVoice(parsed.params);
+      else if (parsed.kind === "reset_password") {
+        router.push({ pathname: "/reset-password", params: { token: parsed.token } });
+      } else await routeInputVoice(parsed.params);
     };
 
     const handleSiriShortcut = async (info: { activityType: string; userInfo?: Record<string, unknown> }) => {

@@ -10,6 +10,7 @@ import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
+import { getAppEnv } from "@/services/config";
 
 export default function ForgotPasswordScreen() {
   const { t } = useI18n();
@@ -18,25 +19,46 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const goReset = (token: string) => {
+    router.push({ pathname: "/reset-password", params: { token } });
+  };
+
   const handleSubmit = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError(t.login.email);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const result = await api.forgotPassword(email.trim());
-      if (result.reset_token) {
+      const result = await api.forgotPassword(trimmed);
+      const showDevToken = getAppEnv() !== "production" && result.reset_token;
+
+      if (result.reset_token && !result.email_sent) {
+        Alert.alert(
+          t.forgotPassword.inAppResetTitle,
+          t.forgotPassword.inAppResetBody,
+          [
+            { text: t.resetPassword.submit, onPress: () => goReset(result.reset_token!) },
+            { text: t.forgotPassword.backToLogin, style: "cancel", onPress: () => router.replace("/login") },
+          ],
+        );
+        return;
+      }
+
+      if (showDevToken && result.reset_token) {
         Alert.alert(
           t.forgotPassword.sent,
           `${t.forgotPassword.devTokenHint}: ${result.reset_token}`,
           [
-            {
-              text: t.resetPassword.submit,
-              onPress: () => router.push({ pathname: "/reset-password", params: { token: result.reset_token } }),
-            },
+            { text: t.resetPassword.submit, onPress: () => goReset(result.reset_token!) },
             { text: t.forgotPassword.backToLogin, onPress: () => router.replace("/login") },
           ],
         );
         return;
       }
+
       Alert.alert(t.forgotPassword.title, t.forgotPassword.sent, [
         { text: t.forgotPassword.backToLogin, onPress: () => router.replace("/login") },
       ]);
@@ -64,6 +86,7 @@ export default function ForgotPasswordScreen() {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <PrimaryButton label={t.forgotPassword.submit} onPress={handleSubmit} loading={loading} style={styles.submitBtn} />

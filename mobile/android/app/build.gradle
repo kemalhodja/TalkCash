@@ -121,8 +121,8 @@ android {
         applicationId 'io.talkcash.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 33
-        versionName "1.2.8"
+        versionCode 34
+        versionName "1.2.9"
     }
     signingConfigs {
         debug {

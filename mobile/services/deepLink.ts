@@ -57,10 +57,24 @@ export function parseQuickVoiceUrl(url: string): boolean {
   }
 }
 
+export function parseResetPasswordUrl(url: string): string | null {
+  try {
+    const parsed = Linking.parse(url);
+    const segment = (parsed.hostname || parsed.path || "").replace(/^\//, "");
+    if (segment !== "reset-password") return null;
+    const token = queryValue(parsed.queryParams?.token).trim();
+    return token || null;
+  } catch {
+    return null;
+  }
+}
+
 export function parseAppDeepLink(
   url: string,
   locale: "tr" | "en" = "tr",
-): { kind: "command"; params: AssistantParams } | { kind: "share"; params: ShareLinkParams } | { kind: "input"; params: InputVoiceLinkParams } | { kind: "quick_voice" } | null {
+): { kind: "command"; params: AssistantParams } | { kind: "share"; params: ShareLinkParams } | { kind: "input"; params: InputVoiceLinkParams } | { kind: "quick_voice" } | { kind: "reset_password"; token: string } | null {
+  const resetToken = parseResetPasswordUrl(url);
+  if (resetToken) return { kind: "reset_password", token: resetToken };
   if (parseQuickVoiceUrl(url)) return { kind: "quick_voice" };
   const command = parseAssistantUrl(url, locale);
   if (command) return { kind: "command", params: command };

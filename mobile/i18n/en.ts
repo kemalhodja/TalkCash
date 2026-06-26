@@ -203,6 +203,8 @@ export default {
     subtitle: "We'll send a reset link to your registered email.",
     submit: "Send Link",
     sent: "If the email is registered, a reset link has been sent.",
+    inAppResetTitle: "Email could not be sent",
+    inAppResetBody: "Email is not configured on the server. You can set a new password in the app.",
     backToLogin: "Back to sign in",
     devTokenHint: "Development mode reset code",
   },

@@ -190,7 +190,7 @@ export const api = {
   deleteAccount: (password: string) =>
     request("/auth/me", { method: "DELETE", body: JSON.stringify({ password }) }),
   forgotPassword: (email: string) =>
-    request<{ status: string; message: string; reset_token?: string }>("/auth/forgot-password", {
+    request<{ status: string; message: string; reset_token?: string; email_sent?: boolean }>("/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     }),

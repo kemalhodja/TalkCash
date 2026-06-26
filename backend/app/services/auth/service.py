@@ -210,18 +210,20 @@ class AuthService:
         user.timezone = timezone
         await db.commit()
 
-    async def request_password_reset(self, db: AsyncSession, email: str) -> str | None:
+    async def request_password_reset(self, db: AsyncSession, email: str) -> tuple[str | None, bool]:
         email = email.strip().lower()
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalars().first()
         if not user:
-            return None
+            return None, False
 
         token = create_reset_token()
         await store_reset_token(user.id, token)
         reset_url = f"{settings.password_reset_url}?token={token}"
-        self.email_service.send_password_reset(user.email, reset_url, user.locale or "tr")
-        return token if settings.debug else None
+        email_sent = self.email_service.send_password_reset(user.email, reset_url, user.locale or "tr")
+        # Dev always gets token; prod falls back to in-app reset when SMTP is unavailable.
+        expose_token = settings.debug or not email_sent
+        return (token if expose_token else None, email_sent)
 
     async def reset_password(self, db: AsyncSession, token: str, new_password: str) -> None:
         user_id = await consume_reset_token(token.strip())

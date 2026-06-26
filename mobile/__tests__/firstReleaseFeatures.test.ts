@@ -19,6 +19,12 @@ describe("deepLink", () => {
     const parsed = parseAppDeepLink("talkcash://command?text=150%20kahve&source=shortcut", "tr");
     expect(parsed?.kind).toBe("command");
   });
+
+  it("parses reset-password deep links", () => {
+    const parsed = parseAppDeepLink("talkcash://reset-password?token=abc123", "tr");
+    expect(parsed?.kind).toBe("reset_password");
+    if (parsed?.kind === "reset_password") expect(parsed.token).toBe("abc123");
+  });
 });
 
 describe("parseBankSms", () => {
