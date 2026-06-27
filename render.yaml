@@ -18,6 +18,9 @@ services:
   - type: web
     name: talkcash-api-prod
     runtime: docker
+    repo: https://github.com/kemalhodja/TalkCash
+    branch: main
+    autoDeploy: true
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     region: frankfurt

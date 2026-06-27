@@ -26,6 +26,7 @@ jobs:
         env:
           RATE_LIMIT_ENABLED: "false"
           SCHEDULER_ENABLED: "false"
+          APPLE_VERIFY_MOCK: "true"
         run: pip install -r requirements.txt && python -m pytest tests/ --ignore=tests/e2e -q
 
   health-check:
@@ -48,16 +49,21 @@ jobs:
       - name: Wait for Render deploy (Blueprint auto-sync)
         run: |
           API="https://talkcash-api-prod.onrender.com"
-          for i in $(seq 1 20); do
+          for i in $(seq 1 24); do
             BODY=$(curl -sf "$API/health" || true)
-            if echo "$BODY" | grep -q '"database":true'; then
-              echo "Render API live"
-              echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print('launch_readiness:', json.dumps(d.get('launch_readiness', {})))" 2>/dev/null || true
+            if echo "$BODY" | grep -q '"launch_readiness"'; then
+              echo "New build detected (launch_readiness present)"
+              echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('launch_readiness', {}), indent=2))" 2>/dev/null || true
               API_URL="$API" python3 scripts/smoke_test.py
               exit 0
             fi
-            echo "Attempt $i — waiting 30s..."
+            if echo "$BODY" | grep -q '"database":true'; then
+              echo "Attempt $i — old build still serving, waiting 30s..."
+            else
+              echo "Attempt $i — API not ready, waiting 30s..."
+            fi
             sleep 30
           done
-          echo "::warning::Render API not ready — apply Blueprint at dashboard.render.com if first deploy"
+          echo "::warning::launch_readiness not found — sync Blueprint or set RENDER_DEPLOY_HOOK secret"
           curl -sf "$API/health" || true
+          exit 1
