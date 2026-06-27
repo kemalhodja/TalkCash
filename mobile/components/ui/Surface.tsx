@@ -21,15 +21,19 @@ export function Surface({
   variant = "default",
   glow = false,
   testID,
+  accessibilityRole,
+  accessibilityLabel,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   variant?: Variant;
   glow?: boolean;
-} & Pick<ViewProps, "testID">) {
+} & Pick<ViewProps, "testID" | "accessibilityRole" | "accessibilityLabel">) {
   return (
     <View
       testID={testID}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
       style={[
         styles.base,
         variantStyle[variant],

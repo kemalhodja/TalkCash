@@ -116,9 +116,12 @@ export default function InputScreen() {
       if (result?.parsed) showConfirmation(result.message, result.parsed);
     } catch (e: unknown) {
       setError(getApiErrorMessage(e, {
-        network: t.settings.network,
+        network: t.input.voiceNetworkError,
         timeout: t.input.voiceTimeoutError,
         auth: t.input.voiceAuthError,
+        validation: t.input.parseError,
+        server: t.input.voiceServerError,
+        unknown: t.input.parseError,
       }));
     } finally {
       setIsSubmitting(false);
@@ -159,7 +162,7 @@ export default function InputScreen() {
       showConfirmation(result.message, result.parsed);
     } catch (e: unknown) {
       setError(getApiErrorMessage(e, {
-        network: t.settings.network,
+        network: t.input.voiceNetworkError,
         timeout: t.input.voiceTimeoutError,
         auth: t.input.voiceAuthError,
         validation: t.input.parseError,
@@ -304,7 +307,7 @@ export default function InputScreen() {
       }
       setConfirmVisible(true);
       setError(getApiErrorMessage(e, {
-        network: t.settings.network,
+        network: t.input.voiceNetworkError,
         timeout: t.input.voiceTimeoutError,
         auth: t.input.voiceAuthError,
         validation: t.common.error,

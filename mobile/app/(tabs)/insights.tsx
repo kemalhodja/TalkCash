@@ -96,7 +96,17 @@ export default function InsightsScreen() {
       const blob = type === "pdf" ? await api.exportPdf() : await api.exportExcel();
       const ext = type === "pdf" ? "pdf" : "xlsx";
       const path = `${FileSystem.cacheDirectory}talkcash-report.${ext}`;
-      await FileSystem.writeAsStringAsync(path, blob, { encoding: FileSystem.EncodingType.Base64 });
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const data = (reader.result as string).split(",")[1];
+          if (!data) reject(new Error(t.common.error));
+          else resolve(data);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error(t.common.error));
+        reader.readAsDataURL(blob);
+      });
+      await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(path, { mimeType: type === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       } else {

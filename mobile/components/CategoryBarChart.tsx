@@ -6,7 +6,7 @@ type Item = { category: string; amount: number };
 
 type Props = {
   items: Item[];
-  locale: string;
+  locale: "tr" | "en";
   maxBars?: number;
 };
 

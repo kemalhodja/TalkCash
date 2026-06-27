@@ -19,7 +19,12 @@ TEST_DB = os.environ.get(
     "postgresql+asyncpg://talkcash:talkcash@localhost:5432/talkcash_test",
 )
 
-test_engine = create_async_engine(TEST_DB, echo=False, poolclass=NullPool)
+test_engine = create_async_engine(
+    TEST_DB,
+    echo=False,
+    poolclass=NullPool,
+    connect_args={"timeout": 3},
+)
 TestSession = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 

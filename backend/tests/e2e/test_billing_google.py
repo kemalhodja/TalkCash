@@ -11,7 +11,7 @@ async def test_billing_products(client: AsyncClient, auth_headers):
     assert resp.status_code == 200
     body = resp.json()
     assert body["package_name"] == "io.talkcash.app"
-    assert len(body["products"]) == 3
+    assert len(body["products"]) == 6
     assert body["products"][0]["product_id"].startswith("talkcash_")
 
 

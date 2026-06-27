@@ -47,7 +47,9 @@ async def test_workspace_invitations_list_and_cancel(client: AsyncClient, auth_h
 
     from app.config import settings
 
-    with patch.object(settings, "debug", False), patch.object(settings, "internal_upgrade_secret", "test-secret"):
+    with patch.object(settings, "debug", False), patch.object(settings, "google_play_verify_mock", True), patch.object(
+        settings, "internal_upgrade_secret", "test-secret"
+    ):
         upgrade = await client.post(
             "/api/v1/billing/internal-upgrade",
             headers={**auth_headers, "X-Internal-Upgrade-Secret": "test-secret"},
