@@ -10,6 +10,10 @@ from app.services.audit.service import AuditService
 from app.services.billing.service import BillingService
 
 
+def workspace_invite_url(token: str) -> str:
+    return f"talkcash://workspace-invite?token={token}"
+
+
 class WorkspaceService:
     def __init__(self):
         self.audit = AuditService()
@@ -79,6 +83,74 @@ class WorkspaceService:
         await db.commit()
         await db.refresh(invitation)
         return invitation
+
+    async def list_inbox(self, db: AsyncSession, user_id: UUID, email: str) -> list[dict]:
+        normalized = email.strip().lower()
+        result = await db.execute(
+            select(Invitation, Organization.name)
+            .join(Organization, Organization.id == Invitation.organization_id)
+            .where(Invitation.email == normalized, Invitation.status == "pending")
+            .order_by(Invitation.created_at.desc())
+        )
+        rows = []
+        for invitation, org_name in result.all():
+            member_check = await db.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == invitation.organization_id,
+                    OrganizationMember.user_id == user_id,
+                )
+            )
+            if member_check.scalars().first():
+                continue
+            rows.append({
+                "id": invitation.id,
+                "organization_id": invitation.organization_id,
+                "organization_name": org_name,
+                "role": invitation.role,
+                "token": invitation.token,
+                "accept_url": workspace_invite_url(invitation.token),
+                "created_at": invitation.created_at,
+            })
+        return rows
+
+    async def accept_invitation(self, db: AsyncSession, user_id: UUID, email: str, token: str) -> Organization:
+        normalized = email.strip().lower()
+        result = await db.execute(
+            select(Invitation, Organization)
+            .join(Organization, Organization.id == Invitation.organization_id)
+            .where(Invitation.token == token, Invitation.status == "pending")
+        )
+        row = result.first()
+        if not row:
+            raise ValueError("invitation.not_found")
+        invitation, org = row
+        if invitation.email != normalized:
+            raise ValueError("invitation.email_mismatch")
+
+        existing = await db.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.organization_id == org.id,
+                OrganizationMember.user_id == user_id,
+            )
+        )
+        if existing.scalars().first():
+            invitation.status = "accepted"
+            await db.commit()
+            return org
+
+        db.add(OrganizationMember(organization_id=org.id, user_id=user_id, role=invitation.role))
+        invitation.status = "accepted"
+        await self.audit.log(
+            db,
+            actor_user_id=user_id,
+            action="workspace.invite_accepted",
+            resource_type="organization",
+            resource_id=str(org.id),
+            metadata={"email": normalized, "role": invitation.role.value},
+        )
+        await db.commit()
+        await db.refresh(org)
+        return org
 
     async def list_invitations(self, db: AsyncSession, user_id: UUID, org_id: UUID) -> list[Invitation]:
         await self._require_admin(db, user_id, org_id)

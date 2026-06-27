@@ -9,7 +9,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { PayBillModal } from "@/components/PayBillModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -202,7 +202,14 @@ export default function AgendaScreen() {
     return dueDate.toDateString() === expected.toDateString();
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) {
+    return (
+      <ScreenShell ambient="subtle">
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
+  }
   if (error && items.length === 0) return <ErrorState message={error} onRetry={loadAgenda} />;
 
   return (

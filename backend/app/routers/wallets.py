@@ -54,6 +54,11 @@ async def get_net_worth(user: User = Depends(get_current_user), db: AsyncSession
     return await wallet_service.get_net_worth(db, user.id)
 
 
+@router.get("/monthly-summary")
+async def get_monthly_summary(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await wallet_service.monthly_summary(db, user.id)
+
+
 @router.post("/transfer")
 async def transfer(data: TransferRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     try:

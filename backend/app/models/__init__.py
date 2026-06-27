@@ -5,6 +5,7 @@ from app.models.agenda import AgendaItem, AgendaStatus
 from app.models.shopping import ShoppingItem, ShoppingCategory
 from app.models.receipt import Receipt
 from app.models.budget import BudgetLimit
+from app.models.budget_overrun import BudgetOverrun
 from app.models.social import SharedWallet, DebtRecord, SplitBill, PriceWatchItem, SharedWalletEntry
 from app.models.notification import Notification
 from app.models.exchange_rate import ExchangeRate
@@ -13,6 +14,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.chat_message import ChatMessage
 from app.models.audit import AuditLog
 from app.models.analytics import ProductEvent
+from app.models.feedback import UserFeedback
 from app.models.billing import BillingEvent, Entitlement, GooglePurchase, PlanTier, Subscription, SubscriptionPlan, SubscriptionStatus, UsageMeter
 from app.models.podcast import WeeklyPodcast
 from app.models.product_history import ProductHistory

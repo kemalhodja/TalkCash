@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     google_play_package_name: str = "io.talkcash.app"
     google_play_service_account_json: str = ""
     google_play_verify_mock: bool = False
+    apple_verify_mock: bool = False
+    apple_shared_secret: str = ""
     google_rtdn_webhook_secret: str = ""
     password_reset_ttl_seconds: int = 3600
     password_reset_url: str = "talkcash://reset-password"
@@ -85,6 +87,9 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     sentry_environment: str = "development"
     sentry_traces_sample_rate: float = 0.1
+
+    app_version: str = "1.3.0"
+    deploy_region: str = "frankfurt"
 
     # OCR: tesseract | google | auto (tesseract first, Vision fallback)
     ocr_provider: str = "auto"

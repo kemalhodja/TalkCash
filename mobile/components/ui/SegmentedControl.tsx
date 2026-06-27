@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { hapticSelection } from "@/utils/haptics";
 
 type Option = { key: string; label: string };
 
@@ -7,18 +8,27 @@ type Props = {
   options: Option[];
   value: string;
   onChange: (key: string) => void;
+  accessibilityLabel?: string;
 };
 
-export function SegmentedControl({ options, value, onChange }: Props) {
+export function SegmentedControl({ options, value, onChange, accessibilityLabel }: Props) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} accessibilityRole="tablist" accessibilityLabel={accessibilityLabel}>
       {options.map((opt) => {
         const active = opt.key === value;
         return (
           <TouchableOpacity
             key={opt.key}
             style={[styles.btn, active && styles.btnActive]}
-            onPress={() => onChange(opt.key)}
+            onPress={() => {
+              if (opt.key !== value) {
+                hapticSelection();
+                onChange(opt.key);
+              }
+            }}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={opt.label}
           >
             <Text style={[styles.text, active && styles.textActive]}>{opt.label}</Text>
           </TouchableOpacity>

@@ -12,11 +12,17 @@ import { TextLink } from "@/components/ui/TextLink";
 import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
 import { LANGUAGE_OPTIONS } from "@/constants/languages";
 import { useI18n, type Locale } from "@/i18n";
-import { track } from "@/services/analytics";
+import { track, getOnboardingVariant, trackOnboardingComplete } from "@/services/analytics";
 import { api } from "@/services/api";
 import { auth } from "@/services/auth";
 import { setPendingInputText } from "@/services/firstRun";
 import { registerForPushNotifications } from "@/services/notifications";
+import { hapticImpact, hapticSelection } from "@/utils/haptics";
+import {
+  getOnboardingLastStep,
+  getOnboardingPrimaryLabel,
+  isOnboardingPinStep,
+} from "@/utils/onboardingFlow";
 
 const ONBOARDING_KEY = "talkcash_onboarding_done";
 
@@ -34,8 +40,10 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [tryText, setTryText] = useState("");
   const [tryLoading, setTryLoading] = useState(false);
+  const [variant, setVariant] = useState<"short" | "full">("short");
 
   useEffect(() => {
+    getOnboardingVariant().then(setVariant);
     isOnboardingComplete().then((done) => {
       if (done) router.replace("/(tabs)");
     });
@@ -57,6 +65,7 @@ export default function OnboardingScreen() {
   };
 
   const finish = async () => {
+    await trackOnboardingComplete();
     track("onboarding_completed");
     await markOnboardingComplete();
     auth.setUnlocked(true);
@@ -92,24 +101,44 @@ export default function OnboardingScreen() {
   };
 
   const next = async () => {
-    if (step === 2) {
+    if (step === 1) {
       try { await registerForPushNotifications(); } catch { /* optional */ }
     }
-    if (step >= 4) {
+    if (variant === "full" && step === 2) {
+      try {
+        await api.updateMicroSavingsPrefs({ round_up_enabled: true, round_up_step: 10 });
+      } catch { /* optional */ }
+    }
+    const lastStep = getOnboardingLastStep(variant);
+    if (step >= lastStep) {
+      await hapticImpact("success");
       await finish();
       return;
     }
+    hapticSelection();
+    track("onboarding_step", { step: step + 1, variant });
     setStep(step + 1);
   };
 
-  const steps = [
-    { title: t.onboarding.welcomeTitle, body: t.onboarding.welcomeBody },
-    { title: t.onboarding.voiceTitle, body: t.onboarding.voiceBody },
-    { title: t.onboarding.pushTitle, body: t.onboarding.pushBody },
-    { title: t.onboarding.microSavingsTitle, body: t.onboarding.microSavingsBody },
-    { title: t.onboarding.pinTitle, body: t.onboarding.pinBody },
-  ];
-  const current = steps[step];
+  const steps = variant === "short"
+    ? [
+        { title: t.onboarding.welcomeTitle, body: t.onboarding.welcomeBody },
+        { title: t.onboarding.voiceTitle, body: t.onboarding.voiceBody },
+        { title: t.onboarding.pushTitle, body: t.onboarding.pushBody },
+      ]
+    : [
+        { title: t.onboarding.welcomeTitle, body: t.onboarding.welcomeBody },
+        { title: t.onboarding.voiceTitle, body: t.onboarding.voiceBody },
+        { title: t.onboarding.pushTitle, body: t.onboarding.pushBody },
+        { title: t.onboarding.microSavingsTitle, body: t.onboarding.microSavingsBody },
+        { title: t.onboarding.pinTitle, body: t.onboarding.pinBody },
+      ];
+  const current = steps[step] ?? steps[0];
+  const lastStep = getOnboardingLastStep(variant);
+  const stepTotal = steps.length;
+  const progressLabel = t.onboarding.stepProgress
+    .replace("{current}", String(step + 1))
+    .replace("{total}", String(stepTotal));
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.lg }]}>
@@ -137,6 +166,9 @@ export default function OnboardingScreen() {
         ) : null}
         <Text style={styles.title}>{current.title}</Text>
         <Text style={styles.body}>{current.body}</Text>
+        <Text style={styles.progress} accessibilityRole="text" accessibilityLiveRegion="polite">
+          {progressLabel}
+        </Text>
         {step === 1 ? (
           <>
             <View style={styles.voiceExamples}>
@@ -161,18 +193,21 @@ export default function OnboardingScreen() {
             />
           </>
         ) : null}
-        <View style={styles.dots}>
+        <View style={styles.dots} accessibilityRole="progressbar" accessibilityLabel={progressLabel}>
           {steps.map((_, i) => (
-            <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+            <View key={i} style={[styles.dot, i === step && styles.dotActive]} accessibilityElementsHidden />
           ))}
         </View>
-        {step === 4 ? (
+        {isOnboardingPinStep(variant, step) ? (
           <View style={styles.pinActions}>
             <PrimaryButton label={t.firstRun.pinSetupNow} onPress={finishWithPin} />
             <PrimaryButton label={t.firstRun.pinSkipStart} onPress={finish} variant="secondary" />
           </View>
         ) : (
-          <PrimaryButton label={step >= 4 ? t.onboarding.start : t.onboarding.next} onPress={next} />
+          <PrimaryButton
+            label={getOnboardingPrimaryLabel(variant, step, { next: t.onboarding.next, start: t.onboarding.start })}
+            onPress={next}
+          />
         )}
         {step === 0 && (
           <PrimaryButton
@@ -183,7 +218,7 @@ export default function OnboardingScreen() {
             style={styles.demoBtn}
           />
         )}
-        {step < 4 && (
+        {step < lastStep && (
           <TextLink label={t.onboarding.skip} onPress={finish} style={styles.skip} />
         )}
       </Surface>
@@ -202,7 +237,8 @@ const styles = StyleSheet.create({
   privacyTitle: { color: Colors.accent, fontSize: 14, fontWeight: "700", textAlign: "center", marginBottom: Spacing.xs },
   privacyBody: { color: Colors.textSecondary, fontSize: 13, lineHeight: 20, textAlign: "center" },
   title: { color: Colors.text, ...Typography.title, marginBottom: Spacing.md },
-  body: { color: Colors.textSecondary, fontSize: 16, lineHeight: 24, marginBottom: Spacing.xl },
+  body: { color: Colors.textSecondary, fontSize: 16, lineHeight: 24, marginBottom: Spacing.md },
+  progress: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", marginBottom: Spacing.lg },
   voiceExamples: { marginBottom: Spacing.lg, gap: Spacing.sm },
   voiceExample: { color: Colors.text, fontSize: 15, fontWeight: "600", textAlign: "center" },
   voiceHint: { color: Colors.textMuted, fontSize: 13, lineHeight: 20, textAlign: "center", marginTop: Spacing.sm },

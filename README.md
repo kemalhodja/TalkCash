@@ -81,7 +81,9 @@ FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production
 | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Fly setup, EAS production build |
 | [docs/PLAY_STORE_LISTING.md](docs/PLAY_STORE_LISTING.md) | Mağaza metinleri + checklist |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | Gizlilik politikası |
+| [docs/TERMS.md](docs/TERMS.md) | Kullanım ve abonelik şartları |
 | [docs/PRD_COMPLIANCE.md](docs/PRD_COMPLIANCE.md) | Özellik matrisi |
+| [docs/PRODUCT_BACKLOG.md](docs/PRODUCT_BACKLOG.md) | Kapalı test sonrası ürün öncelikleri |
 
 Staging API:
 

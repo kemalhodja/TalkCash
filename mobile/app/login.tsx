@@ -15,7 +15,7 @@ import type { Locale } from "@/i18n";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { auth, AuthUser } from "@/services/auth";
-import { track } from "@/services/analytics";
+import { track, trackRegisterSuccess } from "@/services/analytics";
 import { isOnboardingComplete } from "@/app/onboarding";
 import { getAppEnv } from "@/services/config";
 import { setPendingDemoOffer } from "@/services/firstRun";
@@ -81,6 +81,7 @@ export default function LoginScreen() {
       }
       track(isRegister ? "register_success" : "login_success");
       if (isRegister) {
+        await trackRegisterSuccess();
         await setPendingDemoOffer();
       }
       if (result.locale === "en" || result.locale === "tr") {

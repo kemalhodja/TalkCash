@@ -8,6 +8,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/constants/expenseCatego
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { parsePositiveAmount } from "@/utils/amount";
+import { hapticImpact } from "@/utils/haptics";
 
 export type ParsedConfirmation = {
   intent?: string;
@@ -61,12 +62,15 @@ export function ConfirmationCard({ visible, message, parsed, onConfirm, onCancel
     const nextAmount = parsePositiveAmount(amount);
     if (!nextAmount) {
       setFieldError(t.input.confirmInvalidAmount);
+      hapticImpact("warning");
       return;
     }
     if (showStore && !storeName.trim()) {
       setFieldError(t.input.confirmStoreRequired);
+      hapticImpact("warning");
       return;
     }
+    hapticImpact("success");
     onConfirm({
       ...parsed,
       intent: parsed.intent === "manual_edit" ? "add_expense" : parsed.intent,

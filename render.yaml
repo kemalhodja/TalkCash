@@ -1,17 +1,17 @@
-# TalkCash API — Render Blueprint (self-contained: Postgres + Redis + API)
+# TalkCash API — Render Blueprint (Postgres + Redis + API)
 # Dashboard: New → Blueprint → GitHub kemalhodja/TalkCash → Apply
-# Push to main syncs this file automatically when Blueprint is linked.
+# Set sync:false secrets in Render dashboard before public launch.
 
 databases:
   - name: talkcash-db
-    plan: free
+    plan: starter
     region: frankfurt
     ipAllowList: []
 
 services:
   - type: keyvalue
     name: talkcash-redis
-    plan: free
+    plan: starter
     region: frankfurt
     ipAllowList: []
 
@@ -21,7 +21,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     region: frankfurt
-    plan: free
+    plan: starter
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -37,9 +37,9 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: BILLING_PREMIUM_UNLOCKED
-        value: "true"
       - key: SECRET_KEY
+        generateValue: true
+      - key: INTERNAL_UPGRADE_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
         value: "https://talkcash-api-prod.onrender.com"
@@ -49,13 +49,51 @@ services:
         value: "false"
       - key: RATE_LIMIT_ENABLED
         value: "true"
-      - key: S3_ENABLED
+      - key: BILLING_PREMIUM_UNLOCKED
         value: "false"
       - key: GOOGLE_PLAY_PACKAGE_NAME
         value: io.talkcash.app
       - key: GOOGLE_PLAY_VERIFY_MOCK
+        value: "false"
+      - key: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: GOOGLE_RTDN_WEBHOOK_SECRET
+        sync: false
+      - key: S3_ENABLED
         value: "true"
-      - key: INTERNAL_UPGRADE_SECRET
-        value: "talkcash-internal-test-2026"
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        value: talkcash-prod
+      - key: S3_REGION
+        value: auto
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        value: noreply@talkcash.io
+      - key: SMTP_USE_TLS
+        value: "true"
+      - key: PASSWORD_RESET_URL
+        value: "talkcash://reset-password"
+      - key: SENTRY_DSN
+        sync: false
       - key: SENTRY_ENVIRONMENT
         value: production
+      - key: APP_VERSION
+        value: "1.3.0"
+      - key: DEPLOY_REGION
+        value: frankfurt
+      - key: APPLE_VERIFY_MOCK
+        value: "false"

@@ -4,8 +4,6 @@ import {
 } from "react-native";
 import Constants from "expo-constants";
 import { router, useFocusEffect } from "expo-router";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system";
 import { AssistantSetup } from "@/components/AssistantSetup";
 import { ApiConnectionCard } from "@/components/ApiConnectionCard";
 import { PaywallCard } from "@/components/PaywallCard";
@@ -48,7 +46,6 @@ export default function SettingsScreen() {
   const { t, locale, setLocale } = useI18n();
   const [biometric, setBiometric] = useState(false);
   const [geofence, setGeofence] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [ttsBudget, setTtsBudget] = useState(true);
   const [timezone, setTimezone] = useState("Europe/Istanbul");
   const [syncing, setSyncing] = useState(false);
@@ -212,26 +209,6 @@ export default function SettingsScreen() {
   useEffect(() => {
     restoreGeofencingIfEnabled().catch(() => {});
   }, []);
-
-  const handleExport = async (type: "pdf" | "excel") => {
-    setExporting(true);
-    try {
-      const blob = type === "pdf" ? await api.exportPdf() : await api.exportExcel();
-      const ext = type === "pdf" ? "pdf" : "xlsx";
-      const path = `${FileSystem.cacheDirectory}${t.settings.exportFilename}.${ext}`;
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
-        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path);
-      };
-      reader.readAsDataURL(blob);
-    } catch {
-      Alert.alert(t.settings.export, t.common.error);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const handleLogout = () => {
     const doLogout = async () => {
@@ -402,7 +379,6 @@ export default function SettingsScreen() {
             <PrimaryButton label={t.lock.createPin} onPress={() => router.push("/lock")} variant="secondary" style={styles.actionBtn} />
           )}
           <PrimaryButton label={t.settings.changePassword} onPress={() => setSecurityModal("password")} variant="secondary" style={styles.actionBtn} />
-          <PrimaryButton label={t.settings.deleteAccount} onPress={() => setSecurityModal("delete")} variant="danger" style={styles.actionBtn} />
         </SectionBlock>
 
         <SectionBlock title={t.settings.sync} bare>
@@ -454,17 +430,17 @@ export default function SettingsScreen() {
           />
         </SectionBlock>
 
+        <SectionBlock title={t.settings.dataAndPrivacy} bare>
+          <PrimaryButton label={t.account.manageData} onPress={() => router.push("/account")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.feedback.title} onPress={() => router.push("/feedback")} variant="ghost" style={styles.actionBtn} />
+        </SectionBlock>
+
         <SectionBlock title={t.settings.viewReceipts} bare>
           <PrimaryButton label={t.settings.viewReceipts} onPress={() => router.push("/receipts")} variant="ghost" style={styles.actionBtn} />
         </SectionBlock>
 
         <SectionBlock title={t.workspaces.title} bare>
           <PrimaryButton label={t.workspaces.title} onPress={() => router.push("/workspaces")} variant="secondary" style={styles.actionBtn} />
-        </SectionBlock>
-
-        <SectionBlock title={t.settings.export} bare>
-          <PrimaryButton label={t.settings.exportPdf} onPress={() => handleExport("pdf")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
-          <PrimaryButton label={t.settings.exportExcel} onPress={() => handleExport("excel")} variant="secondary" disabled={exporting} style={styles.actionBtn} />
         </SectionBlock>
 
         <SectionBlock title={t.settings.about} bare>
@@ -483,13 +459,14 @@ export default function SettingsScreen() {
           />
           <PrimaryButton
             label={t.settings.sendFeedback}
-            onPress={() => Linking.openURL(FEEDBACK_MAILTO)}
+            onPress={() => router.push("/feedback")}
             variant="ghost"
             style={styles.actionBtn}
           />
         </SectionBlock>
 
         <SectionBlock title={t.settings.account} bare>
+          <PrimaryButton label={t.account.manageData} onPress={() => router.push("/account")} variant="secondary" style={styles.actionBtn} />
           <PrimaryButton label={t.settings.logout} onPress={handleLogout} variant="danger" style={styles.actionBtn} />
         </SectionBlock>
       </ScreenShell>

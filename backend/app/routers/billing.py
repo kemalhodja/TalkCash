@@ -12,6 +12,8 @@ from app.models.billing import PlanTier
 from app.models.user import User
 from app.schemas.billing import (
     AdminUpgradeRequest,
+    AppleVerifyRequest,
+    AppleVerifyResponse,
     GoogleVerifyRequest,
     GoogleVerifyResponse,
     PremiumStatusResponse,
@@ -29,6 +31,9 @@ billing_service = BillingService()
 def _allow_internal_upgrade(request: Request) -> None:
     if settings.debug:
         return
+    # Production Play billing: internal upgrade must not be reachable from the app.
+    if not settings.google_play_verify_mock and not settings.billing_premium_unlocked:
+        raise HTTPException(status_code=404, detail="Not found")
     secret = settings.internal_upgrade_secret.strip()
     header = request.headers.get("x-internal-upgrade-secret", "")
     if secret and header == secret:
@@ -75,6 +80,29 @@ async def verify_google_purchase(
         )
         subscription = await billing_service.activate_google_subscription(db, user.id, verified)
         return GoogleVerifyResponse(
+            subscription_id=subscription.id,
+            status=await billing_service.get_status(db, user.id),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=resolve_error(exc, lang))
+
+
+@router.post("/apple/verify", response_model=AppleVerifyResponse)
+async def verify_apple_purchase(
+    data: AppleVerifyRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lang = user_locale(user)
+    try:
+        verified = await asyncio.to_thread(
+            billing_service.app_store.verify_subscription,
+            data.product_id,
+            data.receipt_data,
+            data.transaction_id,
+        )
+        subscription = await billing_service.activate_apple_subscription(db, user.id, verified)
+        return AppleVerifyResponse(
             subscription_id=subscription.id,
             status=await billing_service.get_status(db, user.id),
         )

@@ -2,7 +2,7 @@
   "expo": {
     "name": "TalkCash",
     "slug": "talkcash",
-    "version": "1.2.9",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "talkcash",
@@ -67,6 +67,14 @@
             },
             {
               "scheme": "talkcash",
+              "host": "reset-password"
+            },
+            {
+              "scheme": "talkcash",
+              "host": "workspace-invite"
+            },
+            {
+              "scheme": "talkcash",
               "pathPrefix": "/command"
             }
           ],
@@ -91,6 +99,8 @@
       "expo-asset",
       "./plugins/withAssistant.js",
       "./plugins/withQuickWhisperWidget.js",
+      "./plugins/withQuickBalanceWidget.js",
+      "./plugins/withIosWidgetScaffold.js",
       "./plugins/withReactNativeIap.js",
       "./plugins/withShareIntent.js",
       [

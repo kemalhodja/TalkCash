@@ -7,6 +7,7 @@ import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { getPremiumStatus } from "@/services/premium";
 import { track } from "@/services/analytics";
+import { hapticImpact, hapticSelection } from "@/utils/haptics";
 
 interface Props {
   onResult: (text: string, parsed?: any) => void;
@@ -74,7 +75,9 @@ export function VoiceInput({
       );
       recordingRef.current = rec;
       setRecording(true);
+      hapticImpact("medium");
     } catch {
+      hapticImpact("error");
       Alert.alert(t.input.micPermission);
     }
   };
@@ -106,8 +109,10 @@ export function VoiceInput({
           const result = await api.parseVoice(uri, whisperMode);
           onResult(result.parsed?.raw_text || result.message, result);
         }
+        hapticImpact("success");
       }
     } catch {
+      hapticImpact("error");
       Alert.alert(t.common.error, t.input.voiceFailed);
     } finally {
       setProcessing(false);
@@ -161,6 +166,9 @@ export function VoiceInput({
           onPressIn={holdToRecord ? () => { if (!processing && !disabled && !recording) startRecording(); } : undefined}
           onPressOut={holdToRecord ? () => { if (recording) stopRecording(); } : undefined}
           disabled={processing || disabled}
+          accessibilityRole="button"
+          accessibilityLabel={recording ? t.input.listeningStop : t.input.voiceCommand}
+          accessibilityState={{ busy: processing, disabled: processing || disabled }}
         >
           {processing ? (
             <ActivityIndicator color={Colors.bg} />

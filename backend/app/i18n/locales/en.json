@@ -60,6 +60,7 @@
   "billing.subscription_expired": "Your subscription has expired. Please renew.",
   "workspace.forbidden": "You do not have admin access to this workspace",
   "invitation.not_found": "Invitation not found",
+  "invitation.email_mismatch": "This invitation was sent to a different email address",
   "agenda.cannot_edit_paid": "Paid items cannot be edited",
   "agenda.cannot_delete_paid": "Paid items cannot be deleted",
   "agenda.already_done": "This item is already completed",

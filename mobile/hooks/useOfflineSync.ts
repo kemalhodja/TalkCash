@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { getStoredLocale } from "@/i18n";
+import { trackFirstSync } from "@/services/analytics";
 import { checkApiHealth } from "@/services/config";
 import { flushQueue, getPendingCount, type SyncConflict } from "@/services/offlineQueue";
 import { notifyReceiptsSynced } from "@/services/notifications";
@@ -66,7 +67,10 @@ export function useOfflineSync() {
     const cameBackOnline = wasOfflineRef.current;
     wasOfflineRef.current = false;
     if (cameBackOnline || (await getPendingReceiptScanCount()) > 0 || (await getPendingCount()) > 0) {
-      await runSync(cameBackOnline);
+      const result = await runSync(cameBackOnline);
+      if (result.applied > 0) {
+        await trackFirstSync({ applied: result.applied });
+      }
     }
   }, [runSync]);
 

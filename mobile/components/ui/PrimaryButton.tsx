@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleProp, StyleSheet, Text, TouchableOpacity, ViewStyle } from "react-native";
 import { Colors, Radius, Shadow, Spacing } from "@/constants/theme";
+import { hapticImpact, hapticSelection } from "@/utils/haptics";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -40,6 +41,12 @@ export function PrimaryButton({
   accessibilityLabel,
   testID,
 }: Props) {
+  const handlePress = () => {
+    if (variant === "primary") hapticImpact("medium");
+    else hapticSelection();
+    onPress();
+  };
+
   return (
     <TouchableOpacity
       testID={testID}
@@ -51,7 +58,7 @@ export function PrimaryButton({
         (disabled || loading) && styles.disabled,
         style,
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       activeOpacity={0.85}
       accessibilityRole="button"

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { hapticSelection } from "@/utils/haptics";
 
 type Option = { id: string; label: string };
 
@@ -12,8 +13,8 @@ type Props = {
 
 export function ChipPicker({ label, options, value, onChange }: Props) {
   return (
-    <View style={styles.wrap}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+    <View style={styles.wrap} accessibilityRole="radiogroup" accessibilityLabel={label}>
+      {label ? <Text style={styles.label} accessibilityRole="text">{label}</Text> : null}
       <View style={styles.chips}>
         {options.map((opt) => {
           const active = value === opt.id;
@@ -21,7 +22,15 @@ export function ChipPicker({ label, options, value, onChange }: Props) {
             <TouchableOpacity
               key={opt.id}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => onChange(opt.id)}
+              onPress={() => {
+                if (opt.id !== value) {
+                  hapticSelection();
+                  onChange(opt.id);
+                }
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={opt.label}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
             </TouchableOpacity>

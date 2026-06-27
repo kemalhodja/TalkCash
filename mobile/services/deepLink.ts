@@ -10,6 +10,11 @@ export type InputVoiceLinkParams = {
   whisper: boolean;
   hold: boolean;
   source: string;
+  smsPaste?: boolean;
+};
+
+export type WorkspaceInviteLinkParams = {
+  token: string;
 };
 
 function queryValue(value: string | string[] | undefined): string {
@@ -41,7 +46,20 @@ export function parseInputVoiceUrl(url: string): InputVoiceLinkParams | null {
       whisper: queryValue(qp.whisper) === "1" || queryValue(qp.whisper) === "true",
       hold: queryValue(qp.hold) === "1" || queryValue(qp.hold) === "true",
       source: queryValue(qp.source) || "shortcut",
+      smsPaste: queryValue(qp.sms) === "1" || queryValue(qp.sms) === "true",
     };
+  } catch {
+    return null;
+  }
+}
+
+export function parseWorkspaceInviteUrl(url: string): WorkspaceInviteLinkParams | null {
+  try {
+    const parsed = Linking.parse(url);
+    const segment = (parsed.hostname || parsed.path || "").replace(/^\//, "");
+    if (segment !== "workspace-invite") return null;
+    const token = queryValue(parsed.queryParams?.token).trim();
+    return token ? { token } : null;
   } catch {
     return null;
   }
@@ -72,9 +90,11 @@ export function parseResetPasswordUrl(url: string): string | null {
 export function parseAppDeepLink(
   url: string,
   locale: "tr" | "en" = "tr",
-): { kind: "command"; params: AssistantParams } | { kind: "share"; params: ShareLinkParams } | { kind: "input"; params: InputVoiceLinkParams } | { kind: "quick_voice" } | { kind: "reset_password"; token: string } | null {
+): { kind: "command"; params: AssistantParams } | { kind: "share"; params: ShareLinkParams } | { kind: "input"; params: InputVoiceLinkParams } | { kind: "quick_voice" } | { kind: "reset_password"; token: string } | { kind: "workspace_invite"; params: WorkspaceInviteLinkParams } | null {
   const resetToken = parseResetPasswordUrl(url);
   if (resetToken) return { kind: "reset_password", token: resetToken };
+  const workspaceInvite = parseWorkspaceInviteUrl(url);
+  if (workspaceInvite) return { kind: "workspace_invite", params: workspaceInvite };
   if (parseQuickVoiceUrl(url)) return { kind: "quick_voice" };
   const command = parseAssistantUrl(url, locale);
   if (command) return { kind: "command", params: command };

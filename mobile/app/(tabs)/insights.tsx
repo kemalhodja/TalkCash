@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PaywallCard } from "@/components/PaywallCard";
+import { MonthlyReportCard } from "@/components/MonthlyReportCard";
 import { MicroSavingsHeroCard } from "@/components/MicroSavingsHeroCard";
 import { InvestmentProjectionCard } from "@/components/InvestmentProjectionCard";
 import { PortfolioCoachCard } from "@/components/PortfolioCoachCard";
 import { BrokerLinksCard } from "@/components/BrokerLinksCard";
 import { ErrorState } from "@/components/ErrorState";
 import { InsightChip } from "@/components/ui/InsightChip";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Surface } from "@/components/ui/Surface";
@@ -25,6 +26,7 @@ export default function InsightsScreen() {
   const { t, locale } = useI18n();
   const [premium, setPremium] = useState<PremiumStatus | null>(null);
   const [summary, setSummary] = useState<any | null>(null);
+  const [monthlySummary, setMonthlySummary] = useState<any | null>(null);
   const [microSummary, setMicroSummary] = useState<any | null>(null);
   const [aiInsights, setAiInsights] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,8 @@ export default function InsightsScreen() {
       setPremium(status);
       const micro = await api.getMicroSavingsSummary().catch(() => null);
       setMicroSummary(micro);
+      const monthly = await api.getMonthlySummary().catch(() => null);
+      setMonthlySummary(monthly);
       if (hasEntitlement(status, "advanced_reports")) {
         const [summaryData, insightData] = await Promise.all([
           api.getInsightsSummary(),
@@ -63,8 +67,15 @@ export default function InsightsScreen() {
   }, [load]);
   const { refreshing, onRefresh } = usePullRefresh(() => load(true));
 
-  if (loading) return <LoadingScreen />;
-  if (error && !summary && !microSummary) return <ErrorState message={error} onRetry={() => load(true)} />;
+  if (loading) {
+    return (
+      <ScreenShell ambient="subtle">
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
+  }
+  if (error && !summary && !microSummary && !monthlySummary) return <ErrorState message={error} onRetry={() => load(true)} />;
 
   const locked = !hasEntitlement(premium, "advanced_reports");
   const savingsData = microSummary || summary?.micro_savings;
@@ -75,7 +86,15 @@ export default function InsightsScreen() {
       <MicroSavingsHeroCard summary={savingsData} compact />
       {showAdvancedInsights ? <BrokerLinksCard /> : null}
       {locked && showAdvancedInsights ? (
-        <PaywallCard onUpgraded={() => load(true)} />
+        <>
+          {monthlySummary ? (
+            <MonthlyReportCard data={monthlySummary} showDetailsLink />
+          ) : null}
+          <Surface variant="default" style={{ padding: Spacing.md, marginBottom: Spacing.md }}>
+            <Text style={{ color: Colors.textSecondary, lineHeight: 20 }}>{t.insightsScreen.freeMonthlyReport}</Text>
+          </Surface>
+          <PaywallCard onUpgraded={() => load(true)} />
+        </>
       ) : locked && !showAdvancedInsights ? (
         <Surface variant="default" style={{ padding: Spacing.md, marginBottom: Spacing.md }}>
           <Text style={{ color: Colors.textSecondary, lineHeight: 20 }}>{t.insightsScreen.unlockAfterFirstExpense}</Text>

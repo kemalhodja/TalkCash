@@ -18,7 +18,9 @@ async def test_internal_upgrade_hidden_without_secret(client: AsyncClient, auth_
 
 @pytest.mark.asyncio
 async def test_internal_upgrade_with_secret(client: AsyncClient, auth_headers):
-    with patch.object(settings, "debug", False), patch.object(settings, "internal_upgrade_secret", "test-secret"):
+    with patch.object(settings, "debug", False), patch.object(settings, "google_play_verify_mock", True), patch.object(
+        settings, "internal_upgrade_secret", "test-secret"
+    ):
         resp = await client.post(
             "/api/v1/billing/internal-upgrade",
             headers={**auth_headers, "X-Internal-Upgrade-Secret": "test-secret"},
@@ -27,6 +29,19 @@ async def test_internal_upgrade_with_secret(client: AsyncClient, auth_headers):
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"]["plan"] == "pro"
+
+
+@pytest.mark.asyncio
+async def test_internal_upgrade_blocked_in_production_billing(client: AsyncClient, auth_headers):
+    with patch.object(settings, "debug", False), patch.object(settings, "google_play_verify_mock", False), patch.object(
+        settings, "billing_premium_unlocked", False
+    ), patch.object(settings, "internal_upgrade_secret", "test-secret"):
+        resp = await client.post(
+            "/api/v1/billing/internal-upgrade",
+            headers={**auth_headers, "X-Internal-Upgrade-Secret": "test-secret"},
+            json={"plan": "pro"},
+        )
+        assert resp.status_code == 404
 
 
 @pytest.mark.asyncio

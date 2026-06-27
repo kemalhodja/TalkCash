@@ -1,23 +1,37 @@
 name: Maestro Smoke
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/.maestro/**"
+      - "scripts/validate-maestro-flows.sh"
+      - "scripts/validate-phase1.sh"
+      - "scripts/validate-store-readiness.sh"
+      - "render.yaml"
+  pull_request:
+    paths:
+      - "mobile/.maestro/**"
   workflow_dispatch:
 
 jobs:
-  maestro:
+  validate-flows:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Maestro flows (structure)
+        run: bash scripts/validate-phase1.sh
+
+  maestro-device:
+    runs-on: ubuntu-latest
+    needs: validate-flows
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
-      - name: Validate Maestro flows
+      - name: Run smoke on connected device/emulator
         working-directory: mobile
-        run: |
-          maestro test --format junit --output maestro-report.xml .maestro/smoke.yaml || true
-          test -f .maestro/smoke.yaml
-          test -f .maestro/micro-savings-flow.yaml
-          test -f .maestro/expense-flow.yaml
-      - name: Validate store readiness docs
-        run: bash scripts/validate-store-readiness.sh
+        run: maestro test --format junit --output maestro-report.xml .maestro/smoke.yaml

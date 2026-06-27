@@ -262,3 +262,76 @@ class WalletService:
             )
         )
         return result.scalars().first()
+
+    async def monthly_summary(self, db: AsyncSession, user_id: UUID) -> dict:
+        from datetime import datetime
+
+        from sqlalchemy import extract, func
+
+        from app.models.budget import BudgetLimit
+
+        now = datetime.utcnow()
+        month_filter = (
+            Transaction.user_id == user_id,
+            extract("month", Transaction.created_at) == now.month,
+            extract("year", Transaction.created_at) == now.year,
+        )
+        totals_result = await db.execute(
+            select(Transaction.transaction_type, func.coalesce(func.sum(Transaction.amount), 0))
+            .where(*month_filter)
+            .group_by(Transaction.transaction_type)
+        )
+        totals = {row[0].value: float(row[1]) for row in totals_result.all()}
+
+        category_result = await db.execute(
+            select(Transaction.category, func.coalesce(func.sum(Transaction.amount), 0))
+            .where(*month_filter, Transaction.transaction_type == TransactionType.EXPENSE)
+            .group_by(Transaction.category)
+            .order_by(func.sum(Transaction.amount).desc())
+            .limit(8)
+        )
+        top_categories = [
+            {"category": row[0] or "Genel", "amount": float(row[1])}
+            for row in category_result.all()
+        ]
+
+        budgets_result = await db.execute(select(BudgetLimit).where(BudgetLimit.user_id == user_id))
+        budget_health = []
+        for budget in budgets_result.scalars().all():
+            spent_result = await db.execute(
+                select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+                    *month_filter,
+                    Transaction.transaction_type == TransactionType.EXPENSE,
+                    Transaction.category == budget.category,
+                )
+            )
+            spent = float(spent_result.scalar() or 0)
+            limit = float(budget.monthly_limit)
+            percent = 0 if limit <= 0 else round((spent / limit) * 100, 1)
+            budget_health.append({
+                "category": budget.category,
+                "spent": spent,
+                "limit": limit,
+                "percent": percent,
+                "status": "danger" if percent >= 100 else "warning" if percent >= 80 else "ok",
+            })
+
+        nw = await self.get_net_worth(db, user_id)
+        income = totals.get(TransactionType.INCOME.value, 0)
+        expense = totals.get(TransactionType.EXPENSE.value, 0)
+        savings_rate = round(((income - expense) / income) * 100, 1) if income > 0 else None
+        return {
+            "month": now.month,
+            "year": now.year,
+            "income": income,
+            "expense": expense,
+            "savings": round(income - expense, 2),
+            "savings_rate": savings_rate,
+            "net_worth": float(nw.total_try),
+            "top_categories": top_categories,
+            "budget_health": budget_health,
+            "wallets": [
+                {"name": w.name, "balance": float(w.balance_try), "currency": w.currency}
+                for w in nw.wallets[:8]
+            ],
+        }

@@ -131,4 +131,4 @@ Fly kurulumunu yapar ve GitHub'a yapıştırmanız gereken komutları yazdırır
 
 ---
 
-İlgili dokümanlar: [PRODUCTION.md](PRODUCTION.md) · [PLAY_STORE_LISTING.md](PLAY_STORE_LISTING.md) · [DEPLOY.md](DEPLOY.md)
+İlgili dokümanlar: [PRODUCTION.md](PRODUCTION.md) · [PLAY_STORE_LISTING.md](PLAY_STORE_LISTING.md) · [GOOGLE_PLAY_RELEASE.md](GOOGLE_PLAY_RELEASE.md) · [DEPLOY.md](DEPLOY.md)

@@ -63,6 +63,12 @@ jobs:
         run: |
           pip install -r backend/requirements.txt
           cd mobile && npm install
+          bash scripts/validate-phase1.sh
+          bash scripts/validate-phase2.sh
+          bash scripts/validate-phase3.sh
+          bash scripts/validate-phase4.sh
+          bash scripts/validate-phase5.sh
+          bash scripts/validate-phase6.sh
           bash scripts/validate-store-readiness.sh
           API_URL=http://127.0.0.1:1 bash scripts/verify-release.sh
 

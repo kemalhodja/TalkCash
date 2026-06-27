@@ -11,7 +11,8 @@ class BudgetCreate(BaseModel):
 
 
 class BudgetUpdate(BaseModel):
-    monthly_limit: Decimal
+    monthly_limit: Decimal | None = None
+    category: str | None = None
 
 
 class BudgetResponse(BaseModel):

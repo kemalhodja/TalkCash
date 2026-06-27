@@ -7,7 +7,8 @@ const allowCleartext = apiUrl.startsWith("http://");
 const plugins = (appJson.expo.plugins || [])
   .filter((plugin) => {
     const name = Array.isArray(plugin) ? plugin[0] : plugin;
-    if (isProduction && (name === "expo-dev-client" || name === "@sentry/react-native/expo")) {
+    // Production builds must keep Sentry; only strip dev client.
+    if (isProduction && name === "expo-dev-client") {
       return false;
     }
     return true;
@@ -24,6 +25,7 @@ module.exports = {
     extra: {
       apiUrl,
       appEnv: process.env.EXPO_PUBLIC_APP_ENV || "development",
+      sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || "",
       eas: {
         projectId: process.env.EAS_PROJECT_ID || "d7cfbb2e-a657-49a6-bfc9-bcfc4e120230",
       },

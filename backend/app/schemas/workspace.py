@@ -30,3 +30,19 @@ class InvitationResponse(BaseModel):
     role: WorkspaceRole
     status: str
     created_at: datetime | None = None
+    accept_url: str | None = None
+    organization_name: str | None = None
+
+
+class InvitationInboxItem(BaseModel):
+    id: UUID
+    organization_id: UUID
+    organization_name: str
+    role: WorkspaceRole
+    token: str
+    accept_url: str
+    created_at: datetime | None = None
+
+
+class AcceptInvitationRequest(BaseModel):
+    token: str = Field(min_length=8, max_length=120)

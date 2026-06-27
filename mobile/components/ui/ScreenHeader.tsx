@@ -12,8 +12,8 @@ export function ScreenHeader({ title, subtitle, actions }: Props) {
   return (
     <View style={styles.wrap}>
       <View style={styles.textCol}>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <Text style={styles.title} accessibilityRole="header">{title}</Text>
+        {subtitle ? <Text style={styles.subtitle} accessibilityRole="text">{subtitle}</Text> : null}
       </View>
       {actions ? <View style={styles.actions}>{actions}</View> : null}
     </View>

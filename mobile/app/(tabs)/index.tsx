@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { MonthlyReportCard } from "@/components/MonthlyReportCard";
 import { router } from "expo-router";
 import { IncomeModal } from "@/components/IncomeModal";
 import { ErrorState } from "@/components/ErrorState";
@@ -69,6 +71,7 @@ export default function DashboardScreen() {
   const [showFirstRunHero, setShowFirstRunHero] = useState(false);
   const [simpleHome, setSimpleHome] = useState(true);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [monthlySummary, setMonthlySummary] = useState<any | null>(null);
   const demoOfferShownRef = useRef(false);
   const trackProductRef = useRef(trackProduct);
   const lastSpokenAlert = useRef("");
@@ -87,13 +90,14 @@ export default function DashboardScreen() {
         setWallets(snapshot.wallets);
       }
       setUpcomingSubs(extractUpcomingSubscriptions(snapshot?.transactions));
-      const [nw, budgetAlerts, priceReportData, watchItems, savingsSummary, subsData] = await Promise.all([
+      const [nw, budgetAlerts, priceReportData, watchItems, savingsSummary, subsData, monthly] = await Promise.all([
         api.getNetWorth(),
         api.getBudgetAlerts(),
         api.getPriceTracker(productQuery),
         api.getWatchlist().catch(() => []),
         api.getMicroSavingsSummary().catch(() => null),
         api.getUpcomingSubscriptions().catch(() => ({ subscriptions: [] })),
+        api.getMonthlySummary().catch(() => null),
       ]);
       setNetWorth(nw.total_try);
       setWallets(nw.wallets);
@@ -109,6 +113,7 @@ export default function DashboardScreen() {
       }
       setPriceReport(priceReportData);
       setMicroSavings(savingsSummary);
+      setMonthlySummary(monthly);
       if (subsData?.subscriptions?.length) {
         setUpcomingSubs(subsData.subscriptions.map((s) => ({
           subscription_name: s.subscription_name,
@@ -188,7 +193,13 @@ export default function DashboardScreen() {
   );
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <ScreenShell ambient>
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
   }
 
   if (error && wallets.length === 0) {
@@ -214,6 +225,10 @@ export default function DashboardScreen() {
       ) : null}
 
       <HeroNetWorth label={t.home.netWorth} amount={formatMoney(Number(netWorth), locale)} />
+
+      {monthlySummary ? (
+        <MonthlyReportCard data={monthlySummary} compact showDetailsLink />
+      ) : null}
 
       {!simpleHome && microHasActivity ? (
         <MicroSavingsHeroCard summary={microSavings} />

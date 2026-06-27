@@ -43,6 +43,17 @@ class GoogleVerifyResponse(BaseModel):
     status: PremiumStatusResponse
 
 
+class AppleVerifyRequest(BaseModel):
+    product_id: str = Field(min_length=3, max_length=120)
+    receipt_data: str = Field(min_length=8, max_length=8192)
+    transaction_id: str | None = Field(default=None, max_length=120)
+
+
+class AppleVerifyResponse(BaseModel):
+    subscription_id: UUID
+    status: PremiumStatusResponse
+
+
 class ProductCatalogItem(BaseModel):
     product_id: str
     plan: PlanTier

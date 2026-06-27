@@ -6,9 +6,10 @@ import { ShoppingSuggestionLoop } from "@/components/ShoppingSuggestionLoop";
 import { MicroSavingsNudges } from "@/components/MicroSavingsNudges";
 import { VoiceInput } from "@/components/VoiceInput";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { InsightChip } from "@/components/ui/InsightChip";
 import { InputField } from "@/components/ui/InputField";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -90,11 +91,21 @@ export default function ShoppingScreen() {
   const categoryLabel = (key: string) =>
     (t.shopping.categories as Record<string, string>)[key] || key;
 
-  if (loading) return <LoadingScreen />;
+  if (loading) {
+    return (
+      <ScreenShell ambient="subtle">
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
+  }
+  const isEmpty = Object.keys(grouped).length === 0;
+  if (error && isEmpty) return <ErrorState message={error} onRetry={loadList} />;
 
   return (
     <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
       <ScreenHeader title={t.shopping.title} />
+      {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
 
       <Surface variant="glass" style={styles.addPanel}>
         <View style={styles.addRow}>

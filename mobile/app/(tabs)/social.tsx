@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { InputField } from "@/components/ui/InputField";
 import { ListRow } from "@/components/ui/ListRow";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -43,9 +44,11 @@ export default function SocialScreen() {
   const [renameName, setRenameName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const wsMap = useRef<Map<string, SharedWalletWS>>(new Map());
 
   const load = async () => {
+    setError("");
     try {
       const [wallets, debtList] = await Promise.all([api.getSharedWallets(), api.getDebts()]);
       setSharedWallets(wallets);
@@ -65,9 +68,8 @@ export default function SocialScreen() {
         wsMap.current.set(w.id, ws);
         ws.connect();
       }
-    } catch {
-      setSharedWallets([]);
-      setDebts([]);
+    } catch (e: any) {
+      setError(e.message || t.common.error);
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,17 @@ export default function SocialScreen() {
     Linking.openURL(url).catch(() => Share.share({ message: splitResult.share_message }));
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) {
+    return (
+      <ScreenShell ambient="subtle">
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
+  }
+  if (error && sharedWallets.length === 0 && debts.length === 0) {
+    return <ErrorState message={error} onRetry={load} />;
+  }
 
   return (
     <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>

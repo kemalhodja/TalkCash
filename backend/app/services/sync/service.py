@@ -388,7 +388,11 @@ class SyncService:
 
         if op.type == "budget_update":
             budget = await budget_service.update(
-                db, UUID(op.payload["budget_id"]), user_id, Decimal(str(op.payload["monthly_limit"])),
+                db,
+                UUID(op.payload["budget_id"]),
+                user_id,
+                Decimal(str(op.payload["monthly_limit"])) if op.payload.get("monthly_limit") is not None else None,
+                op.payload.get("category"),
             )
             return {"budget_id": str(budget.id)}, None
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert, Linking, Modal, StyleSheet, Text, TouchableOpacity, View,
+  Alert, FlatList, Linking, Modal, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import { router } from "expo-router";
 import { AuthImage } from "@/components/AuthImage";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InputField } from "@/components/ui/InputField";
 import { InsightChip } from "@/components/ui/InsightChip";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -147,105 +148,128 @@ export default function TransactionsScreen() {
     visibleTransactions = visibleTransactions.filter((tx) => tx.is_recurring);
   }
 
-  if (loading) return <LoadingScreen />;
+  if (loading) {
+    return (
+      <ScreenShell ambient="subtle">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
+  }
   if (error && transactions.length === 0) {
     return <ErrorState message={error} onRetry={load} />;
   }
 
   return (
     <>
-      <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
-        <ScreenHeader title={t.transactions.title} />
-        <Surface variant="default" style={styles.filters}>
-          <InputField value={search} onChangeText={setSearch} placeholder={t.transactions.search} />
-          <ChipPicker
-            options={[
-              { id: "", label: t.transactions.allTypes },
-              { id: "expense", label: t.transactions.expense },
-              { id: "income", label: t.transactions.income },
-            ]}
-            value={typeFilter}
-            onChange={(value) => setTypeFilter(value as "" | "income" | "expense")}
-          />
-          <ChipPicker
-            options={[
-              { id: "", label: t.transactions.allDates },
-              { id: "month", label: t.transactions.thisMonth },
-              { id: "30d", label: t.transactions.last30Days },
-              { id: "90d", label: t.transactions.last90Days },
-            ]}
-            value={datePreset}
-            onChange={(value) => setDatePreset(value as DatePreset)}
-          />
-          <ChipPicker
-            options={[{ id: "", label: t.transactions.allCategories }, ...categories.map((cat) => ({ id: cat, label: cat }))]}
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-          />
-          <ChipPicker
-            options={[
-              { id: "all", label: t.transactions.allTypes },
-              { id: "subs", label: t.transactions.subscriptionsOnly },
-            ]}
-            value={subscriptionsOnly ? "subs" : "all"}
-            onChange={(value) => setSubscriptionsOnly(value === "subs")}
-          />
-        </Surface>
-        {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
-        {visibleTransactions.map((tx) => (
-          <TouchableOpacity
-            key={tx.id}
-            onPress={() => openEdit(tx)}
-            onLongPress={() => confirmDelete(tx)}
-            activeOpacity={0.85}
-          >
-            <Surface variant="elevated" style={styles.card}>
-              <View style={styles.row}>
-                <View style={styles.categoryRow}>
-                  <Text style={styles.category}>{tx.subscription_name || tx.category}</Text>
-                  {tx.is_recurring ? (
-                    <InsightChip tone="neutral" text={t.transactions.recurringBadge} />
-                  ) : null}
+      <ScreenShell ambient="subtle" scroll={false} refreshing={refreshing} onRefresh={onRefresh}>
+        <FlatList
+          style={{ flex: 1 }}
+          data={visibleTransactions}
+          keyExtractor={(tx) => tx.id}
+          initialNumToRender={12}
+          maxToRenderPerBatch={16}
+          windowSize={8}
+          refreshControl={(
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
+          )}
+          ListHeaderComponent={(
+            <>
+              <ScreenHeader title={t.transactions.title} />
+              <Surface variant="default" style={styles.filters}>
+                <InputField value={search} onChangeText={setSearch} placeholder={t.transactions.search} />
+                <ChipPicker
+                  options={[
+                    { id: "", label: t.transactions.allTypes },
+                    { id: "expense", label: t.transactions.expense },
+                    { id: "income", label: t.transactions.income },
+                  ]}
+                  value={typeFilter}
+                  onChange={(value) => setTypeFilter(value as "" | "income" | "expense")}
+                />
+                <ChipPicker
+                  options={[
+                    { id: "", label: t.transactions.allDates },
+                    { id: "month", label: t.transactions.thisMonth },
+                    { id: "30d", label: t.transactions.last30Days },
+                    { id: "90d", label: t.transactions.last90Days },
+                  ]}
+                  value={datePreset}
+                  onChange={(value) => setDatePreset(value as DatePreset)}
+                />
+                <ChipPicker
+                  options={[{ id: "", label: t.transactions.allCategories }, ...categories.map((cat) => ({ id: cat, label: cat }))]}
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                />
+                <ChipPicker
+                  options={[
+                    { id: "all", label: t.transactions.allTypes },
+                    { id: "subs", label: t.transactions.subscriptionsOnly },
+                  ]}
+                  value={subscriptionsOnly ? "subs" : "all"}
+                  onChange={(value) => setSubscriptionsOnly(value === "subs")}
+                />
+              </Surface>
+              {error ? <InsightChip tone="warning" text={`${error} · ${t.common.staleData}`} /> : null}
+            </>
+          )}
+          renderItem={({ item: tx }) => (
+            <TouchableOpacity
+              onPress={() => openEdit(tx)}
+              onLongPress={() => confirmDelete(tx)}
+              activeOpacity={0.85}
+            >
+              <Surface variant="elevated" style={styles.card}>
+                <View style={styles.row}>
+                  <View style={styles.categoryRow}>
+                    <Text style={styles.category}>{tx.subscription_name || tx.category}</Text>
+                    {tx.is_recurring ? (
+                      <InsightChip tone="neutral" text={t.transactions.recurringBadge} />
+                    ) : null}
+                  </View>
+                  <Text style={[styles.amount, tx.type === "income" && styles.income]}>
+                    {tx.type === "income" ? "+" : "-"}{formatMoney(tx.amount, locale)}
+                  </Text>
                 </View>
-                <Text style={[styles.amount, tx.type === "income" && styles.income]}>
-                  {tx.type === "income" ? "+" : "-"}{formatMoney(tx.amount, locale)}
-                </Text>
-              </View>
-              <Text style={styles.desc}>{tx.description || tx.place || t.common.noData}</Text>
-              {tx.is_recurring && tx.next_billing_date ? (
-                <Text style={styles.renewal}>
-                  {t.subscription.renewsOn.replace("{date}", formatDate(tx.next_billing_date, locale))}
-                </Text>
-              ) : null}
-              {tx.is_recurring && getSubscriptionCancelUrl(tx.subscription_name) ? (
-                <TouchableOpacity
-                  onPress={() => Linking.openURL(getSubscriptionCancelUrl(tx.subscription_name)!)}
-                  style={styles.cancelLink}
-                >
-                  <Text style={styles.cancelLinkText}>{t.subscription.manageCancel}</Text>
-                </TouchableOpacity>
-              ) : null}
-              {tx.receipt_url ? (
-                <TouchableOpacity onPress={() => setPreviewUrl(tx.receipt_url)} style={styles.receiptRow}>
-                  <AuthImage path={tx.receipt_url} style={styles.receiptThumb} />
-                  <Text style={styles.receiptLabel}>{t.transactions.viewReceipt}</Text>
-                </TouchableOpacity>
-              ) : null}
-              <Text style={styles.date}>{formatDate(tx.date, locale)} · {tx.input_method}</Text>
-              {tx.type !== "transfer" && (
-                <Text style={styles.hint}>{t.transactions.edit} · {t.common.delete}</Text>
-              )}
-            </Surface>
-          </TouchableOpacity>
-        ))}
-        {visibleTransactions.length === 0 && (
-          <EmptyState
-            message={t.transactions.empty}
-            icon="↕"
-            actionLabel={t.transactions.emptyAction}
-            onAction={() => router.push("/(tabs)/input")}
-          />
-        )}
+                <Text style={styles.desc}>{tx.description || tx.place || t.common.noData}</Text>
+                {tx.is_recurring && tx.next_billing_date ? (
+                  <Text style={styles.renewal}>
+                    {t.subscription.renewsOn.replace("{date}", formatDate(tx.next_billing_date, locale))}
+                  </Text>
+                ) : null}
+                {tx.is_recurring && getSubscriptionCancelUrl(tx.subscription_name) ? (
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(getSubscriptionCancelUrl(tx.subscription_name)!)}
+                    style={styles.cancelLink}
+                  >
+                    <Text style={styles.cancelLinkText}>{t.subscription.manageCancel}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {tx.receipt_url ? (
+                  <TouchableOpacity onPress={() => setPreviewUrl(tx.receipt_url)} style={styles.receiptRow}>
+                    <AuthImage path={tx.receipt_url} style={styles.receiptThumb} />
+                    <Text style={styles.receiptLabel}>{t.transactions.viewReceipt}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <Text style={styles.date}>{formatDate(tx.date, locale)} · {tx.input_method}</Text>
+                {tx.type !== "transfer" && (
+                  <Text style={styles.hint}>{t.transactions.edit} · {t.common.delete}</Text>
+                )}
+              </Surface>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={(
+            <EmptyState
+              message={t.transactions.empty}
+              icon="↕"
+              actionLabel={t.transactions.emptyAction}
+              onAction={() => router.push("/(tabs)/input")}
+            />
+          )}
+          contentContainerStyle={{ paddingBottom: Spacing.xl }}
+        />
       </ScreenShell>
 
       <Modal visible={!!previewUrl} transparent animationType="fade" onRequestClose={() => setPreviewUrl(null)}>

@@ -17,3 +17,7 @@ mobile/android/app/*.jks
 uploads/
 .pytest_cache/
 htmlcov/
+.cloudflare-tunnel.log
+.cloudflare-tunnel.pid
+.tunnel-url
+DEPLOY_STATUS.json

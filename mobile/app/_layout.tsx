@@ -109,6 +109,9 @@ export default function RootLayout() {
               <Stack.Screen name="micro-savings-settings" />
               <Stack.Screen name="receipts" />
               <Stack.Screen name="feature-hub" options={{ title: "Features" }} />
+              <Stack.Screen name="account" />
+              <Stack.Screen name="feedback" />
+              <Stack.Screen name="monthly-report" />
             </Stack>
             {bootPhase === "loading" ? (
               <View style={styles.bootOverlay} pointerEvents="auto">

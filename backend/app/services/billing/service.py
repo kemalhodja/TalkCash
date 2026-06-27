@@ -19,6 +19,7 @@ from app.config import settings
 from app.schemas.billing import EntitlementStatus, PremiumStatusResponse
 from app.services.audit.service import AuditService
 from app.services.billing.google_play import GooglePlayVerifier, VerifiedGooglePurchase
+from app.services.billing.app_store import AppStoreVerifier, VerifiedApplePurchase
 
 
 DEFAULT_PLAN_CONFIG: dict[PlanTier, dict] = {
@@ -105,6 +106,7 @@ class BillingService:
     def __init__(self):
         self.audit = AuditService()
         self.google_play = GooglePlayVerifier()
+        self.app_store = AppStoreVerifier()
 
     @staticmethod
     def premium_unlocked() -> bool:
@@ -457,6 +459,75 @@ class BillingService:
             db,
             actor_user_id=user_id,
             action="billing.google_activated",
+            resource_type="subscription",
+            resource_id=str(subscription.id),
+            metadata={"plan": verified.tier.value, "product_id": verified.product_id},
+        )
+        await db.commit()
+        await db.refresh(subscription)
+        return subscription
+
+    async def activate_apple_subscription(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        verified: VerifiedApplePurchase,
+    ) -> Subscription:
+        token_key = verified.transaction_id or verified.receipt_data[:120]
+        existing = await db.execute(
+            select(GooglePurchase).where(GooglePurchase.purchase_token == token_key)
+        )
+        purchase_row = existing.scalars().first()
+        token_owner = await db.execute(
+            select(Subscription).where(Subscription.purchase_token == token_key)
+        )
+        token_sub = token_owner.scalars().first()
+        if purchase_row and purchase_row.user_id != user_id:
+            raise ValueError("billing.purchase_already_claimed")
+        if token_sub and token_sub.user_id != user_id:
+            raise ValueError("billing.purchase_already_claimed")
+
+        plan = await self._plan_by_tier(db, verified.tier)
+        subscription = await self.get_subscription(db, user_id)
+        subscription.plan_id = plan.id
+        subscription.status = SubscriptionStatus.ACTIVE
+        subscription.provider = "app_store"
+        subscription.google_product_id = verified.product_id
+        subscription.purchase_token = token_key
+        subscription.expire_date = verified.expires_at
+        subscription.start_date = datetime.utcnow()
+
+        if purchase_row:
+            purchase_row.user_id = user_id
+            purchase_row.product_id = verified.product_id
+            purchase_row.plan_tier = verified.tier
+            purchase_row.order_id = verified.transaction_id
+            purchase_row.expires_at = verified.expires_at
+            purchase_row.updated_at = datetime.utcnow()
+        else:
+            db.add(
+                GooglePurchase(
+                    user_id=user_id,
+                    product_id=verified.product_id,
+                    purchase_token=token_key,
+                    order_id=verified.transaction_id,
+                    plan_tier=verified.tier,
+                    expires_at=verified.expires_at,
+                )
+            )
+
+        db.add(
+            BillingEvent(
+                user_id=user_id,
+                event_type="subscription.apple_activated",
+                provider="app_store",
+                provider_event_id=verified.transaction_id,
+            )
+        )
+        await self.audit.log(
+            db,
+            actor_user_id=user_id,
+            action="billing.apple_activated",
             resource_type="subscription",
             resource_id=str(subscription.id),
             metadata={"plan": verified.tier.value, "product_id": verified.product_id},

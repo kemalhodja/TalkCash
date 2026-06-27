@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { trackFirstExpense } from "@/services/analytics";
 
 const FIRST_EXPENSE_KEY = "talkcash_first_expense_added";
 const COACH_DONE_KEY = "talkcash_coach_done";
@@ -14,6 +15,7 @@ export async function hasAddedFirstExpense(): Promise<boolean> {
 
 export async function markFirstExpenseAdded(): Promise<void> {
   await AsyncStorage.setItem(FIRST_EXPENSE_KEY, "1");
+  await trackFirstExpense();
 }
 
 export async function isCoachDone(): Promise<boolean> {

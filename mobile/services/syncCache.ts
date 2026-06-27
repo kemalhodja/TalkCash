@@ -433,7 +433,13 @@ export async function applyOptimisticForQueuedOp(
       const budgetId = String(payload.budget_id);
       await patchCachedSnapshot({
         budgets: (snapshot.budgets || []).map((b) =>
-          b.id === budgetId ? { ...b, monthly_limit: payload.monthly_limit } : b,
+          b.id === budgetId
+            ? {
+                ...b,
+                ...(payload.monthly_limit != null ? { monthly_limit: payload.monthly_limit } : {}),
+                ...(payload.category ? { category: payload.category } : {}),
+              }
+            : b,
         ),
       });
       return;

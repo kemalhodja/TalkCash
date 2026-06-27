@@ -6,6 +6,8 @@ on:
     paths:
       - render.yaml
       - backend/**
+      - scripts/load_test.py
+      - .github/workflows/render-deploy.yml
   workflow_dispatch:
 
 jobs:
@@ -33,12 +35,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Trigger Render deploy hook (optional)
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -sf -X POST "$RENDER_DEPLOY_HOOK" && echo "Deploy hook fired"
+          else
+            echo "No RENDER_DEPLOY_HOOK — relying on Render auto-deploy from main push"
+          fi
+
       - name: Wait for Render deploy (Blueprint auto-sync)
         run: |
           API="https://talkcash-api-prod.onrender.com"
           for i in $(seq 1 20); do
-            if curl -sf "$API/health" | grep -q '"database":true'; then
+            BODY=$(curl -sf "$API/health" || true)
+            if echo "$BODY" | grep -q '"database":true'; then
               echo "Render API live"
+              echo "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print('launch_readiness:', json.dumps(d.get('launch_readiness', {})))" 2>/dev/null || true
               API_URL="$API" python3 scripts/smoke_test.py
               exit 0
             fi

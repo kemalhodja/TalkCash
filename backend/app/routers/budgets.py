@@ -44,7 +44,9 @@ async def update_budget(
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     try:
-        budget = await budget_service.update(db, budget_id, user.id, data.monthly_limit)
+        budget = await budget_service.update(
+            db, budget_id, user.id, data.monthly_limit, data.category,
+        )
         return BudgetResponse.model_validate(budget)
     except Exception as e:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
@@ -57,3 +59,8 @@ async def delete_budget(budget_id: UUID, user: User = Depends(get_current_user),
         return {"status": "deleted"}
     except Exception as e:
         raise HTTPException(status_code=404, detail=resolve_error(e, user_locale(user)))
+
+
+@router.get("/overruns")
+async def list_budget_overruns(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await budget_service.list_overruns(db, user.id)

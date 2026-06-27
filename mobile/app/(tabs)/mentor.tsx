@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from "react-native";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { InputField } from "@/components/ui/InputField";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { PaywallCard } from "@/components/PaywallCard";
@@ -25,9 +26,11 @@ export default function MentorScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [premium, setPremium] = useState<PremiumStatus | null>(null);
+  const [loadError, setLoadError] = useState("");
   const scrollRef = useRef<ScrollView>(null);
 
   const load = async () => {
+    setLoadError("");
     try {
       const [history, status] = await Promise.all([
         api.getChatHistory(),
@@ -35,7 +38,8 @@ export default function MentorScreen() {
       ]);
       setMessages(history);
       setPremium(status);
-    } catch {
+    } catch (e: any) {
+      setLoadError(e.message || t.common.error);
       setMessages([]);
     } finally {
       setLoading(false);
@@ -77,6 +81,9 @@ export default function MentorScreen() {
   };
 
   if (loading) return <LoadingScreen />;
+  if (loadError && messages.length === 0 && !aiLocked) {
+    return <ErrorState message={loadError} onRetry={load} />;
+  }
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>

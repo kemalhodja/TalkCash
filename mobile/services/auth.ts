@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import { clearLocalUserData } from "./localData";
+import { setObservabilityUser } from "./observability";
 
 const TOKEN_KEY = "talkcash_token";
 const REFRESH_KEY = "talkcash_refresh";
@@ -84,6 +85,7 @@ export const auth = {
       await SecureStore.setItemAsync(REFRESH_KEY, user.refreshToken);
     }
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    setObservabilityUser({ id: user.userId, name: user.fullName });
   },
 
   async getToken(): Promise<string | null> {
@@ -126,6 +128,7 @@ export const auth = {
     await SecureStore.deleteItemAsync(USER_KEY);
     await SecureStore.deleteItemAsync(SESSION_UNLOCKED_KEY);
     await AsyncStorage.removeItem(LAST_BACKGROUND_AT_KEY);
+    setObservabilityUser(null);
   },
 
   async updateUser(partial: Partial<AuthUser>) {

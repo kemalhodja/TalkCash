@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text } from "react-native";
 import { router } from "expo-router";
 import { BrokerLinksCard } from "@/components/BrokerLinksCard";
+import { ErrorState } from "@/components/ErrorState";
 import { ChipPicker } from "@/components/ui/ChipPicker";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
@@ -27,15 +28,21 @@ export default function MicroSavingsSettingsScreen() {
   const { t } = useI18n();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const [p, premium] = await Promise.all([
-      api.getMicroSavingsPrefs(),
-      getPremiumStatus(true),
-    ]);
-    setPrefs(p);
-    setIsPremium(hasEntitlement(premium, "portfolio_coach") || !!premium.is_premium);
-  }, []);
+    setError("");
+    try {
+      const [p, premium] = await Promise.all([
+        api.getMicroSavingsPrefs(),
+        getPremiumStatus(true),
+      ]);
+      setPrefs(p);
+      setIsPremium(hasEntitlement(premium, "portfolio_coach") || !!premium.is_premium);
+    } catch (e: any) {
+      setError(e.message || t.common.error);
+    }
+  }, [t.common.error]);
 
   useEffect(() => { load(); }, [load]);
   const { refreshing, onRefresh } = usePullRefresh(load);
@@ -50,6 +57,7 @@ export default function MicroSavingsSettingsScreen() {
     }
   };
 
+  if (!prefs && error) return <ErrorState message={error} onRetry={load} />;
   if (!prefs) return <LoadingScreen />;
 
   const stepOptions = [5, 10, 25].map((n) => ({ id: String(n), label: `${n} TL` }));

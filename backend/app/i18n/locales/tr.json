@@ -60,6 +60,7 @@
   "billing.subscription_expired": "Abonelik süreniz dolmuştur. Lütfen yenileyin.",
   "workspace.forbidden": "Bu çalışma alanında yönetici yetkiniz yok",
   "invitation.not_found": "Davet bulunamadı",
+  "invitation.email_mismatch": "Bu davet farklı bir e-posta adresine gönderildi",
   "agenda.cannot_edit_paid": "Ödenmiş kayıt düzenlenemez",
   "agenda.cannot_delete_paid": "Ödenmiş kayıt silinemez",
   "agenda.already_done": "Bu kayıt zaten tamamlanmış",

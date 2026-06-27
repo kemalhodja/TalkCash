@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text } from "react-native";
 import { Stack } from "expo-router";
 import { RoadmapTimeline } from "@/components/RoadmapTimeline";
+import { ErrorState } from "@/components/ErrorState";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { Colors, Spacing, Typography } from "@/constants/theme";
@@ -17,13 +18,20 @@ export default function RoadmapScreen() {
   useRequireUnlock();
   const [data, setData] = useState<RoadmapData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [votingId, setVotingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setData(await api.getRoadmap());
-    setLoading(false);
-  }, []);
+    setError("");
+    try {
+      setData(await api.getRoadmap());
+    } catch (e: any) {
+      setError(e.message || t.common.error);
+    } finally {
+      setLoading(false);
+    }
+  }, [t.common.error]);
 
   useEffect(() => {
     load().catch(() => {});
@@ -61,7 +69,9 @@ export default function RoadmapScreen() {
     }
   };
 
-  if (loading || !data) return <LoadingScreen />;
+  if (loading) return <LoadingScreen />;
+  if (error && !data) return <ErrorState message={error} onRetry={load} />;
+  if (!data) return <LoadingScreen />;
 
   return (
     <ScreenShell bottomInset={false}>

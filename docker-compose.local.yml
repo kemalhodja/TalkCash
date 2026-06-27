@@ -1,0 +1,19 @@
+# Local Docker overlay — DEBUG=true, no strict prod checks
+# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+
+services:
+  backend:
+    restart: unless-stopped
+    volumes: []
+    environment:
+      SCHEDULER_ENABLED: "true"
+      DEBUG: "true"
+
+  db:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  minio:
+    restart: unless-stopped

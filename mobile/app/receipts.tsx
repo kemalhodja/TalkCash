@@ -4,9 +4,10 @@ import { AuthImage } from "@/components/AuthImage";
 import { Stack } from "expo-router";
 import { ChipPicker } from "@/components/ui/ChipPicker";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { InputField } from "@/components/ui/InputField";
 import { InsightChip } from "@/components/ui/InsightChip";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { SectionBlock } from "@/components/ui/SectionBlock";
@@ -112,7 +113,15 @@ export default function ReceiptsScreen() {
     ]);
   };
 
-  if (loading) return <LoadingScreen />;
+  if (loading) {
+    return (
+      <ScreenShell bottomInset={false} ambient="subtle">
+        <SkeletonCard />
+        <SkeletonCard />
+      </ScreenShell>
+    );
+  }
+  if (error && receipts.length === 0) return <ErrorState message={error} onRetry={load} />;
 
   return (
     <ScreenShell bottomInset={false} ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>

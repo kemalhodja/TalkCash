@@ -25,6 +25,7 @@ import { extractVoiceAlert, playExpenseFeedback, playVoiceAlert } from "@/utils/
 import { extractSwapNudge, type SwapNudge } from "@/utils/swapNudge";
 import { extractRoundUp, type RoundUpNudge } from "@/utils/roundUp";
 import { MicroSavingsNudges } from "@/components/MicroSavingsNudges";
+import { SmsImportCard } from "@/components/SmsImportCard";
 import { parseBankSms } from "@/utils/smsExpenseParser";
 import * as Clipboard from "expo-clipboard";
 import { consumePendingInputVoice } from "@/hooks/useAssistantLinking";
@@ -37,7 +38,7 @@ import {
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
-  const voiceParams = useLocalSearchParams<{ whisper?: string; hold?: string }>();
+  const voiceParams = useLocalSearchParams<{ whisper?: string; hold?: string; sms?: string }>();
   const [text, setText] = useState("");
   const [showKeypad, setShowKeypad] = useState(false);
   const [keypadValue, setKeypadValue] = useState("");
@@ -82,8 +83,11 @@ export default function InputScreen() {
       const pending = await consumePendingInputVoice();
       if (voiceParams.whisper === "1" || pending?.whisper) setWhisperMode(true);
       if (voiceParams.hold === "1" || pending?.hold) setHoldToRecord(true);
+      if (voiceParams.sms === "1" || pending?.smsPaste) {
+        setTimeout(() => { handlePasteSms(); }, 400);
+      }
     })();
-  }, [voiceParams.hold, voiceParams.whisper]);
+  }, [voiceParams.hold, voiceParams.whisper, voiceParams.sms]);
 
   const slashHints: string[] = Array.isArray(t.input.slashHints)
     ? t.input.slashHints
@@ -372,6 +376,7 @@ export default function InputScreen() {
     <ScreenShell ambient contentStyle={styles.content}>
       {simpleMode && !showAdvanced ? (
         <>
+          <SmsImportCard onPaste={handlePasteSms} />
           <Text style={styles.simpleHint}>{t.firstRun.simpleInputHint}</Text>
           <Surface variant="glass" style={styles.voicePanel}>
             <VoiceInput
@@ -402,6 +407,7 @@ export default function InputScreen() {
         </>
       ) : (
         <>
+      <SmsImportCard onPaste={handlePasteSms} compact />
       <SegmentedControl
         options={[
           { key: "normal", label: t.input.normal },

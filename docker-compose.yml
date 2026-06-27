@@ -47,6 +47,9 @@ services:
 
   backend:
     build: ./backend
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     healthcheck:
@@ -59,6 +62,20 @@ services:
       DATABASE_URL: postgresql+asyncpg://talkcash:talkcash@db:5432/talkcash
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      DEBUG: ${DEBUG:-true}
+      INTERNAL_UPGRADE_SECRET: ${INTERNAL_UPGRADE_SECRET:-dev-upgrade-secret}
+      GOOGLE_PLAY_VERIFY_MOCK: ${GOOGLE_PLAY_VERIFY_MOCK:-true}
+      GOOGLE_PLAY_PACKAGE_NAME: io.talkcash.app
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_RTDN_WEBHOOK_SECRET: ${GOOGLE_RTDN_WEBHOOK_SECRET:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@talkcash.io}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
       SCHEDULER_ENABLED: "true"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       S3_ENABLED: "true"

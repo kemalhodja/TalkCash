@@ -1,4 +1,6 @@
 import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -13,8 +15,9 @@ from app.config import settings
 from app.services.nlp.stt import stt_available
 from app.database import get_db
 from app.i18n import SUPPORTED_LOCALES, locale_from_request, maybe_translate, resolve_error, t
-from app.routers import agenda, ai, analytics, auth, billing, billing_google, budgets, demo, execute, export, geofence, input, insights, legal, micro_savings, notifications, ocr, podcast, roadmap, shopping, social, sync, transactions, wallets, workspaces, ws
+from app.routers import agenda, ai, analytics, auth, billing, billing_google, budgets, demo, execute, export, feedback, geofence, input, insights, legal, micro_savings, notifications, ocr, podcast, roadmap, shopping, social, sync, transactions, wallets, workspaces, ws
 from app.services.social.ws_bridge import start_redis_ws_bridge, stop_redis_ws_bridge
+from app.observability import capture_exception_with_request, log_slow_request, uptime_seconds
 from app.startup import validate_production_settings
 from app.tasks.scheduler import start_scheduler, stop_scheduler
 from app.utils.redis_client import get_redis
@@ -81,6 +84,19 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+    request.state.request_id = request_id
+    started = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - started) * 1000
+    log_slow_request(request.url.path, request.method, duration_ms, request_id)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Response-Time-Ms"] = f"{duration_ms:.1f}"
+    return response
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     lang = locale_from_request(request)
@@ -115,7 +131,9 @@ async def value_error_handler(request: Request, exc: ValueError):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    logging.exception("Unhandled error on %s", request.url.path)
+    request_id = getattr(request.state, "request_id", "")
+    logging.exception("Unhandled error on %s request_id=%s", request.url.path, request_id)
+    capture_exception_with_request(exc, request_id=request_id, path=request.url.path)
     lang = locale_from_request(request)
     return JSONResponse(status_code=500, content={"detail": t("error.internal", lang)})
 
@@ -125,6 +143,7 @@ app.include_router(billing.router, prefix="/api/v1")
 app.include_router(billing_google.router, prefix="/api/v1")
 app.include_router(legal.router)
 app.include_router(analytics.router, prefix="/api/v1")
+app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(input.router, prefix="/api/v1")
 app.include_router(insights.router, prefix="/api/v1")
 app.include_router(micro_savings.router, prefix="/api/v1")
@@ -202,6 +221,22 @@ async def health(request: Request, db: AsyncSession = Depends(get_db)):
                     else "openai" if settings.openai_api_key
                     else None
                 ),
+            },
+            "launch_readiness": {
+                "billing_production": not settings.billing_premium_unlocked and not settings.google_play_verify_mock,
+                "smtp_configured": bool(settings.smtp_host.strip()),
+                "s3_configured": settings.s3_enabled and bool(settings.s3_endpoint.strip()),
+                "sentry_configured": bool(settings.sentry_dsn),
+                "google_play_configured": bool(settings.google_play_service_account_json.strip()),
+                "apple_configured": bool(settings.apple_shared_secret.strip()) or settings.apple_verify_mock,
+            },
+            "observability": {
+                "version": settings.app_version,
+                "region": settings.deploy_region,
+                "uptime_seconds": uptime_seconds(),
+                "request_id": getattr(request.state, "request_id", None),
+                "rate_limit_enabled": settings.rate_limit_enabled,
+                "scheduler_enabled": settings.scheduler_enabled,
             },
         },
     )

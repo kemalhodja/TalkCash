@@ -35,6 +35,8 @@ class AIMentorService:
                 alerts.append({
                     "type": "budget_exceeded",
                     "category": budget.category,
+                    "spent": float(spent),
+                    "limit": float(budget.monthly_limit),
                     "message": t("ai.budget_exceeded", locale,
                                  category=budget.category, spent=spent, limit=budget.monthly_limit),
                 })

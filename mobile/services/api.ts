@@ -124,7 +124,7 @@ async function request<T>(path: string, options?: RequestInit, attempt = 0, auth
         return request<T>(path, options, attempt + 1);
       }
       if (res.status >= 500) {
-        captureError(new ApiError(detail, res.status));
+        captureError(new ApiError(detail, res.status), { path, status: res.status });
       }
       throw new ApiError(detail, res.status);
     }
@@ -216,6 +216,15 @@ export const api = {
     request<any>("/billing/google/verify", {
       method: "POST",
       body: JSON.stringify({ product_id: productId, purchase_token: purchaseToken }),
+    }),
+  verifyApplePurchase: (productId: string, receiptData: string, transactionId?: string) =>
+    request<any>("/billing/apple/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        product_id: productId,
+        receipt_data: receiptData,
+        transaction_id: transactionId,
+      }),
     }),
   getBillingProducts: () => request<any>("/billing/products"),
 
@@ -595,13 +604,15 @@ export const api = {
       throw err;
     }
   },
-  updateBudget: async (id: string, monthlyLimit: number) => {
+  updateBudget: async (id: string, monthlyLimit: number, category?: string) => {
     const { enqueue, shouldQueueError } = await import("./offlineQueue");
+    const payload: Record<string, unknown> = { monthly_limit: monthlyLimit };
+    if (category) payload.category = category;
     try {
-      return await request(`/budgets/${id}`, { method: "PUT", body: JSON.stringify({ monthly_limit: monthlyLimit }) });
+      return await request(`/budgets/${id}`, { method: "PUT", body: JSON.stringify(payload) });
     } catch (err) {
       if (shouldQueueError(err)) {
-        const opId = await enqueue({ type: "budget_update", payload: { budget_id: id, monthly_limit: monthlyLimit } });
+        const opId = await enqueue({ type: "budget_update", payload: { budget_id: id, ...payload } });
         return { status: "queued", operation_id: opId };
       }
       throw err;
@@ -714,12 +725,21 @@ export const api = {
   inviteWorkspaceMember: (workspaceId: string, email: string, role: "admin" | "member" | "viewer" = "member") =>
     request<any>(`/workspaces/${workspaceId}/invite`, { method: "POST", body: JSON.stringify({ email, role }) }),
   getWorkspaceInvitations: (workspaceId: string) => request<any[]>(`/workspaces/${workspaceId}/invitations`),
+  getWorkspaceInvitationInbox: () => request<any[]>("/workspaces/invitations/inbox"),
+  acceptWorkspaceInvitation: (token: string) =>
+    request<any>("/workspaces/invitations/accept", { method: "POST", body: JSON.stringify({ token }) }),
   cancelWorkspaceInvitation: (workspaceId: string, invitationId: string) =>
     request<void>(`/workspaces/${workspaceId}/invitations/${invitationId}`, { method: "DELETE" }),
 
   // Analytics
   trackEvent: (eventName: string, properties?: Record<string, unknown>) =>
     request("/analytics/events", { method: "POST", body: JSON.stringify({ event_name: eventName, properties }) }),
+  getAnalyticsFunnel: () => request<{ events: Record<string, number>; completed_steps: number; total_steps: number }>("/analytics/funnel"),
+  submitFeedback: (data: { message: string; rating?: number; app_version?: string; platform?: string }) =>
+    request("/feedback/", { method: "POST", body: JSON.stringify(data) }),
+
+  getBudgetOverruns: () => request<any[]>("/budgets/overruns"),
+  getMonthlySummary: () => request<any>("/wallets/monthly-summary"),
 
   // Notifications
   registerPushToken: (token: string) =>
