@@ -231,8 +231,8 @@ export function VoiceInput({
           ? t.input.whisperMode
           : t.input.voiceCommand;
 
-  const btnSize = compact ? 48 : 72;
-  const iconSize = compact ? 22 : 28;
+  const btnSize = compact ? 48 : 76;
+  const iconSize = compact ? 22 : 30;
 
   return (
     <View style={[styles.container, compact && styles.compact]}>

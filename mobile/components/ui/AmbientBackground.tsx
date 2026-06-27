@@ -1,22 +1,28 @@
+import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
-import { Colors } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 
 type Props = {
   variant?: "default" | "auth" | "subtle";
 };
 
 export function AmbientBackground({ variant = "default" }: Props) {
-  const orbs = variant === "auth"
-    ? [
-        { top: 60, left: "15%" as const, size: 220, color: Colors.accentGlow, opacity: 0.28 },
-        { top: 280, right: -40, size: 160, color: "rgba(59,130,246,0.25)", opacity: 0.35 },
-      ]
-    : variant === "subtle"
-      ? [{ top: -60, right: -30, size: 180, color: Colors.accentGlow, opacity: 0.18 }]
-      : [
-          { top: -80, right: -40, size: 200, color: Colors.accentGlow, opacity: 0.22 },
-          { top: 320, left: -60, size: 140, color: "rgba(59,130,246,0.2)", opacity: 0.25 },
-        ];
+  const { colors } = useTheme();
+  const orbs = useMemo(() => {
+    if (variant === "auth") {
+      return [
+        { top: 60, left: "12%" as const, size: 220, color: colors.accentGlow, opacity: 0.26 },
+        { top: 280, right: -40, size: 160, color: "rgba(79,142,247,0.22)", opacity: 0.32 },
+      ];
+    }
+    if (variant === "subtle") {
+      return [{ top: -64, right: -32, size: 184, color: colors.accentGlow, opacity: 0.16 }];
+    }
+    return [
+      { top: -88, right: -44, size: 208, color: colors.accentGlow, opacity: 0.2 },
+      { top: 300, left: -64, size: 148, color: "rgba(79,142,247,0.18)", opacity: 0.22 },
+    ];
+  }, [colors.accentGlow, variant]);
 
   return (
     <View style={styles.root} pointerEvents="none">

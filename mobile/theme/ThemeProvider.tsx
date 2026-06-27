@@ -12,7 +12,7 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue>({
   colors: getColors("dark"),
-  shadow: getShadow(getColors("dark")),
+  shadow: getShadow(getColors("dark"), true),
   gradients: getGradients(getColors("dark")),
   isDark: true,
   scheme: "dark",
@@ -24,11 +24,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => {
     const colors = getColors(scheme);
+    const isDark = scheme === "dark";
     return {
       colors,
-      shadow: getShadow(colors),
+      shadow: getShadow(colors, isDark),
       gradients: getGradients(colors),
-      isDark: scheme === "dark",
+      isDark,
       scheme,
     };
   }, [scheme]);

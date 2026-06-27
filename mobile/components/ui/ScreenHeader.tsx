@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Colors, Spacing, Typography } from "@/constants/theme";
+import { Spacing, Typography } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 
 type Props = {
   title: string;
@@ -9,6 +10,25 @@ type Props = {
 };
 
 export function ScreenHeader({ title, subtitle, actions }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: {
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: Spacing.lg,
+          gap: Spacing.md,
+        },
+        textCol: { flex: 1 },
+        title: { color: colors.text, ...Typography.title },
+        subtitle: { color: colors.textMuted, ...Typography.caption, marginTop: 6 },
+        actions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", justifyContent: "flex-end" },
+      }),
+    [colors],
+  );
+
   return (
     <View style={styles.wrap}>
       <View style={styles.textCol}>
@@ -19,17 +39,3 @@ export function ScreenHeader({ title, subtitle, actions }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: Spacing.lg,
-    gap: Spacing.md,
-  },
-  textCol: { flex: 1 },
-  title: { color: Colors.text, ...Typography.title },
-  subtitle: { color: Colors.textMuted, ...Typography.caption, marginTop: 4 },
-  actions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", justifyContent: "flex-end" },
-});

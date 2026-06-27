@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
-import { Colors, Spacing, Typography } from "@/constants/theme";
+import { Spacing, Typography } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 import { Surface } from "./Surface";
 
 type Props = {
@@ -24,6 +25,26 @@ export function SectionBlock({
   contentStyle,
   bare = false,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: { marginBottom: Spacing.lg },
+        bare: { marginBottom: Spacing.lg },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: Spacing.sm,
+          paddingHorizontal: 2,
+        },
+        title: { color: colors.text, ...Typography.title, fontSize: 18 },
+        action: { color: colors.accent, fontSize: 13, fontWeight: "700" },
+        surface: { padding: Spacing.md },
+      }),
+    [colors],
+  );
+
   const header = (
     <View style={styles.header}>
       <Text style={styles.title}>{title}</Text>
@@ -53,17 +74,3 @@ export function SectionBlock({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginBottom: Spacing.lg },
-  bare: { marginBottom: Spacing.lg },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Spacing.sm,
-  },
-  title: { color: Colors.text, ...Typography.title, fontSize: 18 },
-  action: { color: Colors.accent, fontSize: 13, fontWeight: "700" },
-  surface: { padding: Spacing.md },
-});

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Modal, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { ConfirmationCard } from "@/components/ConfirmationCard";
@@ -13,7 +13,8 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenShell } from "@/components/ui/ScreenShell";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Surface } from "@/components/ui/Surface";
-import { Colors, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
 import { getApiErrorMessage } from "@/utils/apiErrors";
@@ -42,6 +43,7 @@ import {
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
+  const { colors } = useTheme();
   const voiceParams = useLocalSearchParams<{ whisper?: string; hold?: string; sms?: string; text?: string }>();
   const [text, setText] = useState("");
   const [showKeypad, setShowKeypad] = useState(false);
@@ -70,6 +72,50 @@ export default function InputScreen() {
   const [simpleMode, setSimpleMode] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        content: { paddingBottom: Spacing.xl, gap: Spacing.sm },
+        topActions: { flexDirection: "row", justifyContent: "flex-end", gap: Spacing.sm, marginBottom: Spacing.xs },
+        topActionBtn: { flexShrink: 1 },
+        aiBanner: { padding: Spacing.md, marginBottom: Spacing.sm },
+        aiBannerText: { color: colors.warning, fontSize: 13, textAlign: "center", lineHeight: 18 },
+        voicePanel: {
+          paddingVertical: Spacing.lg,
+          paddingHorizontal: Spacing.md,
+          marginBottom: Spacing.md,
+          alignItems: "center",
+        },
+        divider: { flexDirection: "row", alignItems: "center", marginVertical: Spacing.lg },
+        line: { flex: 1, height: StyleSheet.hairlineWidth * 2, backgroundColor: colors.border },
+        dividerText: { color: colors.textMuted, marginHorizontal: Spacing.md, fontSize: 13, fontWeight: "600" },
+        inputWrap: { marginBottom: 0 },
+        textInput: { fontSize: 16 },
+        slashInput: { borderColor: colors.borderStrong, backgroundColor: colors.accentSoft },
+        slashSection: { marginTop: Spacing.sm },
+        slashLabel: { color: colors.accent, fontSize: 12, fontWeight: "600", marginBottom: 6 },
+        slashChipBtn: { alignSelf: "flex-start" },
+        suggestions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: Spacing.sm },
+        chipBtn: { alignSelf: "flex-start" },
+        keypadToggle: { marginTop: Spacing.md },
+        submitBtn: { marginTop: Spacing.md },
+        simpleHint: {
+          color: colors.textSecondary,
+          fontSize: 14,
+          marginBottom: Spacing.md,
+          lineHeight: 21,
+          textAlign: "center",
+          paddingHorizontal: Spacing.sm,
+        },
+        error: { color: colors.danger, textAlign: "center", marginTop: Spacing.sm, lineHeight: 20 },
+        modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: "center", padding: Spacing.lg },
+        modalCard: { padding: Spacing.lg },
+        modalTitle: { color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },
+        modalActions: { flexDirection: "row", justifyContent: "space-between", marginTop: Spacing.md, gap: Spacing.sm },
+      }),
+    [colors],
+  );
 
   useEffect(() => {
     isSimpleInputMode().then(setSimpleMode);
@@ -747,31 +793,3 @@ export default function InputScreen() {
     </ScreenShell>
   );
 }
-
-const styles = StyleSheet.create({
-  content: { paddingBottom: Spacing.xl },
-  topActions: { flexDirection: "row", justifyContent: "flex-end", gap: Spacing.sm, marginBottom: Spacing.sm },
-  topActionBtn: { flexShrink: 1 },
-  aiBanner: { padding: Spacing.sm, marginBottom: Spacing.sm },
-  aiBannerText: { color: Colors.warning, fontSize: 13, textAlign: "center" },
-  voicePanel: { padding: Spacing.md, marginBottom: Spacing.md },
-  divider: { flexDirection: "row", alignItems: "center", marginVertical: Spacing.md },
-  line: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { color: Colors.textMuted, marginHorizontal: Spacing.sm, fontSize: 13 },
-  inputWrap: { marginBottom: 0 },
-  textInput: { fontSize: 16 },
-  slashInput: { borderColor: Colors.borderStrong, backgroundColor: Colors.accentSoft },
-  slashSection: { marginTop: Spacing.sm },
-  slashLabel: { color: Colors.accent, fontSize: 12, fontWeight: "600", marginBottom: 6 },
-  slashChipBtn: { alignSelf: "flex-start" },
-  suggestions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.sm },
-  chipBtn: { alignSelf: "flex-start" },
-  keypadToggle: { marginTop: Spacing.md },
-  submitBtn: { marginTop: Spacing.md },
-  simpleHint: { color: Colors.textMuted, fontSize: 13, marginBottom: Spacing.sm, lineHeight: 20 },
-  error: { color: Colors.danger, textAlign: "center", marginTop: Spacing.sm },
-  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: "center", padding: Spacing.lg },
-  modalCard: { padding: Spacing.lg },
-  modalTitle: { color: Colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },
-  modalActions: { flexDirection: "row", justifyContent: "space-between", marginTop: Spacing.md, gap: Spacing.sm },
-});

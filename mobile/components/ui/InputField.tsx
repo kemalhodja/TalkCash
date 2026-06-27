@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Pressable,
   StyleProp,
@@ -10,13 +10,13 @@ import {
   ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Touch, Typography } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 import { useI18n } from "@/i18n";
 
 type Props = TextInputProps & {
   label?: string;
   containerStyle?: StyleProp<ViewStyle>;
-  /** Show eye toggle for secure fields. Default: true when secureTextEntry is set. */
   allowReveal?: boolean;
 };
 
@@ -29,8 +29,42 @@ export function InputField({
   ...props
 }: Props) {
   const { t } = useI18n();
+  const { colors } = useTheme();
   const [revealed, setRevealed] = useState(false);
   const canReveal = !!secureTextEntry && allowReveal !== false;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrap: { marginBottom: Spacing.sm },
+        label: { color: colors.textMuted, ...Typography.label, marginBottom: 8, textTransform: "none", letterSpacing: 0.3, fontSize: 12 },
+        inputRow: { position: "relative" },
+        input: {
+          backgroundColor: colors.cardElevated,
+          borderRadius: Radius.lg,
+          minHeight: Touch.inputHeight,
+          paddingVertical: 14,
+          paddingHorizontal: Spacing.md,
+          color: colors.text,
+          borderWidth: 1,
+          borderColor: colors.border,
+          fontSize: 16,
+          lineHeight: 22,
+        },
+        inputWithToggle: {
+          paddingRight: Spacing.xl + Spacing.sm,
+        },
+        revealBtn: {
+          position: "absolute",
+          right: Spacing.sm,
+          top: 0,
+          bottom: 0,
+          justifyContent: "center",
+          paddingHorizontal: Spacing.xs,
+        },
+      }),
+    [colors],
+  );
 
   return (
     <View style={[styles.wrap, containerStyle]}>
@@ -38,7 +72,7 @@ export function InputField({
       <View style={styles.inputRow}>
         <TextInput
           style={[styles.input, canReveal && styles.inputWithToggle, style]}
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           accessibilityLabel={label || props.placeholder}
           secureTextEntry={canReveal ? !revealed : secureTextEntry}
           {...props}
@@ -54,7 +88,7 @@ export function InputField({
             <Ionicons
               name={revealed ? "eye-off-outline" : "eye-outline"}
               size={20}
-              color={Colors.textMuted}
+              color={colors.textMuted}
             />
           </Pressable>
         ) : null}
@@ -62,29 +96,3 @@ export function InputField({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginBottom: Spacing.sm },
-  label: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", marginBottom: 6, letterSpacing: 0.5 },
-  inputRow: { position: "relative" },
-  input: {
-    backgroundColor: Colors.cardElevated,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    fontSize: 15,
-  },
-  inputWithToggle: {
-    paddingRight: Spacing.xl + Spacing.sm,
-  },
-  revealBtn: {
-    position: "absolute",
-    right: Spacing.sm,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-    paddingHorizontal: Spacing.xs,
-  },
-});

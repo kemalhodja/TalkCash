@@ -20,7 +20,6 @@ type Props = {
   onRefresh?: () => void;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
-  /** When true (default), reserve space for the floating tab bar. */
   bottomInset?: boolean;
   ambient?: boolean | "subtle";
 };
@@ -44,6 +43,9 @@ export function ScreenShell({
         content: {
           paddingHorizontal: Layout.screenPadding,
           flexGrow: 1,
+          width: "100%",
+          maxWidth: Layout.maxContentWidth,
+          alignSelf: "center",
         },
       }),
     [colors.bg],
@@ -68,7 +70,7 @@ export function ScreenShell({
           style,
         ]}
       >
-        {shell}
+        <View style={[styles.content, contentStyle]}>{shell}</View>
       </View>
     );
   }
