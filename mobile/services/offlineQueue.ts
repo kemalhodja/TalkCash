@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "./api";
 import { flushReceiptScans } from "./receiptQueue";
+import { flushVoiceParses } from "./voiceQueue";
 import { getIdMap, registerRemapFromResult, remapPayload, remapQueue, remapSnapshotWithMap } from "./idRemap";
 import { applyOptimisticForQueuedOp } from "./syncCache";
 
@@ -32,7 +33,9 @@ export type QueuedOperation = {
     | "agenda_complete"
     | "budget_create"
     | "budget_update"
-    | "budget_delete";
+    | "budget_delete"
+    | "voice_parse"
+    | "voice_premium";
   payload: Record<string, unknown>;
   clientTimestamp: string;
   resolveStrategy?: "local" | "server";
@@ -115,8 +118,12 @@ export async function flushQueue(
   applied += receiptFlush.applied;
   failed += receiptFlush.failed;
 
-  while ((await getQueue()).filter((op) => op.type !== "receipt_scan").length > 0) {
-    const queue = (await getQueue()).filter((op) => op.type !== "receipt_scan");
+  const voiceFlush = await flushVoiceParses();
+  applied += voiceFlush.applied;
+  failed += voiceFlush.failed;
+
+  while ((await getQueue()).filter((op) => op.type !== "receipt_scan" && op.type !== "voice_parse" && op.type !== "voice_premium").length > 0) {
+    const queue = (await getQueue()).filter((op) => op.type !== "receipt_scan" && op.type !== "voice_parse" && op.type !== "voice_premium");
     const idMap = await getIdMap();
     const chunk = queue.slice(0, BATCH_SIZE).map((op) => ({
       ...op,

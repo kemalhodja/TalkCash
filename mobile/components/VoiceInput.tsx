@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { Audio } from "expo-av";
+import { WHISPER_RECORDING_OPTIONS } from "@/utils/voiceRecording";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Shadow, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
-import { api } from "@/services/api";
-import { getPremiumStatus } from "@/services/premium";
+import { isPremium } from "@/services/premium";
+import { parseVoiceWithOfflineQueue } from "@/services/voiceQueue";
 import { track } from "@/services/analytics";
-import { hapticImpact, hapticSelection } from "@/utils/haptics";
+import { captureError } from "@/services/observability";
+import { getApiErrorMessage, isRetryableApiError } from "@/utils/apiErrors";
+import { hapticImpact } from "@/utils/haptics";
 
 interface Props {
   onResult: (text: string, parsed?: any) => void;
@@ -62,6 +65,49 @@ export function VoiceInput({
     startRecording();
   }, [autoRecord, disabled]);
 
+  const errorCopy = {
+    network: t.input.voiceNetworkError,
+    timeout: t.input.voiceTimeoutError,
+    auth: t.input.voiceAuthError,
+    validation: t.input.voiceFailed,
+    server: t.input.voiceServerError,
+    unknown: t.input.voiceFailed,
+  };
+
+  const processRecording = async (uri: string, premium: boolean) => {
+    setProcessing(true);
+    try {
+      if (premium) track("premium_voice_command");
+      const result = await parseVoiceWithOfflineQueue(uri, whisperMode, premium);
+      if (result?.status === "queued") {
+        hapticImpact("success");
+        Alert.alert(t.common.confirm, t.input.voiceQueuedOffline);
+        return;
+      }
+      if (premium && result?.status !== "needs_confirmation" && result?.status !== "easter_egg" && result?.status !== "success") {
+        onResult(result.transcript || result.parsed?.raw_text || "", result);
+        Alert.alert(t.premium.title, result.message || t.input.voiceSaved);
+      } else {
+        onResult(result.transcript || result.parsed?.raw_text || result.message || "", result);
+      }
+      hapticImpact("success");
+    } catch (err) {
+      hapticImpact("error");
+      captureError(err, { feature: "voice_input", premium });
+      const message = getApiErrorMessage(err, errorCopy);
+      if (isRetryableApiError(err)) {
+        Alert.alert(t.common.error, message, [
+          { text: t.common.cancel, style: "cancel" },
+          { text: t.common.retry, onPress: () => { void processRecording(uri, premium); } },
+        ]);
+      } else {
+        Alert.alert(t.common.error, message);
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const startRecording = async () => {
     if (disabled) {
       Alert.alert(t.input.aiUnavailable);
@@ -71,13 +117,14 @@ export function VoiceInput({
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording: rec } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        WHISPER_RECORDING_OPTIONS,
       );
       recordingRef.current = rec;
       setRecording(true);
       hapticImpact("medium");
-    } catch {
+    } catch (err) {
       hapticImpact("error");
+      captureError(err, { feature: "voice_input", stage: "record_start" });
       Alert.alert(t.input.micPermission);
     }
   };
@@ -85,36 +132,30 @@ export function VoiceInput({
   const stopRecording = async () => {
     if (!recordingRef.current) return;
     setRecording(false);
-    setProcessing(true);
     try {
       await recordingRef.current.stopAndUnloadAsync();
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
-      if (uri) {
-        if (onAudioCaptured) {
+      if (!uri) return;
+      if (onAudioCaptured) {
+        setProcessing(true);
+        try {
           await onAudioCaptured(uri);
-          return;
+        } catch (err) {
+          hapticImpact("error");
+          captureError(err, { feature: "voice_input", stage: "onAudioCaptured" });
+          Alert.alert(t.common.error, getApiErrorMessage(err, errorCopy));
+        } finally {
+          setProcessing(false);
         }
-        const premium = await getPremiumStatus();
-        if (premium.is_premium) {
-          track("premium_voice_command");
-          const result = await api.processPremiumVoice(uri, whisperMode);
-          if (result?.status === "needs_confirmation" || result?.status === "easter_egg") {
-            onResult(result.transcript || result.parsed?.raw_text || "", result);
-          } else {
-            onResult(result.transcript || result.parsed?.raw_text || "", result);
-            Alert.alert(t.premium.title, result.message || t.input.voiceSaved);
-          }
-        } else {
-          const result = await api.parseVoice(uri, whisperMode);
-          onResult(result.parsed?.raw_text || result.message, result);
-        }
-        hapticImpact("success");
+        return;
       }
-    } catch {
+      const premium = await isPremium();
+      await processRecording(uri, premium);
+    } catch (err) {
       hapticImpact("error");
+      captureError(err, { feature: "voice_input", stage: "record_stop" });
       Alert.alert(t.common.error, t.input.voiceFailed);
-    } finally {
       setProcessing(false);
     }
   };

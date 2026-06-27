@@ -14,9 +14,13 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { initObservability } from "@/services/observability";
 import { initLocalDb } from "@/services/localDb";
+import { initRevenueCat, isRevenueCatConfigured } from "@/services/revenueCat";
 
 initObservability();
 initLocalDb();
+if (isRevenueCatConfigured()) {
+  void initRevenueCat();
+}
 
 function waitForNavigationPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -41,6 +45,9 @@ export default function RootLayout() {
             await auth.clear({ preserveOffline: true });
           } else {
         await auth.restoreSessionState();
+            if (isRevenueCatConfigured()) {
+              void initRevenueCat(user.userId);
+            }
             try {
               const me = await api.getMe();
               if (cancelled) return;

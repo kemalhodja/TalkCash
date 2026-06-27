@@ -22,7 +22,7 @@ export interface AuthUser {
   refreshToken?: string;
   biometricEnabled: boolean;
   hasPin: boolean;
-  assistantPersona?: "default" | "angry_mom" | "street_smart";
+  assistantPersona?: "default" | "angry_mom" | "street_smart" | "wall_street" | "zen_guru";
 }
 
 let sessionUnlocked = false;
@@ -84,8 +84,18 @@ export const auth = {
     if (user.refreshToken) {
       await SecureStore.setItemAsync(REFRESH_KEY, user.refreshToken);
     }
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    const { token: _token, refreshToken: _refresh, ...profile } = user;
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(profile));
     setObservabilityUser({ id: user.userId, name: user.fullName });
+    try {
+      const { identifyRevenueCatUser, isRevenueCatConfigured } = await import("./revenueCat");
+      if (isRevenueCatConfigured()) {
+        await identifyRevenueCatUser(user.userId);
+      }
+    } catch (err) {
+      const { captureError } = await import("./observability");
+      captureError(err, { feature: "revenuecat", stage: "identify_on_save" });
+    }
   },
 
   async getToken(): Promise<string | null> {
@@ -100,7 +110,11 @@ export const auth = {
     const raw = await SecureStore.getItemAsync(USER_KEY);
     if (!raw) return null;
     try {
-      return JSON.parse(raw);
+      const profile = JSON.parse(raw) as Omit<AuthUser, "token" | "refreshToken">;
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!token) return null;
+      const refreshToken = (await SecureStore.getItemAsync(REFRESH_KEY)) || undefined;
+      return { ...profile, token, refreshToken };
     } catch {
       await SecureStore.deleteItemAsync(USER_KEY);
       await SecureStore.deleteItemAsync(TOKEN_KEY);
@@ -112,16 +126,18 @@ export const auth = {
   async updateTokens(token: string, refreshToken: string) {
     await SecureStore.setItemAsync(TOKEN_KEY, token);
     await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
-    const user = await this.getUser();
-    if (user) {
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify({ ...user, token, refreshToken }));
-    }
   },
 
   async clear(options?: { preserveOffline?: boolean }) {
     sessionUnlocked = false;
     if (!options?.preserveOffline) {
       await clearLocalUserData();
+    }
+    try {
+      const { logoutRevenueCat } = await import("./revenueCat");
+      await logoutRevenueCat();
+    } catch {
+      /* RC optional */
     }
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(REFRESH_KEY);
@@ -134,7 +150,8 @@ export const auth = {
   async updateUser(partial: Partial<AuthUser>) {
     const user = await this.getUser();
     if (!user) return;
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify({ ...user, ...partial }));
+    const { token: _token, refreshToken: _refresh, ...profile } = { ...user, ...partial };
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(profile));
   },
 
   async getRememberMe(): Promise<boolean> {

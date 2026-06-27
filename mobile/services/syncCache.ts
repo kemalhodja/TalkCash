@@ -109,6 +109,10 @@ export async function optimisticAddShopping(names: string[], clientIds?: string[
 }
 
 /** Apply optimistic snapshot patches when an operation is queued offline. */
+export async function applyOptimisticExpense(parsed: Record<string, unknown>): Promise<void> {
+  await applyOptimisticForQueuedOp("execute", { parsed });
+}
+
 export async function applyOptimisticForQueuedOp(
   type: QueuedOperation["type"],
   payload: Record<string, unknown>,

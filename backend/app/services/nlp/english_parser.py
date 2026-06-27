@@ -32,6 +32,12 @@ def parse_english_amount(text: str) -> Decimal | None:
 def extract_date_en(text: str) -> datetime | None:
     lower = text.lower()
     now = datetime.utcnow()
+    if re.search(r"\btoday\b", lower):
+        return now.replace(hour=12, minute=0, second=0, microsecond=0)
+    if re.search(r"\byesterday\b", lower):
+        return (now - timedelta(days=1)).replace(hour=12, minute=0, second=0, microsecond=0)
+    if "last week" in lower:
+        return (now - timedelta(days=7)).replace(hour=12, minute=0, second=0, microsecond=0)
     if "tomorrow" in lower:
         return now + timedelta(days=1)
     if "next week" in lower:

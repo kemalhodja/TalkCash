@@ -111,17 +111,26 @@ async def dispatch_confirmed_action(
         if not wallet:
             raise ValueError(t("wallet.not_found", locale))
         receipt_uuid = UUID(parsed.receipt_id) if parsed.receipt_id else None
-        category = parsed.category or "Genel"
+        from app.services.nlp.turkish_parser import refine_expense_category
+        category = refine_expense_category(
+            parsed.raw_text or parsed.description or "",
+            parsed.category or "Genel",
+        )
         store_name = _resolve_store_name(parsed, locale)
         is_sub = parsed.is_subscription
         sub_name = parsed.subscription_name
         if not is_sub:
             is_sub, sub_name = detect_subscription(parsed.raw_text or parsed.description or "")
 
+        expense_at = None
+        if parsed.date and parsed.date <= datetime.utcnow():
+            expense_at = parsed.date
+
         tx = await wallet_service.add_expense(
             db, user_id, wallet.id, parsed.amount, category,
             parsed.description or "", parsed.place or store_name,
             store_name=store_name, receipt_id=receipt_uuid,
+            transaction_at=expense_at,
         )
 
         sub_info = None

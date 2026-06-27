@@ -157,7 +157,7 @@ export const api = {
   setLocale: (locale: string) => request("/auth/locale", { method: "PUT", body: JSON.stringify({ locale }) }),
   setTimezone: (timezone: string) => request("/auth/timezone", { method: "PUT", body: JSON.stringify({ timezone }) }),
   getMe: () => request<any>("/auth/me"),
-  setAssistantPersona: (assistant_persona: "default" | "angry_mom" | "street_smart") =>
+  setAssistantPersona: (assistant_persona: "default" | "angry_mom" | "street_smart" | "wall_street" | "zen_guru") =>
     request<{ assistant_persona: string }>("/auth/persona", {
       method: "PUT",
       body: JSON.stringify({ assistant_persona }),
@@ -236,23 +236,31 @@ export const api = {
   parseSms: (text: string) =>
     request<any>("/input/parse-sms", { method: "POST", body: JSON.stringify({ text }) }),
   parseVoice: async (uri: string, whisperMode = false) => {
+    const { prepareVoiceUploadUri } = await import("@/utils/voiceRecording");
+    const uploadUri = await prepareVoiceUploadUri(uri);
     const form = new FormData();
-    form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
+    form.append("audio", { uri: uploadUri, type: "audio/m4a", name: "recording.m4a" } as any);
     return request<any>(`/input/voice?whisper_mode=${whisperMode}`, { method: "POST", body: form });
   },
   transcribeVoice: async (uri: string, whisperMode = false) => {
+    const { prepareVoiceUploadUri } = await import("@/utils/voiceRecording");
+    const uploadUri = await prepareVoiceUploadUri(uri);
     const form = new FormData();
-    form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
+    form.append("audio", { uri: uploadUri, type: "audio/m4a", name: "recording.m4a" } as any);
     return request<any>(`/input/transcribe?whisper_mode=${whisperMode}`, { method: "POST", body: form });
   },
   processPremiumVoice: async (uri: string, whisperMode = false) => {
+    const { prepareVoiceUploadUri } = await import("@/utils/voiceRecording");
+    const uploadUri = await prepareVoiceUploadUri(uri);
     const form = new FormData();
-    form.append("audio", { uri, type: "audio/m4a", name: "recording.m4a" } as any);
+    form.append("audio", { uri: uploadUri, type: "audio/m4a", name: "recording.m4a" } as any);
     return request<any>(`/input/process-voice?whisper_mode=${whisperMode}`, { method: "POST", body: form });
   },
   quickVoice: async (uri: string) => {
+    const { prepareVoiceUploadUri } = await import("@/utils/voiceRecording");
+    const uploadUri = await prepareVoiceUploadUri(uri);
     const form = new FormData();
-    form.append("audio", { uri, type: "audio/m4a", name: "quick.m4a" } as any);
+    form.append("audio", { uri: uploadUri, type: "audio/m4a", name: "quick.m4a" } as any);
     return request<any>("/input/quick-voice", { method: "POST", body: form });
   },
   executeAction: async (parsed: object, confirmed: boolean) => {

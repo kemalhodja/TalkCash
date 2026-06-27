@@ -48,6 +48,15 @@ def extract_date(text: str) -> datetime | None:
     text_lower = text.lower()
     now = datetime.utcnow()
 
+    if re.search(r"\b(bugün|bugun)\b", text_lower):
+        return now.replace(hour=12, minute=0, second=0, microsecond=0)
+    if re.search(r"\b(dün|dun)\b", text_lower) or "dün akşam" in text_lower or "dun aksam" in text_lower:
+        return (now - timedelta(days=1)).replace(hour=12, minute=0, second=0, microsecond=0)
+    if "evvelsi gün" in text_lower or "evvelsi gun" in text_lower:
+        return (now - timedelta(days=2)).replace(hour=12, minute=0, second=0, microsecond=0)
+    if "geçen hafta" in text_lower or "gecen hafta" in text_lower:
+        return (now - timedelta(days=7)).replace(hour=12, minute=0, second=0, microsecond=0)
+
     if "yarın" in text_lower or "yarin" in text_lower:
         return now + timedelta(days=1)
     if "gelecek hafta" in text_lower:
@@ -138,6 +147,10 @@ def detect_intent(text: str) -> str:
 
 
 def extract_category(text: str) -> str:
+    return refine_expense_category(text, _base_category(text))
+
+
+def _base_category(text: str) -> str:
     categories = {
         "kahve": "Kahve", "market": "Market", "mutfak": "Mutfak",
         "restoran": "Restoran", "yemek": "Yemek", "benzin": "Ulaşım",
@@ -150,6 +163,25 @@ def extract_category(text: str) -> str:
         if keyword in text_lower:
             return category
     return "Genel"
+
+
+def refine_expense_category(text: str, base: str | None = None) -> str:
+    """Split broad categories into subcategories for richer reporting."""
+    text_lower = (text or "").lower()
+    parent = base or _base_category(text)
+
+    market_hints = ("market", "migros", "bim", "a101", "carrefour", "şok", "sok", "macro")
+    dining_hints = (
+        "restoran", "dışarı", "disari", "yemeksepeti", "getir", "delivery",
+        "kafe", "starbucks", "dominos", "burger", "mc donald",
+    )
+    if any(k in text_lower for k in market_hints) or "et ald" in text_lower:
+        root = "Market" if parent in ("Market", "Yemek", "Genel", "Mutfak") else parent
+        return f"{root} · Market Alışverişi"
+    if any(k in text_lower for k in dining_hints):
+        root = "Yemek" if parent in ("Yemek", "Restoran", "Kahve", "Genel") else parent
+        return f"{root} · Dışarıda Yemek"
+    return parent
 
 
 def extract_paid_bill_title(text: str) -> str:

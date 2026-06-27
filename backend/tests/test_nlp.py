@@ -1,6 +1,13 @@
 from decimal import Decimal
 
-from app.services.nlp.turkish_parser import detect_intent, extract_category, extract_date, extract_paid_bill_title, parse_turkish_amount
+from app.services.nlp.turkish_parser import (
+    detect_intent,
+    extract_category,
+    extract_date,
+    extract_paid_bill_title,
+    parse_turkish_amount,
+    refine_expense_category,
+)
 from app.services.nlp.engine import NLPEngine
 
 
@@ -17,11 +24,21 @@ def test_detect_intent():
 
 
 def test_extract_category():
-    assert extract_category("150 TL kahve starbucks") == "Kahve"
-    assert extract_category("market alışverişi") == "Market"
+    assert extract_category("150 TL kahve starbucks") == "Yemek · Dışarıda Yemek"
+    assert "Market Alışverişi" in extract_category("market alışverişi")
 
 
-def test_extract_date():
+def test_extract_date_past():
+    result = extract_date("dün akşam marketten 450 TL'ye et aldım")
+    assert result is not None
+    from datetime import datetime, timedelta
+    expected = (datetime.utcnow() - timedelta(days=1)).date()
+    assert result.date() == expected
+
+
+def test_refine_expense_subcategory():
+    assert "Dışarıda Yemek" in refine_expense_category("yemeksepeti sipariş", "Yemek")
+def test_extract_date_future():
     result = extract_date("elektrik faturası yarın")
     assert result is not None
     result2 = extract_date("kira 15 ocak")

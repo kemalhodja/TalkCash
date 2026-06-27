@@ -53,7 +53,7 @@ export default function SettingsScreen() {
   const [pendingReceipts, setPendingReceipts] = useState(0);
   const [seedingDemo, setSeedingDemo] = useState(false);
   const [premiumStatus, setPremiumStatus] = useState<PremiumStatus | null>(null);
-  const [persona, setPersona] = useState<"default" | "angry_mom" | "street_smart">("default");
+  const [persona, setPersona] = useState<"default" | "angry_mom" | "street_smart" | "wall_street" | "zen_guru">("default");
   const [simpleHome, setSimpleHome] = useState(true);
   const [simpleInput, setSimpleInput] = useState(true);
   const showDevConnection = getAppEnv() !== "production";
@@ -341,6 +341,8 @@ export default function SettingsScreen() {
             options={[
               { id: "default", label: t.persona.default },
               { id: "angry_mom", label: t.persona.angryMom },
+              { id: "wall_street", label: t.persona.wallStreet },
+              { id: "zen_guru", label: t.persona.zenGuru },
               { id: "street_smart", label: t.persona.streetSmart },
             ]}
             value={persona}

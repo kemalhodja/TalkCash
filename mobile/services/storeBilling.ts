@@ -1,49 +1,18 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { api } from "./api";
+import { captureError } from "./observability";
 import { PlanKey, refreshPremiumStatus } from "./premium";
+import {
+  BillingPeriod,
+  PLAN_SKUS,
+  SUBSCRIPTION_SKUS,
+  SubscriptionSku,
+  StorePlanPrice,
+} from "@/constants/billingSkus";
 
-export type BillingPeriod = "monthly" | "yearly";
-
-export const SUBSCRIPTION_SKUS = [
-  "talkcash_pro_monthly",
-  "talkcash_pro_yearly",
-  "talkcash_family_monthly",
-  "talkcash_family_yearly",
-  "talkcash_business_monthly",
-  "talkcash_business_yearly",
-] as const;
-
-export type SubscriptionSku = (typeof SUBSCRIPTION_SKUS)[number];
-
-export const PLAN_SKUS: Record<Exclude<PlanKey, "free">, Record<BillingPeriod, SubscriptionSku>> = {
-  pro: {
-    monthly: "talkcash_pro_monthly",
-    yearly: "talkcash_pro_yearly",
-  },
-  family: {
-    monthly: "talkcash_family_monthly",
-    yearly: "talkcash_family_yearly",
-  },
-  business: {
-    monthly: "talkcash_business_monthly",
-    yearly: "talkcash_business_yearly",
-  },
-};
-
-/** @deprecated use PLAN_SKUS */
-export const PLAN_TO_SKU: Record<Exclude<PlanKey, "free">, SubscriptionSku> = {
-  pro: PLAN_SKUS.pro.monthly,
-  family: PLAN_SKUS.family.monthly,
-  business: PLAN_SKUS.business.monthly,
-};
-
-export type StorePlanPrice = {
-  plan: Exclude<PlanKey, "free">;
-  period: BillingPeriod;
-  productId: string;
-  localizedPrice: string;
-};
+export type { BillingPeriod, StorePlanPrice, SubscriptionSku };
+export { PLAN_SKUS, SUBSCRIPTION_SKUS, PLAN_TO_SKU } from "@/constants/billingSkus";
 
 let connectionReady = false;
 
@@ -92,11 +61,21 @@ async function verifyPurchaseWithBackend(purchase: any): Promise<void> {
   }
 }
 
+async function getRevenueCat() {
+  return import("./revenueCat");
+}
+
 export function isStoreBillingSupported(): boolean {
+  const { isRevenueCatConfigured } = require("./revenueCat") as typeof import("./revenueCat");
+  if (isRevenueCatConfigured()) return true;
   return getIapModule() !== null;
 }
 
 export async function initStoreBilling(): Promise<boolean> {
+  const rc = await getRevenueCat();
+  if (rc.isRevenueCatConfigured()) {
+    return rc.initRevenueCat();
+  }
   const iap = getIapModule();
   if (!iap) return false;
   if (connectionReady) return true;
@@ -110,6 +89,20 @@ export async function initStoreBilling(): Promise<boolean> {
 }
 
 export async function getStorePlanPrices(): Promise<StorePlanPrice[]> {
+  const rc = await getRevenueCat();
+  if (rc.isRevenueCatConfigured()) {
+    try {
+      const rows = await rc.fetchPaywallOfferings();
+      return rows.map(({ plan, period, productId, localizedPrice }) => ({
+        plan,
+        period,
+        productId,
+        localizedPrice,
+      }));
+    } catch {
+      return [];
+    }
+  }
   const iap = getIapModule();
   if (!iap) return [];
   const ready = await initStoreBilling();
@@ -139,6 +132,19 @@ export async function purchaseSubscription(
   plan: Exclude<PlanKey, "free">,
   period: BillingPeriod = "yearly",
 ): Promise<void> {
+  const rc = await getRevenueCat();
+  if (rc.isRevenueCatConfigured()) {
+    try {
+      await rc.purchaseRevenueCatPackage(plan, period);
+      await refreshPremiumStatus();
+      return;
+    } catch (err) {
+      if (err instanceof rc.RevenueCatBillingError && err.userCancelled) {
+        throw new Error("Purchase cancelled");
+      }
+      throw err;
+    }
+  }
   const iap = getIapModule();
   if (!iap) throw new Error("Store billing unavailable");
 
@@ -151,11 +157,28 @@ export async function purchaseSubscription(
   if (!purchase) throw new Error("Purchase cancelled");
 
   await verifyPurchaseWithBackend(purchase);
-  await iap.finishTransaction({ purchase, isConsumable: false });
+  try {
+    await iap.finishTransaction({ purchase, isConsumable: false });
+  } catch (err) {
+    captureError(err, { feature: "store_billing", stage: "finish_transaction", productId: purchase.productId });
+  }
   await refreshPremiumStatus();
 }
 
 export async function restoreSubscriptions(): Promise<void> {
+  const rc = await getRevenueCat();
+  if (rc.isRevenueCatConfigured()) {
+    try {
+      await rc.restoreRevenueCatPurchases();
+      await refreshPremiumStatus();
+      return;
+    } catch (err) {
+      if (err instanceof rc.RevenueCatBillingError && err.code === "no_active_subscription") {
+        throw new Error("No active subscriptions");
+      }
+      throw err;
+    }
+  }
   const iap = getIapModule();
   if (!iap) throw new Error("Store billing unavailable");
 
@@ -176,6 +199,11 @@ export async function restoreSubscriptions(): Promise<void> {
   }
 
   await verifyPurchaseWithBackend(active[0]);
+  try {
+    await iap.finishTransaction({ purchase: active[0], isConsumable: false });
+  } catch (err) {
+    captureError(err, { feature: "store_billing", stage: "restore_finish", productId: active[0].productId });
+  }
   await refreshPremiumStatus();
 }
 

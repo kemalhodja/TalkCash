@@ -39,6 +39,11 @@ Desteklenen intent'ler:
 
 Mağaza adını store_name alanına yaz (Bim, Şok, Migros, Carrefour, Mahalle Bakkalı vb.).
 
+Tarih ifadelerini date alanına ISO-8601 olarak yaz: bugün, dün, dün akşam, geçen hafta, yarın, 15 ocak.
+Geçmiş harcamalar için date mutlaka geçmiş tarih olmalı.
+
+Kategori için alt kırılım kullan: "Yemek · Dışarıda Yemek", "Market · Market Alışverişi" gibi.
+
 Yerel ifadeleri sayıya çevir: "200 kağıt"=200, "elli lira"=50, "yüzlük gömdük"=100
 
 JSON formatı:
@@ -67,6 +72,11 @@ Supported intents:
 - add_shopping, mark_paid, add_debt, split_bill
 
 Extract store/merchant name into store_name (e.g. Bim, Migros, Carrefour, local grocery).
+
+Parse relative dates into date (ISO-8601): today, yesterday, last week, tomorrow.
+For past expenses, date must be in the past.
+
+Use subcategories when helpful: "Food · Dining Out", "Groceries · Supermarket".
 
 JSON format:
 {

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -188,6 +188,7 @@ class WalletService:
         store_name: str = "", input_method: str = "voice", receipt_id: UUID | None = None,
         is_recurring: bool = False, next_billing_date: date | None = None,
         subscription_name: str | None = None,
+        transaction_at: datetime | None = None,
     ) -> Transaction:
         _ensure_positive_amount(amount)
         wallet = await self.get_owned_wallet(db, user_id, wallet_id)
@@ -206,6 +207,8 @@ class WalletService:
             next_billing_date=next_billing_date,
             subscription_name=subscription_name,
         )
+        if transaction_at is not None:
+            tx.created_at = transaction_at
         db.add(tx)
         await db.flush()
         await self.audit.log(
@@ -320,6 +323,54 @@ class WalletService:
         income = totals.get(TransactionType.INCOME.value, 0)
         expense = totals.get(TransactionType.EXPENSE.value, 0)
         savings_rate = round(((income - expense) / income) * 100, 1) if income > 0 else None
+
+        prev_month = now.month - 1 if now.month > 1 else 12
+        prev_year = now.year if now.month > 1 else now.year - 1
+        prev_filter = (
+            Transaction.user_id == user_id,
+            extract("month", Transaction.created_at) == prev_month,
+            extract("year", Transaction.created_at) == prev_year,
+            Transaction.transaction_type == TransactionType.EXPENSE,
+        )
+        prev_result = await db.execute(
+            select(Transaction.category, func.coalesce(func.sum(Transaction.amount), 0))
+            .where(*prev_filter)
+            .group_by(Transaction.category)
+        )
+        prev_by_cat = {row[0] or "Genel": float(row[1]) for row in prev_result.all()}
+
+        trends = []
+        narratives = []
+        for row in top_categories:
+            cat = row["category"]
+            current = row["amount"]
+            previous = prev_by_cat.get(cat, 0)
+            if current <= 0 and previous <= 0:
+                continue
+            change_pct = round(((current - previous) / previous) * 100, 1) if previous > 0 else 100.0
+            trends.append({
+                "category": cat,
+                "this_month": current,
+                "last_month": previous,
+                "change_pct": change_pct,
+            })
+            if change_pct <= -10:
+                narratives.append({
+                    "tone": "success",
+                    "text": f"Bu ay geçen aya göre {cat} harcamalarını %{abs(change_pct):.0f} azaltmışsın, harika gidiyorsun!",
+                })
+            elif change_pct >= 15:
+                narratives.append({
+                    "tone": "warning",
+                    "text": f"{cat} harcamaların geçen aya göre %{change_pct:.0f} arttı, dikkat et.",
+                })
+        for budget in budget_health:
+            if budget["percent"] >= 80:
+                narratives.append({
+                    "tone": "danger" if budget["percent"] >= 100 else "warning",
+                    "text": f"{budget['category']} harcamaların bütçeni aşmak üzere, dikkat et.",
+                })
+
         return {
             "month": now.month,
             "year": now.year,
@@ -330,6 +381,8 @@ class WalletService:
             "net_worth": float(nw.total_try),
             "top_categories": top_categories,
             "budget_health": budget_health,
+            "trends": trends,
+            "narratives": narratives,
             "wallets": [
                 {"name": w.name, "balance": float(w.balance_try), "currency": w.currency}
                 for w in nw.wallets[:8]

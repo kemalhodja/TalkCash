@@ -81,6 +81,7 @@ async def insight_summary(
     micro_savings = await micro_savings_service.get_premium_insights(
         db, user.id, user_locale(user),
     )
+    monthly = await wallet_service.monthly_summary(db, user.id)
     return {
         "month": now.strftime("%Y-%m"),
         "cashflow": {
@@ -92,6 +93,8 @@ async def insight_summary(
         "net_worth_total": float(net_worth.total_try),
         "top_categories": categories,
         "budget_health": budget_health,
+        "trends": monthly.get("trends", []),
+        "narratives": monthly.get("narratives", []),
         "wallets": wallets,
         "micro_savings": micro_savings,
     }

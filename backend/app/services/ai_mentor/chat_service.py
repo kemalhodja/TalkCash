@@ -9,7 +9,7 @@ from app.config import settings
 from app.i18n import t
 from app.models.chat_message import ChatMessage
 from app.services.ai_mentor.service import AIMentorService
-from app.services.nlp.personas import mentor_persona_overlay, normalize_persona
+from app.services.nlp.personas import mentor_system_prompt, normalize_persona
 from app.services.wallet.service import WalletService
 
 mentor_service = AIMentorService()
@@ -76,8 +76,7 @@ class ChatMentorService:
         if not self.client:
             return t("ai.chat_offline", locale)
 
-        system = CHAT_SYSTEM_EN if locale == "en" else CHAT_SYSTEM_TR
-        system += mentor_persona_overlay(normalize_persona(persona), locale)
+        system = mentor_system_prompt(normalize_persona(persona), locale)
         messages = [
             {"role": "system", "content": system},
             {"role": "system", "content": f"Context: {json.dumps(context, ensure_ascii=False)}"},

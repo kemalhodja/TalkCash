@@ -66,5 +66,7 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
     sdk.captureException(error);
     return;
   }
-  console.error(error, context);
+  if (__DEV__) {
+    console.error(error, context);
+  }
 }

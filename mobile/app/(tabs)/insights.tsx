@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { PaywallCard } from "@/components/PaywallCard";
+import { CategoryBarChart } from "@/components/CategoryBarChart";
+import { TrendInsightCard } from "@/components/TrendInsightCard";
 import { MonthlyReportCard } from "@/components/MonthlyReportCard";
 import { MicroSavingsHeroCard } from "@/components/MicroSavingsHeroCard";
 import { InvestmentProjectionCard } from "@/components/InvestmentProjectionCard";
@@ -9,6 +13,7 @@ import { PortfolioCoachCard } from "@/components/PortfolioCoachCard";
 import { BrokerLinksCard } from "@/components/BrokerLinksCard";
 import { ErrorState } from "@/components/ErrorState";
 import { InsightChip } from "@/components/ui/InsightChip";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { ScreenShell } from "@/components/ui/ScreenShell";
@@ -19,6 +24,7 @@ import { useI18n } from "@/i18n";
 import { api } from "@/services/api";
 import { track } from "@/services/analytics";
 import { hasAddedFirstExpense } from "@/services/firstRun";
+import { getInsightsCache, patchInsightsCache } from "@/services/insightsCache";
 import { getPremiumStatus, hasEntitlement, PremiumStatus, refreshPremiumStatus } from "@/services/premium";
 import { formatMoney } from "@/utils/format";
 
@@ -32,19 +38,31 @@ export default function InsightsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAdvancedInsights, setShowAdvancedInsights] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
 
   const load = useCallback(async (force = false) => {
     setError("");
+    const cached = await getInsightsCache();
+    if (cached?.monthlySummary && !force) {
+      setMonthlySummary(cached.monthlySummary);
+      setSummary(cached.insightsSummary || null);
+      setFromCache(true);
+      setLoading(false);
+    }
+
     try {
       const status = force ? await refreshPremiumStatus() : await getPremiumStatus();
       setPremium(status);
-      const micro = await api.getMicroSavingsSummary().catch(() => null);
+      const micro = await api.getMicroSavingsSummary().catch(() => microSummary);
       setMicroSummary(micro);
-      const monthly = await api.getMonthlySummary().catch(() => null);
+      const monthly = await api.getMonthlySummary().catch(() => cached?.monthlySummary || null);
       setMonthlySummary(monthly);
+      let summaryData = cached?.insightsSummary || null;
+      let insightData: any[] = [];
       if (hasEntitlement(status, "advanced_reports")) {
-        const [summaryData, insightData] = await Promise.all([
-          api.getInsightsSummary(),
+        [summaryData, insightData] = await Promise.all([
+          api.getInsightsSummary().catch(() => summaryData),
           api.getAiInsights().catch(() => []),
         ]);
         setSummary(summaryData);
@@ -53,21 +71,46 @@ export default function InsightsScreen() {
         setSummary(null);
         setAiInsights([]);
       }
+      await patchInsightsCache({ monthlySummary: monthly, insightsSummary: summaryData });
+      setFromCache(false);
     } catch (e: any) {
-      setError(e.message || t.common.error);
+      if (!cached?.monthlySummary) {
+        setError(e.message || t.common.error);
+      }
     } finally {
       setLoading(false);
     }
-  }, [t.common.error]);
+  }, [microSummary, t.common.error]);
 
   useEffect(() => {
     track("insights_screen_opened");
     load();
     hasAddedFirstExpense().then((done) => setShowAdvancedInsights(done));
   }, [load]);
+
   const { refreshing, onRefresh } = usePullRefresh(() => load(true));
 
-  if (loading) {
+  const handleExport = async (type: "pdf" | "excel") => {
+    setExporting(true);
+    try {
+      const blob = type === "pdf" ? await api.exportPdf() : await api.exportExcel();
+      const ext = type === "pdf" ? "pdf" : "xlsx";
+      const path = `${FileSystem.cacheDirectory}talkcash-report.${ext}`;
+      await FileSystem.writeAsStringAsync(path, blob, { encoding: FileSystem.EncodingType.Base64 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(path, { mimeType: type === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      } else {
+        Alert.alert(t.common.confirm, t.insightsScreen.exportSaved);
+      }
+      track("insights_export", { type });
+    } catch (e: any) {
+      Alert.alert(t.common.error, e.message || t.common.error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (loading && !monthlySummary && !summary) {
     return (
       <ScreenShell ambient="subtle">
         <SkeletonCard />
@@ -75,20 +118,34 @@ export default function InsightsScreen() {
       </ScreenShell>
     );
   }
-  if (error && !summary && !microSummary && !monthlySummary) return <ErrorState message={error} onRetry={() => load(true)} />;
+  if (error && !summary && !microSummary && !monthlySummary) {
+    return <ErrorState message={error} onRetry={() => load(true)} />;
+  }
 
   const locked = !hasEntitlement(premium, "advanced_reports");
   const savingsData = microSummary || summary?.micro_savings;
+  const narratives = summary?.narratives || monthlySummary?.narratives || [];
+  const chartCategories = summary?.top_categories || monthlySummary?.top_categories || [];
 
   return (
     <ScreenShell ambient="subtle" refreshing={refreshing} onRefresh={onRefresh}>
-      <ScreenHeader title={t.tabs.insights} subtitle={`${t.premium.currentPlan}: ${(premium?.plan || "free").toUpperCase()}`} />
+      <ScreenHeader
+        title={t.tabs.insights}
+        subtitle={`${t.premium.currentPlan}: ${(premium?.plan || "free").toUpperCase()}${fromCache ? ` · ${t.insightsScreen.cachedHint}` : ""}`}
+      />
       <MicroSavingsHeroCard summary={savingsData} compact />
       {showAdvancedInsights ? <BrokerLinksCard /> : null}
       {locked && showAdvancedInsights ? (
         <>
           {monthlySummary ? (
             <MonthlyReportCard data={monthlySummary} showDetailsLink />
+          ) : null}
+          {(narratives.length > 0 || chartCategories.length > 0) ? (
+            <Surface variant="default" style={styles.section}>
+              <Text style={styles.sectionTitle}>{t.insightsScreen.trendAnalysis}</Text>
+              <TrendInsightCard items={narratives} />
+              <CategoryBarChart items={chartCategories} locale={locale} />
+            </Surface>
           ) : null}
           <Surface variant="default" style={{ padding: Spacing.md, marginBottom: Spacing.md }}>
             <Text style={{ color: Colors.textSecondary, lineHeight: 20 }}>{t.insightsScreen.freeMonthlyReport}</Text>
@@ -113,6 +170,33 @@ export default function InsightsScreen() {
               <Metric label={t.insightsScreen.income} value={formatMoney(summary?.cashflow?.income || 0, locale)} />
               <Metric label={t.insightsScreen.expense} value={formatMoney(summary?.cashflow?.expense || 0, locale)} />
               <Metric label={t.insightsScreen.savings} value={summary?.cashflow?.savings_rate == null ? "—" : `%${summary.cashflow.savings_rate}`} />
+            </View>
+          </Surface>
+
+          <Section title={t.insightsScreen.trendAnalysis}>
+            <TrendInsightCard items={narratives} />
+          </Section>
+
+          <Section title={t.insightsScreen.topCategories}>
+            <CategoryBarChart items={chartCategories} locale={locale} />
+          </Section>
+
+          <Surface variant="default" style={styles.section}>
+            <Text style={styles.sectionTitle}>{t.insightsScreen.exportTitle}</Text>
+            <View style={styles.exportRow}>
+              <PrimaryButton
+                label={t.insightsScreen.exportPdf}
+                onPress={() => handleExport("pdf")}
+                loading={exporting}
+                style={styles.exportBtn}
+              />
+              <PrimaryButton
+                label={t.insightsScreen.exportExcel}
+                onPress={() => handleExport("excel")}
+                loading={exporting}
+                variant="ghost"
+                style={styles.exportBtn}
+              />
             </View>
           </Surface>
 
@@ -156,12 +240,6 @@ export default function InsightsScreen() {
                 tone={item.severity === "danger" ? "danger" : item.severity === "warning" ? "warning" : "success"}
               />
             )) : <Text style={styles.muted}>{t.insightsScreen.noInsights}</Text>}
-          </Section>
-
-          <Section title={t.insightsScreen.topCategories}>
-            {(summary?.top_categories || []).map((cat: any) => (
-              <MetricRow key={cat.category} label={cat.category} value={formatMoney(cat.amount, locale)} />
-            ))}
           </Section>
 
           <Section title={t.insightsScreen.budgetHealth}>
@@ -227,4 +305,6 @@ const styles = StyleSheet.create({
   metricRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
   metricRowLabel: { color: Colors.textSecondary, flex: 1 },
   metricRowValue: { color: Colors.text, fontWeight: "700" },
+  exportRow: { flexDirection: "row", gap: Spacing.sm },
+  exportBtn: { flex: 1 },
 });

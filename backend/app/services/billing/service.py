@@ -291,9 +291,19 @@ class BillingService:
         status = await self.get_status(db, user_id)
         ent = status.entitlements.get(key)
         if not ent or not ent.enabled:
+            await self._track_limit_hit(db, user_id, key)
             raise EntitlementError(key)
         if ent.limit is not None and ent.used + amount > ent.limit:
+            await self._track_limit_hit(db, user_id, key)
             raise EntitlementError(key)
+
+    async def _track_limit_hit(self, db: AsyncSession, user_id: UUID, key: str) -> None:
+        try:
+            from app.services.analytics.events import track_entitlement_limit_hit
+
+            await track_entitlement_limit_hit(db, user_id, key)
+        except Exception:
+            pass
 
     async def consume_usage(self, db: AsyncSession, user_id: UUID, key: str, amount: int = 1) -> UsageMeter:
         await self.require_entitlement(db, user_id, key, amount)

@@ -26,6 +26,9 @@ module.exports = {
       apiUrl,
       appEnv: process.env.EXPO_PUBLIC_APP_ENV || "development",
       sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || "",
+      revenueCatAndroidApiKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY || "",
+      revenueCatIosApiKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || "",
+      revenueCatEntitlementId: process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID || "premium",
       eas: {
         projectId: process.env.EAS_PROJECT_ID || "d7cfbb2e-a657-49a6-bfc9-bcfc4e120230",
       },

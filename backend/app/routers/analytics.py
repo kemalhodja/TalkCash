@@ -17,6 +17,7 @@ FUNNEL_EVENTS = (
     "first_sync",
     "paywall_viewed",
     "premium_upgrade_tapped",
+    "entitlement_limit_hit",
 )
 
 

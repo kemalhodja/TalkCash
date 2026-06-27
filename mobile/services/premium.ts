@@ -4,6 +4,8 @@ import { getAppEnv } from "./config";
 
 const PREMIUM_STATUS_KEY = "talkcash_premium_status";
 
+export { PREMIUM_STATUS_KEY };
+
 export type PlanKey = "free" | "pro" | "family" | "business";
 
 export type EntitlementStatus = {
@@ -48,12 +50,49 @@ export async function getPremiumStatus(force = false): Promise<PremiumStatus> {
     }
   }
   try {
+    const { isRevenueCatConfigured, isRevenueCatPremium } = await import("./revenueCat");
+    if (isRevenueCatConfigured()) {
+      const rcPremium = await isRevenueCatPremium(force);
+      if (rcPremium) {
+        const cached = await AsyncStorage.getItem(PREMIUM_STATUS_KEY);
+        if (cached) {
+          try {
+            return JSON.parse(cached);
+          } catch {
+            /* fall through */
+          }
+        }
+      }
+    }
     const status = await api.getPremiumStatus();
     await AsyncStorage.setItem(PREMIUM_STATUS_KEY, JSON.stringify(status));
     return status;
   } catch {
+    const cached = await AsyncStorage.getItem(PREMIUM_STATUS_KEY);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        await AsyncStorage.removeItem(PREMIUM_STATUS_KEY);
+      }
+    }
     return FREE_STATUS;
   }
+}
+
+/** Universal premium gate — RevenueCat entitlement + backend subscription. */
+export async function isPremium(force = false): Promise<boolean> {
+  try {
+    const { isRevenueCatConfigured, isRevenueCatPremium } = await import("./revenueCat");
+    if (isRevenueCatConfigured() && (await isRevenueCatPremium(force))) {
+      return true;
+    }
+  } catch {
+    /* offline — fall back to cached/backend status */
+  }
+  const status = await getPremiumStatus(force);
+  if (status.is_premium) return true;
+  return status.plan !== "free" && (status.status === "active" || status.status === "trialing" || status.status === "grace_period");
 }
 
 export async function refreshPremiumStatus(): Promise<PremiumStatus> {

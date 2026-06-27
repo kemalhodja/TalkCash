@@ -16,6 +16,7 @@ import { Surface } from "@/components/ui/Surface";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { api, ApiError } from "@/services/api";
+import { getApiErrorMessage } from "@/utils/apiErrors";
 import { scheduleAgendaReminder, scheduleSubscriptionReminder } from "@/services/notifications";
 import { speakBudgetAlertsAfterSpend } from "@/services/speech";
 import { formatMoney } from "@/utils/format";
@@ -29,6 +30,8 @@ import { SmsImportCard } from "@/components/SmsImportCard";
 import { parseBankSms } from "@/utils/smsExpenseParser";
 import * as Clipboard from "expo-clipboard";
 import { consumePendingInputVoice } from "@/hooks/useAssistantLinking";
+import { consumePendingVoiceResult } from "@/services/voiceQueue";
+import { applyOptimisticExpense } from "@/services/syncCache";
 import * as Speech from "expo-speech";
 import {
   isSimpleInputMode,
@@ -38,7 +41,7 @@ import {
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
-  const voiceParams = useLocalSearchParams<{ whisper?: string; hold?: string; sms?: string }>();
+  const voiceParams = useLocalSearchParams<{ whisper?: string; hold?: string; sms?: string; text?: string }>();
   const [text, setText] = useState("");
   const [showKeypad, setShowKeypad] = useState(false);
   const [keypadValue, setKeypadValue] = useState("");
@@ -61,6 +64,7 @@ export default function InputScreen() {
   const [pendingSwap, setPendingSwap] = useState<SwapNudge | null>(null);
   const [pendingRoundUp, setPendingRoundUp] = useState<RoundUpNudge | null>(null);
   const [receiptReview, setReceiptReview] = useState<ReceiptScanData | null>(null);
+  const [confirmInstant, setConfirmInstant] = useState(false);
   const [simpleMode, setSimpleMode] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,6 +73,9 @@ export default function InputScreen() {
     isSimpleInputMode().then(setSimpleMode);
     consumePendingInputText().then((pending) => {
       if (pending) setText(pending);
+    });
+    consumePendingVoiceResult().then((pending) => {
+      if (pending) handleVoiceResult("", pending);
     });
   }, []);
 
@@ -93,12 +100,45 @@ export default function InputScreen() {
     ? t.input.slashHints
     : ["/150 kahve banka", "/500 transfer banka nakit", "/fatura elektrik 200"];
 
+  const handleTextSubmitFromParam = async (value: string) => {
+    if (!value.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const result = await api.parseText(value.trim(), whisperMode);
+      if (result?.parsed?.intent === "easter_egg") {
+        handleVoiceResult(value, result);
+        return;
+      }
+      if (result?.parsed?.intent === "manual_edit" || result?.parsed?.parse_failed) {
+        showConfirmation(result.message || t.input.manualEditTitle, result.parsed);
+        return;
+      }
+      if (result?.parsed) showConfirmation(result.message, result.parsed);
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e, {
+        network: t.settings.network,
+        timeout: t.input.voiceTimeoutError,
+        auth: t.input.voiceAuthError,
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const showConfirmation = (message: string, parsed: any) => {
     setConfirmMessage(message);
     setParsedData(parsed);
+    setConfirmInstant(parsed?.intent === "add_expense" || parsed?.intent === "manual_edit");
     setConfirmVisible(true);
     setError("");
   };
+
+  useEffect(() => {
+    if (voiceParams.text) {
+      setText(String(voiceParams.text));
+      handleTextSubmitFromParam(String(voiceParams.text));
+    }
+  }, [voiceParams.text]);
 
   const handleTextSubmit = async () => {
     if (!text.trim() || isSubmitting) return;
@@ -117,8 +157,15 @@ export default function InputScreen() {
         return;
       }
       showConfirmation(result.message, result.parsed);
-    } catch (e: any) {
-      setError(e.message || t.input.parseError);
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e, {
+        network: t.settings.network,
+        timeout: t.input.voiceTimeoutError,
+        auth: t.input.voiceAuthError,
+        validation: t.input.parseError,
+        server: t.input.voiceServerError,
+        unknown: t.input.parseError,
+      }));
     } finally {
       setIsSubmitting(false);
     }
@@ -156,72 +203,117 @@ export default function InputScreen() {
 
   const handleConfirm = async (confirmed?: any) => {
     const payload = confirmed ?? parsedData;
-    setConfirmVisible(false);
     if (payload?.intent === "mark_paid") {
+      setConfirmVisible(false);
       const title = payload.description || payload.raw_text || "";
       setPayModal({ title });
       return;
     }
-    if (payload) {
-      setIsSubmitting(true);
-      try {
-        const res: any = await api.executeAction(payload, true);
-        if (res?.status === "queued") {
-          Alert.alert(t.common.confirm, t.input.queuedOffline);
-          setText("");
+    if (!payload) {
+      setParsedData(null);
+      return;
+    }
+
+    const instantExpense = payload.intent === "add_expense";
+    if (instantExpense) {
+      applyOptimisticExpense(payload).catch(() => {});
+      setConfirmVisible(false);
+      setParsedData(null);
+      setText("");
+      track("voice_expense_saved");
+      markFirstExpenseAdded();
+      playExpenseFeedback({ status: "success" }, locale);
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res: any = await api.executeAction(payload, true);
+      if (res?.status === "queued") {
+        if (!instantExpense) {
+          setConfirmVisible(false);
           setParsedData(null);
-          return;
+          Alert.alert(t.common.confirm, t.input.queuedOffline);
         }
-        if (payload.intent === "add_bill" && res?.result?.due_date) {
-          await scheduleAgendaReminder(
-            res.result.title || payload.description || t.agenda.defaultBillName,
-            res.result.amount || payload.amount || 0,
-            new Date(res.result.due_date),
+        setText("");
+        return;
+      }
+      if (payload.intent === "add_bill" && res?.result?.due_date) {
+        await scheduleAgendaReminder(
+          res.result.title || payload.description || t.agenda.defaultBillName,
+          res.result.amount || payload.amount || 0,
+          new Date(res.result.due_date),
+          locale,
+        );
+      }
+      if (payload.intent === "add_expense" && !instantExpense) {
+        await markFirstExpenseAdded();
+        await speakBudgetAlertsAfterSpend(locale);
+        playExpenseFeedback(res, locale);
+        if (res?.result?.subscription?.next_billing_date && res?.result?.subscription?.subscription_name) {
+          await scheduleSubscriptionReminder(
+            res.result.subscription.subscription_name,
+            Number(res.result.amount || payload.amount || 0),
+            new Date(res.result.subscription.next_billing_date),
             locale,
           );
         }
-        if (payload.intent === "add_expense") {
-          await markFirstExpenseAdded();
-          await speakBudgetAlertsAfterSpend(locale);
-          playExpenseFeedback(res, locale);
-          if (res?.result?.subscription?.next_billing_date && res?.result?.subscription?.subscription_name) {
-            await scheduleSubscriptionReminder(
-              res.result.subscription.subscription_name,
-              Number(res.result.amount || payload.amount || 0),
-              new Date(res.result.subscription.next_billing_date),
-              locale,
-            );
-          }
-          const swap = extractSwapNudge(res);
-          if (swap) setPendingSwap(swap);
-          const roundUp = extractRoundUp(res);
-          if (roundUp) setPendingRoundUp(roundUp);
-        }
-        if (payload.receipt_id && payload.amount) {
-          const receiptTotal = payload.receipt_total_amount ?? payload.receipt_total ?? payload.amount;
-          const { verified, receipt_amount, transaction_amount } = await api.verifyReceipt(
-            payload.amount, receiptTotal, payload.receipt_id,
-          );
-          const mismatchDetail = !verified && receipt_amount != null
-            ? t.scanner.mismatchDetail
-                .replace("{receipt}", formatMoney(Number(receipt_amount), locale))
-                .replace("{tx}", formatMoney(Number(transaction_amount ?? payload.amount), locale))
-            : undefined;
-          Alert.alert(
-            verified ? t.scanner.verified : t.scanner.mismatch,
-            verified ? t.agenda.receiptLinked : mismatchDetail,
+        const swap = extractSwapNudge(res);
+        if (swap) setPendingSwap(swap);
+        const roundUp = extractRoundUp(res);
+        if (roundUp) setPendingRoundUp(roundUp);
+      }
+      if (payload.receipt_id && payload.amount) {
+        const receiptTotal = payload.receipt_total_amount ?? payload.receipt_total ?? payload.amount;
+        const { verified, receipt_amount, transaction_amount } = await api.verifyReceipt(
+          payload.amount, receiptTotal, payload.receipt_id,
+        );
+        const mismatchDetail = !verified && receipt_amount != null
+          ? t.scanner.mismatchDetail
+              .replace("{receipt}", formatMoney(Number(receipt_amount), locale))
+              .replace("{tx}", formatMoney(Number(transaction_amount ?? payload.amount), locale))
+          : undefined;
+        Alert.alert(
+          verified ? t.scanner.verified : t.scanner.mismatch,
+          verified ? t.agenda.receiptLinked : mismatchDetail,
+        );
+      }
+      if (instantExpense) {
+        await speakBudgetAlertsAfterSpend(locale);
+        if (res?.result?.subscription?.next_billing_date && res?.result?.subscription?.subscription_name) {
+          await scheduleSubscriptionReminder(
+            res.result.subscription.subscription_name,
+            Number(res.result.amount || payload.amount || 0),
+            new Date(res.result.subscription.next_billing_date),
+            locale,
           );
         }
+        const swap = extractSwapNudge(res);
+        if (swap) setPendingSwap(swap);
+        const roundUp = extractRoundUp(res);
+        if (roundUp) setPendingRoundUp(roundUp);
+      } else {
+        setConfirmVisible(false);
+        setParsedData(null);
         setText("");
-      } catch (e: any) {
-        if (e instanceof ApiError && e.status === 409 && payload?.intent === "add_bill") {
-          setDuplicateMsg(e.message);
-          return;
-        }
-        setError(e.message);
-      } finally { setIsSubmitting(false); }
+      }
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 409 && payload?.intent === "add_bill") {
+        setConfirmVisible(false);
+        setDuplicateMsg(e.message);
+        return;
+      }
+      setConfirmVisible(true);
+      setError(getApiErrorMessage(e, {
+        network: t.settings.network,
+        timeout: t.input.voiceTimeoutError,
+        auth: t.input.voiceAuthError,
+        validation: t.common.error,
+        server: t.input.voiceServerError,
+        unknown: t.common.error,
+      }));
+    } finally {
+      setIsSubmitting(false);
     }
-    setParsedData(null);
   };
 
   const handleReceiptReviewed = async (data: ReceiptScanData, action: "expense" | "shopping") => {
@@ -523,6 +615,7 @@ export default function InputScreen() {
         visible={confirmVisible}
         message={confirmMessage}
         parsed={parsedData}
+        variant={confirmInstant ? "instant" : "default"}
         onConfirm={handleConfirm}
         onCancel={() => setConfirmVisible(false)}
       />

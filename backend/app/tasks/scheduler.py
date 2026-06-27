@@ -149,6 +149,50 @@ async def rebuild_product_rules():
     await _guarded(_run)
 
 
+async def retention_evening_nudge():
+    from app.services.notifications.retention_scheduler import scan_evening_expense_nudge
+
+    async def _run():
+        async with async_session() as db:
+            count = await scan_evening_expense_nudge(db)
+            logger.info("Retention evening nudges sent: %d", count)
+
+    await _guarded(_run)
+
+
+async def retention_weekly_report():
+    from app.services.notifications.retention_scheduler import scan_weekly_finance_report
+
+    async def _run():
+        async with async_session() as db:
+            count = await scan_weekly_finance_report(db)
+            logger.info("Retention weekly finance reports sent: %d", count)
+
+    await _guarded(_run)
+
+
+async def retention_persona_nudge():
+    from app.services.notifications.retention_scheduler import scan_persona_weekly_nudge
+
+    async def _run():
+        async with async_session() as db:
+            count = await scan_persona_weekly_nudge(db)
+            logger.info("Retention persona nudges sent: %d", count)
+
+    await _guarded(_run)
+
+
+async def retention_paywall_recovery():
+    from app.services.notifications.retention_scheduler import scan_paywall_recovery
+
+    async def _run():
+        async with async_session() as db:
+            count = await scan_paywall_recovery(db)
+            logger.info("Retention paywall recovery sent: %d", count)
+
+    await _guarded(_run)
+
+
 def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown(wait=False)
@@ -173,6 +217,10 @@ def start_scheduler():
     scheduler.add_job(spawn_recurring_bills, "cron", hour=1, minute=0, timezone=tz, id="recurring_bills")
     scheduler.add_job(weekly_podcast_scan, "cron", day_of_week="sun", hour=8, minute=0, timezone=tz, id="weekly_podcast")
     scheduler.add_job(rebuild_product_rules, "cron", hour=3, minute=30, timezone=tz, id="product_rules")
+    scheduler.add_job(retention_evening_nudge, "cron", minute=30, timezone=tz, id="retention_evening")
+    scheduler.add_job(retention_weekly_report, "cron", minute=0, timezone=tz, id="retention_weekly")
+    scheduler.add_job(retention_persona_nudge, "cron", minute=0, timezone=tz, id="retention_persona")
+    scheduler.add_job(retention_paywall_recovery, "cron", minute=15, timezone=tz, id="retention_paywall")
     scheduler.add_job(sync_exchange_rates, "interval", hours=1, id="rate_sync")
     scheduler.start()
     logger.info("Scheduler started")
