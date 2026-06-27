@@ -105,5 +105,28 @@ class Settings(BaseSettings):
     def normalize_db_url(cls, value: str) -> str:
         return _normalize_database_url(value)
 
+    @field_validator(
+        "billing_premium_unlocked",
+        "google_play_verify_mock",
+        "apple_verify_mock",
+        "s3_enabled",
+        "debug",
+        "scheduler_enabled",
+        "rate_limit_enabled",
+        "smtp_use_tls",
+        mode="before",
+    )
+    @classmethod
+    def parse_bool_env(cls, value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in ("true", "1", "yes", "on"):
+                return True
+            if lowered in ("false", "0", "no", "off", ""):
+                return False
+        return value
+
 
 settings = Settings()

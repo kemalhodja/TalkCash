@@ -37,6 +37,35 @@ curl https://talkcash-api-prod.onrender.com/health
 
 Migration otomatik: `entrypoint.sh` → `alembic upgrade head`
 
+### Startup hatası: `Invalid production configuration`
+
+Render loglarında şu üç hata görürsen dashboard'daki **eski dev değerleri** silinmemiş demektir:
+
+```
+BILLING_PREMIUM_UNLOCKED must be false in production
+GOOGLE_PLAY_VERIFY_MOCK must be false in production
+INTERNAL_UPGRADE_SECRET is a known weak default
+```
+
+**Hızlı düzeltme (Dashboard):** `talkcash-api-prod` → **Environment** → şunları ayarla:
+
+| Key | Değer |
+|-----|--------|
+| `BILLING_PREMIUM_UNLOCKED` | `false` |
+| `GOOGLE_PLAY_VERIFY_MOCK` | `false` |
+| `INTERNAL_UPGRADE_SECRET` | Yeni rastgele 32+ karakter (Generate) |
+
+Sonra **Manual Deploy**.
+
+**API ile (RENDER_API_KEY varsa):**
+
+```powershell
+$env:RENDER_API_KEY = "rnd_..."
+.\scripts\render-fix-prod-env.ps1 -Deploy
+```
+
+**Blueprint sync:** Dashboard → Blueprint → **Sync** (`render.yaml` zaten doğru değerleri tanımlar).
+
 ### 4. Mobil production build
 
 ```powershell

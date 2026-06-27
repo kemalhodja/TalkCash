@@ -46,4 +46,11 @@ def validate_production_settings() -> None:
         logger.warning("APPLE_SHARED_SECRET not set — App Store verify will fail until configured")
 
     if errors:
-        raise RuntimeError("Invalid production configuration:\n- " + "\n- ".join(errors))
+        hint = (
+            "\n\nFix in Render Dashboard → talkcash-api-prod → Environment:\n"
+            "  BILLING_PREMIUM_UNLOCKED = false\n"
+            "  GOOGLE_PLAY_VERIFY_MOCK = false\n"
+            "  INTERNAL_UPGRADE_SECRET = <Generate new random string, not talkcash-internal-test-2026>\n"
+            "Or: Blueprint → Sync (render.yaml already sets these). Then Manual Deploy."
+        )
+        raise RuntimeError("Invalid production configuration:\n- " + "\n- ".join(errors) + hint)
