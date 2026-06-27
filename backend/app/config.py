@@ -1,6 +1,10 @@
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.bootstrap_env import normalize_production_env
+
+normalize_production_env()
+
 
 def _normalize_database_url(url: str) -> str:
     """Render/Heroku provide postgresql:// — SQLAlchemy async needs +asyncpg."""

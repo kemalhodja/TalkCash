@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Override stale Render dashboard dev values before Settings() loads
+python3 -m app.bootstrap_env
+
 echo "Running Alembic migrations..."
 alembic upgrade head
 
