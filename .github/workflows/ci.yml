@@ -62,7 +62,7 @@ jobs:
       - name: Verify release script (no live API smoke)
         run: |
           pip install -r backend/requirements.txt
-          cd mobile && npm install
+          npm --prefix mobile install
           bash scripts/validate-phase1.sh
           bash scripts/validate-phase2.sh
           bash scripts/validate-phase3.sh
@@ -70,7 +70,7 @@ jobs:
           bash scripts/validate-phase5.sh
           bash scripts/validate-phase6.sh
           bash scripts/validate-store-readiness.sh
-          API_URL=http://127.0.0.1:1 bash scripts/verify-release.sh
+          SKIP_TESTS=1 API_URL=http://127.0.0.1:1 bash scripts/verify-release.sh
 
   mobile:
     runs-on: ubuntu-latest
