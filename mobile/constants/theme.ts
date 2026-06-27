@@ -1,4 +1,25 @@
-export const Colors = {
+export type ThemeColors = {
+  bg: string;
+  bgElevated: string;
+  card: string;
+  cardElevated: string;
+  cardHover: string;
+  accent: string;
+  accentSoft: string;
+  accentGlow: string;
+  accentBlue: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  borderStrong: string;
+  danger: string;
+  warning: string;
+  success: string;
+  overlay: string;
+};
+
+export const ColorsDark: ThemeColors = {
   bg: "#06080F",
   bgElevated: "#0A0E17",
   card: "#0F1520",
@@ -18,6 +39,34 @@ export const Colors = {
   success: "#34D399",
   overlay: "rgba(6,8,15,0.92)",
 };
+
+export const ColorsLight: ThemeColors = {
+  bg: "#F4F7FB",
+  bgElevated: "#FFFFFF",
+  card: "#FFFFFF",
+  cardElevated: "#F8FAFC",
+  cardHover: "#EEF2F7",
+  accent: "#00B894",
+  accentSoft: "rgba(0,184,148,0.12)",
+  accentGlow: "rgba(0,184,148,0.22)",
+  accentBlue: "#2563EB",
+  text: "#0F172A",
+  textSecondary: "#475569",
+  textMuted: "#94A3B8",
+  border: "rgba(15,23,42,0.08)",
+  borderStrong: "rgba(0,184,148,0.35)",
+  danger: "#DC2626",
+  warning: "#D97706",
+  success: "#059669",
+  overlay: "rgba(244,247,251,0.92)",
+};
+
+/** Default export for legacy imports — prefer `useTheme().colors` in new code. */
+export const Colors = ColorsDark;
+
+export function getColors(scheme: "light" | "dark" | null | undefined): ThemeColors {
+  return scheme === "light" ? ColorsLight : ColorsDark;
+}
 
 export const Spacing = {
   xs: 4,
@@ -45,29 +94,34 @@ export const Typography = {
   caption: { fontSize: 12, fontWeight: "500" as const },
 };
 
-export const Shadow = {
-  card: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  glow: {
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  glowStrong: {
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 32,
-    elevation: 16,
-  },
-};
+export function getShadow(colors: ThemeColors) {
+  return {
+    card: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: colors === ColorsLight ? 0.08 : 0.35,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+    glow: {
+      shadowColor: colors.accent,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.35,
+      shadowRadius: 24,
+      elevation: 12,
+    },
+    glowStrong: {
+      shadowColor: colors.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.5,
+      shadowRadius: 32,
+      elevation: 16,
+    },
+  };
+}
+
+/** @deprecated Use getShadow(useTheme().colors) in themed components. */
+export const Shadow = getShadow(ColorsDark);
 
 export const Layout = {
   screenPadding: Spacing.md,
@@ -79,8 +133,12 @@ export const Layout = {
   maxContentWidth: 480,
 };
 
-export const Gradients = {
-  accent: ["rgba(0,212,170,0.35)", "rgba(0,212,170,0.05)"] as const,
-  hero: ["rgba(0,212,170,0.18)", "rgba(59,130,246,0.08)", "transparent"] as const,
-  card: ["rgba(20,28,43,0.95)", "rgba(15,21,32,0.88)"] as const,
-};
+export function getGradients(colors: ThemeColors) {
+  return {
+    accent: [`${colors.accentGlow}`, `${colors.accentSoft}`] as const,
+    hero: [`${colors.accentSoft}`, "rgba(59,130,246,0.08)", "transparent"] as const,
+    card: [colors.cardElevated, colors.card] as const,
+  };
+}
+
+export const Gradients = getGradients(ColorsDark);

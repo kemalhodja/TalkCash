@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { Audio } from "expo-av";
 import { WHISPER_RECORDING_OPTIONS } from "@/utils/voiceRecording";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Shadow, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
+import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { useI18n } from "@/i18n";
 import { isPremium } from "@/services/premium";
 import { parseVoiceWithOfflineQueue } from "@/services/voiceQueue";
 import { track } from "@/services/analytics";
 import { captureError } from "@/services/observability";
 import { getApiErrorMessage, isRetryableApiError } from "@/utils/apiErrors";
-import { hapticImpact } from "@/utils/haptics";
+import { hapticImpact, hapticRecordTap, hapticSuccessDouble } from "@/utils/haptics";
 
 interface Props {
   onResult: (text: string, parsed?: any) => void;
@@ -20,6 +22,11 @@ interface Props {
   compact?: boolean;
   holdToRecord?: boolean;
   autoRecord?: boolean;
+}
+
+function normalizeMetering(db: number | undefined): number {
+  if (db == null || Number.isNaN(db)) return 0.08;
+  return Math.min(1, Math.max(0.08, (db + 55) / 55));
 }
 
 export function VoiceInput({
@@ -32,11 +39,37 @@ export function VoiceInput({
   autoRecord = false,
 }: Props) {
   const { t } = useI18n();
+  const { colors, shadow } = useTheme();
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [meterLevels, setMeterLevels] = useState<number[]>([]);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const pulse = useRef(new Animated.Value(1)).current;
   const glow = useRef(new Animated.Value(0)).current;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { alignItems: "center", padding: Spacing.md, justifyContent: "center" },
+        pulseRing: {
+          position: "absolute",
+          backgroundColor: colors.accentGlow,
+          borderWidth: 2,
+          borderColor: colors.borderStrong,
+        },
+        micBtn: {
+          backgroundColor: colors.accent,
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        micActive: { backgroundColor: colors.danger },
+        micDisabled: { opacity: 0.4 },
+        compact: { padding: 0 },
+        hint: { color: colors.textMuted, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
+        hintActive: { color: colors.danger, fontWeight: "600" },
+      }),
+    [colors],
+  );
 
   useEffect(() => {
     if (!recording) {
@@ -61,6 +94,25 @@ export function VoiceInput({
   }, [recording, pulse, glow]);
 
   useEffect(() => {
+    if (!recording || !recordingRef.current) {
+      setMeterLevels([]);
+      return;
+    }
+    const timer = setInterval(async () => {
+      const rec = recordingRef.current;
+      if (!rec) return;
+      try {
+        const status = await rec.getStatusAsync();
+        if (!status.isRecording) return;
+        setMeterLevels((prev) => [...prev.slice(-19), normalizeMetering(status.metering)]);
+      } catch {
+        /* metering optional on some platforms */
+      }
+    }, 90);
+    return () => clearInterval(timer);
+  }, [recording]);
+
+  useEffect(() => {
     if (!autoRecord || disabled || recording || processing) return;
     startRecording();
   }, [autoRecord, disabled]);
@@ -80,7 +132,7 @@ export function VoiceInput({
       if (premium) track("premium_voice_command");
       const result = await parseVoiceWithOfflineQueue(uri, whisperMode, premium);
       if (result?.status === "queued") {
-        hapticImpact("success");
+        hapticSuccessDouble();
         Alert.alert(t.common.confirm, t.input.voiceQueuedOffline);
         return;
       }
@@ -90,7 +142,11 @@ export function VoiceInput({
       } else {
         onResult(result.transcript || result.parsed?.raw_text || result.message || "", result);
       }
-      hapticImpact("success");
+      if (result?.status === "success" || result?.parsed?.intent === "add_expense") {
+        hapticSuccessDouble();
+      } else {
+        hapticImpact("success");
+      }
     } catch (err) {
       hapticImpact("error");
       captureError(err, { feature: "voice_input", premium });
@@ -116,12 +172,11 @@ export function VoiceInput({
     try {
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording: rec } = await Audio.Recording.createAsync(
-        WHISPER_RECORDING_OPTIONS,
-      );
+      const { recording: rec } = await Audio.Recording.createAsync(WHISPER_RECORDING_OPTIONS);
       recordingRef.current = rec;
       setRecording(true);
-      hapticImpact("medium");
+      setMeterLevels([]);
+      hapticRecordTap();
     } catch (err) {
       hapticImpact("error");
       captureError(err, { feature: "voice_input", stage: "record_start" });
@@ -132,6 +187,7 @@ export function VoiceInput({
   const stopRecording = async () => {
     if (!recordingRef.current) return;
     setRecording(false);
+    hapticImpact("light");
     try {
       await recordingRef.current.stopAndUnloadAsync();
       const uri = recordingRef.current.getURI();
@@ -180,6 +236,9 @@ export function VoiceInput({
 
   return (
     <View style={[styles.container, compact && styles.compact]}>
+      {!compact ? (
+        <VoiceWaveform levels={meterLevels} active={recording} height={compact ? 32 : 44} />
+      ) : null}
       {recording ? (
         <Animated.View
           style={[
@@ -201,7 +260,7 @@ export function VoiceInput({
             { width: btnSize, height: btnSize, borderRadius: btnSize / 2 },
             recording && styles.micActive,
             disabled && styles.micDisabled,
-            recording && Shadow.glowStrong,
+            recording && shadow.glowStrong,
           ]}
           onPress={holdToRecord ? undefined : handlePress}
           onPressIn={holdToRecord ? () => { if (!processing && !disabled && !recording) startRecording(); } : undefined}
@@ -212,9 +271,9 @@ export function VoiceInput({
           accessibilityState={{ busy: processing, disabled: processing || disabled }}
         >
           {processing ? (
-            <ActivityIndicator color={Colors.bg} />
+            <ActivityIndicator color={colors.bgElevated} />
           ) : (
-            <Ionicons name={recording ? "stop" : "mic"} size={iconSize} color={Colors.bg} />
+            <Ionicons name={recording ? "stop" : "mic"} size={iconSize} color={colors.bgElevated} />
           )}
         </Pressable>
       </Animated.View>
@@ -222,23 +281,3 @@ export function VoiceInput({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { alignItems: "center", padding: Spacing.md, justifyContent: "center" },
-  pulseRing: {
-    position: "absolute",
-    backgroundColor: Colors.accentGlow,
-    borderWidth: 2,
-    borderColor: Colors.borderStrong,
-  },
-  micBtn: {
-    backgroundColor: Colors.accent,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  micActive: { backgroundColor: Colors.danger },
-  micDisabled: { opacity: 0.4 },
-  compact: { padding: 0 },
-  hint: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.sm, textAlign: "center" },
-  hintActive: { color: Colors.danger, fontWeight: "600" },
-});

@@ -136,6 +136,54 @@ def _food_spend_pct(breakdown: list[tuple[str, Decimal]]) -> float:
     return float(food_total / total * 100)
 
 
+async def _budget_limits_by_category(db: AsyncSession, user_id: UUID) -> dict[str, Decimal]:
+    result = await db.execute(select(BudgetLimit).where(BudgetLimit.user_id == user_id))
+    return {b.category: b.monthly_limit for b in result.scalars().all() if b.category}
+
+
+def _build_weekly_summary_body(
+    breakdown: list[tuple[str, Decimal]],
+    budget_by_cat: dict[str, Decimal],
+    locale: str,
+) -> str:
+    """One-line personalized weekly push body from category + budget signals."""
+    if not breakdown:
+        return t("notif.retention_weekly_body", locale)
+
+    total = sum(amount for _, amount in breakdown)
+    if total <= 0:
+        return t("notif.retention_weekly_body", locale)
+
+    over_cat = None
+    over_pct = 0
+    save_cat = None
+    for cat, amt in breakdown:
+        limit = budget_by_cat.get(cat)
+        if limit and limit > 0 and amt > limit:
+            over_cat = cat
+            over_pct = max(1, int((amt - limit) / limit * 100))
+            break
+
+    for cat, amt in breakdown:
+        limit = budget_by_cat.get(cat)
+        if limit and limit > 0 and amt <= limit * Decimal("0.85"):
+            save_cat = cat
+            break
+
+    if over_cat and save_cat:
+        return t(
+            "notif.retention_weekly_smart_over_save",
+            locale,
+            category=over_cat,
+            pct=over_pct,
+            save_category=save_cat,
+        )
+
+    top_cat, top_amt = breakdown[0]
+    top_pct = max(1, int(top_amt / total * 100))
+    return t("notif.retention_weekly_smart_top", locale, category=top_cat, pct=top_pct)
+
+
 async def scan_weekly_finance_report(db: AsyncSession) -> int:
     """
     Sunday 12:00 local: invite users to weekly AI insights.
@@ -161,7 +209,8 @@ async def scan_weekly_finance_report(db: AsyncSession) -> int:
 
         locale = user.locale or "tr"
         title = t("notif.retention_weekly_title", locale)
-        body = t("notif.retention_weekly_body", locale)
+        budgets = await _budget_limits_by_category(db, user.id)
+        body = _build_weekly_summary_body(breakdown, budgets, locale)
         await _notify(db, user, title, body, "retention_weekly_summary", "/insights")
         sent += 1
 

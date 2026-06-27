@@ -9,7 +9,7 @@ import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { formatMoney } from "@/utils/format";
 import { parsePositiveAmount } from "@/utils/amount";
-import { hapticImpact } from "@/utils/haptics";
+import { hapticImpact, hapticSuccessDouble } from "@/utils/haptics";
 
 export type ParsedConfirmation = {
   intent?: string;
@@ -79,7 +79,7 @@ export function ConfirmationCard({
       hapticImpact("warning");
       return null;
     }
-    hapticImpact("success");
+    hapticSuccessDouble();
     return {
       ...parsed,
       intent: parsed.intent === "manual_edit" ? "add_expense" : parsed.intent,

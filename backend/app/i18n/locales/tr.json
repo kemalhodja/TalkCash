@@ -110,6 +110,8 @@
   "notif.retention_evening_body": "Harcamalarını tek tek yazarak vakit kaybetme. Sadece 5 saniyede TalkCash'e fısılda, bütçeni güncel tutalım!",
   "notif.retention_weekly_title": "📊 Haftalık Finans Raporun Hazır!",
   "notif.retention_weekly_body": "Bu hafta en çok hangi kategoriye harcama yaptığını merak ediyor musun? Yapay zeka analizini görmek için hemen tıkla.",
+  "notif.retention_weekly_smart_top": "Bu hafta {category} harcamaların toplamın %{pct}'ini oluşturdu. Detaylı yapay zeka özetin hazır — tıkla.",
+  "notif.retention_weekly_smart_over_save": "Bu hafta {category} harcamalarında bütçenin %{pct} dışına çıktın ama {save_category} kategorisinde harika tasarruf ettin! ☕📉",
   "notif.retention_persona_angry_mom_title": "🤨 Evde yemek yok mu evladım?",
   "notif.retention_persona_angry_mom_body": "Bu hafta dışarıdan yemek harcamaların tavan yapmış! Parayı sokaktan mı topluyoruz, gel biraz tasarruf konuşalım.",
   "notif.retention_persona_wall_street_title": "📉 Fırsat maliyetini kaçırıyorsun!",

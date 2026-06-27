@@ -10,6 +10,7 @@ import { useRequireUnlock } from "@/hooks/useRequireUnlock";
 import { scheduleSubscriptionReminder } from "@/services/notifications";
 import { quickVoiceWithOfflineQueue, storePendingVoiceResult } from "@/services/voiceQueue";
 import { playExpenseFeedback } from "@/utils/voiceAlert";
+import { hapticSuccessDouble } from "@/utils/haptics";
 
 export default function QuickVoiceScreen() {
   const { t, locale } = useI18n();
@@ -50,6 +51,7 @@ export default function QuickVoiceScreen() {
         );
       }
       playExpenseFeedback(res, locale);
+      hapticSuccessDouble();
       if (holdMode) {
         router.replace("/(tabs)");
       } else {
@@ -70,6 +72,7 @@ export default function QuickVoiceScreen() {
         <Text style={styles.hint}>{holdMode ? t.quickVoice.holdHint : t.quickVoice.hint}</Text>
         <VoiceInput
           holdToRecord={holdMode}
+          autoRecord={holdMode}
           whisperMode
           onResult={() => {}}
           onAudioCaptured={handleAudio}

@@ -3,7 +3,7 @@ import * as FileSystem from "expo-file-system";
 
 /** Whisper-optimized: mono 16 kHz AAC — ~3× smaller than HIGH_QUALITY. */
 export const WHISPER_RECORDING_OPTIONS: Audio.RecordingOptions = {
-  isMeteringEnabled: false,
+  isMeteringEnabled: true,
   android: {
     extension: ".m4a",
     outputFormat: Audio.AndroidOutputFormat.MPEG_4,

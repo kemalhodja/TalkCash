@@ -1,19 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { StyleProp, StyleSheet, View, ViewProps, ViewStyle } from "react-native";
-import { Colors, Radius, Shadow } from "@/constants/theme";
+import { Radius } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 
 type Variant = "default" | "elevated" | "glass" | "accent" | "interactive";
-
-const variantStyle: Record<Variant, ViewStyle> = {
-  default: { backgroundColor: Colors.card, borderColor: Colors.border },
-  elevated: { backgroundColor: Colors.cardElevated, borderColor: Colors.border },
-  glass: { backgroundColor: "rgba(15,21,32,0.88)", borderColor: Colors.borderStrong },
-  accent: { backgroundColor: Colors.accentSoft, borderColor: Colors.borderStrong },
-  interactive: {
-    backgroundColor: Colors.cardElevated,
-    borderColor: Colors.borderStrong,
-  },
-};
 
 export function Surface({
   children,
@@ -29,6 +19,41 @@ export function Surface({
   variant?: Variant;
   glow?: boolean;
 } & Pick<ViewProps, "testID" | "accessibilityRole" | "accessibilityLabel">) {
+  const { colors, shadow, isDark } = useTheme();
+
+  const variantStyle = useMemo<Record<Variant, ViewStyle>>(
+    () => ({
+      default: { backgroundColor: colors.card, borderColor: colors.border },
+      elevated: { backgroundColor: colors.cardElevated, borderColor: colors.border },
+      glass: {
+        backgroundColor: isDark ? "rgba(15,21,32,0.88)" : "rgba(255,255,255,0.92)",
+        borderColor: colors.borderStrong,
+      },
+      accent: { backgroundColor: colors.accentSoft, borderColor: colors.borderStrong },
+      interactive: {
+        backgroundColor: colors.cardElevated,
+        borderColor: colors.borderStrong,
+      },
+    }),
+    [colors, isDark],
+  );
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        base: {
+          borderRadius: Radius.lg,
+          borderWidth: 1,
+          overflow: "hidden",
+          ...shadow.card,
+        },
+        interactive: {
+          borderColor: colors.borderStrong,
+        },
+      }),
+    [colors.borderStrong, shadow.card],
+  );
+
   return (
     <View
       testID={testID}
@@ -37,7 +62,7 @@ export function Surface({
       style={[
         styles.base,
         variantStyle[variant],
-        glow && Shadow.glow,
+        glow && shadow.glow,
         variant === "interactive" && styles.interactive,
         style,
       ]}
@@ -46,15 +71,3 @@ export function Surface({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    overflow: "hidden",
-    ...Shadow.card,
-  },
-  interactive: {
-    borderColor: Colors.borderStrong,
-  },
-});

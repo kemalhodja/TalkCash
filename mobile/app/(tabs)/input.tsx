@@ -23,6 +23,7 @@ import { formatMoney } from "@/utils/format";
 import { track } from "@/services/analytics";
 import { parsePositiveAmount } from "@/utils/amount";
 import { extractVoiceAlert, playExpenseFeedback, playVoiceAlert } from "@/utils/voiceAlert";
+import { hapticImpact, hapticSuccessDouble } from "@/utils/haptics";
 import { extractSwapNudge, type SwapNudge } from "@/utils/swapNudge";
 import { extractRoundUp, type RoundUpNudge } from "@/utils/roundUp";
 import { MicroSavingsNudges } from "@/components/MicroSavingsNudges";
@@ -51,6 +52,7 @@ export default function InputScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [whisperMode, setWhisperMode] = useState(false);
   const [holdToRecord, setHoldToRecord] = useState(false);
+  const [autoRecordVoice, setAutoRecordVoice] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [error, setError] = useState("");
   const [payModal, setPayModal] = useState<{ title: string } | null>(null);
@@ -89,7 +91,10 @@ export default function InputScreen() {
     (async () => {
       const pending = await consumePendingInputVoice();
       if (voiceParams.whisper === "1" || pending?.whisper) setWhisperMode(true);
-      if (voiceParams.hold === "1" || pending?.hold) setHoldToRecord(true);
+      if (voiceParams.hold === "1" || pending?.hold) {
+        setHoldToRecord(true);
+        setAutoRecordVoice(true);
+      }
       if (voiceParams.sms === "1" || pending?.smsPaste) {
         setTimeout(() => { handlePasteSms(); }, 400);
       }
@@ -195,6 +200,7 @@ export default function InputScreen() {
     }
     if (result?.status === "success" && result?.result) {
       track("voice_expense_saved");
+      hapticSuccessDouble();
       playExpenseFeedback(result, locale);
       setText("");
       setError("");
@@ -225,6 +231,7 @@ export default function InputScreen() {
       setText("");
       track("voice_expense_saved");
       markFirstExpenseAdded();
+      hapticSuccessDouble();
       playExpenseFeedback({ status: "success" }, locale);
     }
 
@@ -478,6 +485,7 @@ export default function InputScreen() {
               onResult={handleVoiceResult}
               whisperMode={whisperMode}
               holdToRecord={holdToRecord}
+              autoRecord={autoRecordVoice}
               disabled={!aiAvailable}
             />
           </Surface>
@@ -548,6 +556,7 @@ export default function InputScreen() {
           onResult={handleVoiceResult}
           whisperMode={whisperMode}
           holdToRecord={holdToRecord}
+          autoRecord={autoRecordVoice}
           disabled={!aiAvailable}
         />
       </Surface>

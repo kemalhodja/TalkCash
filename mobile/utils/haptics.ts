@@ -45,3 +45,16 @@ export async function hapticSelection(): Promise<void> {
     /* optional */
   }
 }
+
+/** Soft click when the mic button is pressed — premium tactile start cue. */
+export async function hapticRecordTap(): Promise<void> {
+  await hapticSelection();
+  await hapticImpact("light");
+}
+
+/** Double light tap when an expense is saved successfully. */
+export async function hapticSuccessDouble(): Promise<void> {
+  await hapticImpact("light");
+  await new Promise((resolve) => setTimeout(resolve, 85));
+  await hapticImpact("medium");
+}

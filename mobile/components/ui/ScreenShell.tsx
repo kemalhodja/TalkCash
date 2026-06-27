@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -8,7 +8,8 @@ import {
   ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Layout, Spacing } from "@/constants/theme";
+import { Layout, Spacing } from "@/constants/theme";
+import { useTheme } from "@/theme/ThemeProvider";
 import { stackBottomPadding, tabBarScrollClearance } from "@/utils/screenInsets";
 import { AmbientBackground } from "./AmbientBackground";
 
@@ -35,6 +36,18 @@ export function ScreenShell({
   ambient = false,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, backgroundColor: colors.bg },
+        content: {
+          paddingHorizontal: Layout.screenPadding,
+          flexGrow: 1,
+        },
+      }),
+    [colors.bg],
+  );
   const padTop = insets.top + Spacing.sm;
   const padBottom = bottomInset ? tabBarScrollClearance(insets) : stackBottomPadding(insets);
   const ambientVariant = ambient === "subtle" ? "subtle" : "default";
@@ -75,8 +88,8 @@ export function ScreenShell({
           <RefreshControl
             refreshing={!!refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.accent}
-            colors={[Colors.accent]}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
           />
         ) : undefined
       }
@@ -85,11 +98,3 @@ export function ScreenShell({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  content: {
-    paddingHorizontal: Layout.screenPadding,
-    flexGrow: 1,
-  },
-});

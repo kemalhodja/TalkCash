@@ -110,6 +110,8 @@
   "notif.retention_evening_body": "Don't waste time typing every expense. Whisper to TalkCash in 5 seconds and keep your budget up to date!",
   "notif.retention_weekly_title": "📊 Your weekly finance report is ready!",
   "notif.retention_weekly_body": "Curious which category you spent the most on this week? Tap to see your AI analysis.",
+  "notif.retention_weekly_smart_top": "This week {category} made up {pct}% of your spending. Your AI summary is ready — tap to view.",
+  "notif.retention_weekly_smart_over_save": "You went {pct}% over budget on {category} this week, but saved big on {save_category}! ☕📉",
   "notif.retention_persona_angry_mom_title": "🤨 Is there no food at home?",
   "notif.retention_persona_angry_mom_body": "Eating out spending hit the roof this week! Are we picking money off the street? Let's talk savings.",
   "notif.retention_persona_wall_street_title": "📉 You're missing opportunity cost!",
