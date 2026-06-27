@@ -1,9 +1,5 @@
 """App Store billing verifier (mock scaffold)."""
 
-import os
-
-os.environ.setdefault("APPLE_VERIFY_MOCK", "true")
-
 from app.services.billing.app_store import AppStoreVerifier
 
 
