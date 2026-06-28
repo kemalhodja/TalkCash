@@ -17,6 +17,7 @@ if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 Pop-Location
 
 Write-Host "=== API smoke ===" -ForegroundColor Cyan
+$env:API_URL = if ($env:API_URL) { $env:API_URL } else { "https://talkcash-api-prod.onrender.com" }
 python (Join-Path $Root "scripts/smoke_test.py")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
