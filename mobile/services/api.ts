@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/secureStorage";
 import { auth } from "./auth";
 import { getApiBaseUrl } from "./config";
 import { captureError } from "./observability";
@@ -738,6 +738,7 @@ export const api = {
     request<any>("/workspaces/invitations/accept", { method: "POST", body: JSON.stringify({ token }) }),
   cancelWorkspaceInvitation: (workspaceId: string, invitationId: string) =>
     request<void>(`/workspaces/${workspaceId}/invitations/${invitationId}`, { method: "DELETE" }),
+  getWorkspaceBudget: (workspaceId: string) => request<any>(`/workspaces/${workspaceId}/budget`),
 
   // Analytics
   trackEvent: (eventName: string, properties?: Record<string, unknown>) =>

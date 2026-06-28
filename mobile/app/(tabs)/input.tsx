@@ -5,6 +5,7 @@ import { ConfirmationCard } from "@/components/ConfirmationCard";
 import { DuplicateBillDialog } from "@/components/DuplicateBillDialog";
 import { PayBillModal } from "@/components/PayBillModal";
 import { NumericKeypad } from "@/components/NumericKeypad";
+import { PaywallCard } from "@/components/PaywallCard";
 import { ReceiptScanner } from "@/components/ReceiptScanner";
 import { ReceiptReviewModal, type ReceiptScanData } from "@/components/ReceiptReviewModal";
 import { VoiceInput } from "@/components/VoiceInput";
@@ -40,6 +41,7 @@ import {
   markFirstExpenseAdded,
   consumePendingInputText,
 } from "@/services/firstRun";
+import { getPremiumStatus, hasEntitlement, PremiumStatus, refreshPremiumStatus } from "@/services/premium";
 
 export default function InputScreen() {
   const { t, locale } = useI18n();
@@ -71,6 +73,8 @@ export default function InputScreen() {
   const [confirmInstant, setConfirmInstant] = useState(false);
   const [simpleMode, setSimpleMode] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [premium, setPremium] = useState<PremiumStatus | null>(null);
+  const [showReceiptPaywall, setShowReceiptPaywall] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const styles = useMemo(
@@ -78,6 +82,7 @@ export default function InputScreen() {
       StyleSheet.create({
         content: { paddingBottom: Spacing.xl, gap: Spacing.sm },
         topActions: { flexDirection: "row", justifyContent: "flex-end", gap: Spacing.sm, marginBottom: Spacing.xs },
+        receiptHint: { color: colors.textMuted, fontSize: 12, textAlign: "right", marginBottom: Spacing.xs },
         topActionBtn: { flexShrink: 1 },
         aiBanner: { padding: Spacing.md, marginBottom: Spacing.sm },
         aiBannerText: { color: colors.warning, fontSize: 13, textAlign: "center", lineHeight: 18 },
@@ -113,6 +118,8 @@ export default function InputScreen() {
         modalCard: { padding: Spacing.lg },
         modalTitle: { color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: Spacing.md },
         modalActions: { flexDirection: "row", justifyContent: "space-between", marginTop: Spacing.md, gap: Spacing.sm },
+        paywallOverlay: { flex: 1, justifyContent: "center", padding: Spacing.lg, backgroundColor: colors.overlay },
+        paywallClose: { marginTop: Spacing.md },
       }),
     [colors],
   );
@@ -131,6 +138,7 @@ export default function InputScreen() {
     api.getInputCapabilities()
       .then((c) => setAiAvailable(Boolean(c.voice_available)))
       .catch(() => setAiAvailable(false));
+    getPremiumStatus().then(setPremium).catch(() => setPremium(null));
   }, []);
 
   useEffect(() => {
@@ -150,6 +158,18 @@ export default function InputScreen() {
   const slashHints: string[] = Array.isArray(t.input.slashHints)
     ? t.input.slashHints
     : ["/150 kahve banka", "/500 transfer banka nakit", "/fatura elektrik 200"];
+
+  const receiptScansRemaining = premium?.entitlements?.receipt_ocr?.remaining;
+
+  const openReceiptScanner = async () => {
+    const status = await refreshPremiumStatus();
+    setPremium(status);
+    if (!hasEntitlement(status, "receipt_ocr")) {
+      setShowReceiptPaywall(true);
+      return;
+    }
+    setShowScanner(true);
+  };
 
   const handleTextSubmitFromParam = async (value: string) => {
     if (!value.trim() || isSubmitting) return;
@@ -317,6 +337,9 @@ export default function InputScreen() {
         if (swap) setPendingSwap(swap);
         const roundUp = extractRoundUp(res);
         if (roundUp) setPendingRoundUp(roundUp);
+        if (res?.result?.family_sync?.message) {
+          Alert.alert(t.common.confirm, res.result.family_sync.message);
+        }
       }
       if (payload.receipt_id && payload.amount) {
         const receiptTotal = payload.receipt_total_amount ?? payload.receipt_total ?? payload.amount;
@@ -347,6 +370,9 @@ export default function InputScreen() {
         if (swap) setPendingSwap(swap);
         const roundUp = extractRoundUp(res);
         if (roundUp) setPendingRoundUp(roundUp);
+        if (res?.result?.family_sync?.message) {
+          Alert.alert(t.common.confirm, res.result.family_sync.message);
+        }
       } else {
         setConfirmVisible(false);
         setParsedData(null);
@@ -546,12 +572,14 @@ export default function InputScreen() {
             onSubmitEditing={handleTextSubmit}
             returnKeyType="done"
             containerStyle={styles.inputWrap}
+            testID="input-text"
           />
-          <PrimaryButton label={t.input.send} onPress={handleTextSubmit} loading={isSubmitting} style={styles.submitBtn} />
+          <PrimaryButton label={t.input.send} onPress={handleTextSubmit} loading={isSubmitting} style={styles.submitBtn} testID="input-send" />
           <PrimaryButton
             label={t.firstRun.showAdvancedInput}
             onPress={() => setShowAdvanced(true)}
             variant="ghost"
+            testID="input-show-advanced"
           />
         </>
       ) : (
@@ -577,10 +605,11 @@ export default function InputScreen() {
         />
         <PrimaryButton
           label={`📷 ${t.input.receipt}`}
-          onPress={() => setShowScanner(true)}
+          onPress={openReceiptScanner}
           variant="secondary"
           compact
           style={styles.topActionBtn}
+          testID="receipt-scan-btn"
         />
         <PrimaryButton
           label={`💬 ${t.input.smsPaste}`}
@@ -590,6 +619,12 @@ export default function InputScreen() {
           style={styles.topActionBtn}
         />
       </View>
+
+      {receiptScansRemaining != null && receiptScansRemaining >= 0 ? (
+        <Text style={styles.receiptHint}>
+          {t.input.receiptScansLeft.replace("{remaining}", String(receiptScansRemaining))}
+        </Text>
+      ) : null}
 
       {!aiAvailable && (
         <Surface variant="accent" style={styles.aiBanner}>
@@ -761,11 +796,32 @@ export default function InputScreen() {
         </View>
       </Modal>
 
+      <Modal visible={showReceiptPaywall} animationType="slide" transparent>
+        <View style={styles.paywallOverlay}>
+          <PaywallCard
+            recommendedPlan="pro"
+            onUpgraded={async () => {
+              const status = await refreshPremiumStatus();
+              setPremium(status);
+              setShowReceiptPaywall(false);
+              if (hasEntitlement(status, "receipt_ocr")) setShowScanner(true);
+            }}
+          />
+          <PrimaryButton
+            label={t.common.close}
+            onPress={() => setShowReceiptPaywall(false)}
+            variant="ghost"
+            style={styles.paywallClose}
+          />
+        </View>
+      </Modal>
+
       <Modal visible={showScanner} animationType="slide">
         <ReceiptScanner
           onResult={(data) => {
             setShowScanner(false);
             setReceiptReview(data);
+            refreshPremiumStatus().then(setPremium).catch(() => {});
           }}
           onClose={() => setShowScanner(false)}
         />

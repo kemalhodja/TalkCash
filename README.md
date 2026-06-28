@@ -88,7 +88,15 @@ FLY_API_TOKEN=... EXPO_TOKEN=... ./scripts/release.sh --skip-verify --production
 Staging API:
 
 ```bash
-./scripts/deploy-staging.sh
+## Deploy
+
+**Production API:** Render — `https://talkcash-api-prod.onrender.com`  
+Detay: [docs/DEPLOY_TARGET.md](docs/DEPLOY_TARGET.md)
+
+```bash
+./scripts/deploy-staging.sh    # Fly staging
+# Production: Render (render-deploy.yml veya Render dashboard)
+```
 ```
 
 Production API:

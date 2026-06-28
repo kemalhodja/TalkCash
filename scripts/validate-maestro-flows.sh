@@ -7,8 +7,13 @@ MAESTRO_DIR="$ROOT/mobile/.maestro"
 
 required=(
   smoke.yaml
+  login.yaml
+  go-input.yaml
+  go-settings.yaml
   expense-flow.yaml
   micro-savings-flow.yaml
+  onboarding-mic-flow.yaml
+  visionary-features-flow.yaml
 )
 
 for file in "${required[@]}"; do

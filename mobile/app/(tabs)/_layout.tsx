@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ConflictModal } from "@/components/ConflictModal";
 import { CenterTabButton } from "@/components/ui/CenterTabButton";
@@ -95,7 +95,7 @@ export default function TabLayout() {
           options={{
             title: t.tabs.input,
             tabBarLabel: () => null,
-            tabBarButton: (props) => <CenterTabButton {...props} />,
+            tabBarButton: (props) => <CenterTabButton {...props} testID="tab-input-fab" />,
           }}
         />
         <Tabs.Screen
@@ -103,6 +103,9 @@ export default function TabLayout() {
           options={{
             title: t.tabs.more,
             tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+            tabBarButton: ({ ref: _ref, ...props }) => (
+              <Pressable {...props} testID="tab-settings" />
+            ),
             tabBarIcon: ({ color, focused }) => (
               <TabIcon name={focused ? "grid" : "grid-outline"} color={color} focused={focused} />
             ),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiConnectionCard } from "@/components/ApiConnectionCard";
@@ -117,6 +117,12 @@ export default function LoginScreen() {
         />
       </View>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <Surface variant="glass" glow style={styles.formCard}>
         {showDevConnection ? <ApiConnectionCard compact /> : null}
 
@@ -141,33 +147,18 @@ export default function LoginScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        {!isRegister ? (
-          <View style={styles.rememberBlock}>
-            <View style={styles.rememberRow}>
-              <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
-              <Switch
-                value={rememberMe}
-                onValueChange={setRememberMe}
-                trackColor={{ true: Colors.accent }}
-                testID="login-remember-me"
-              />
-            </View>
-            <Text style={styles.rememberHint}>{t.login.rememberMeHint}</Text>
+        <View style={styles.rememberBlock}>
+          <View style={styles.rememberRow}>
+            <Switch
+              value={rememberMe}
+              onValueChange={setRememberMe}
+              trackColor={{ true: Colors.accent }}
+              testID={isRegister ? "register-remember-me" : "login-remember-me"}
+            />
+            <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
           </View>
-        ) : (
-          <View style={styles.rememberBlock}>
-            <View style={styles.rememberRow}>
-              <Text style={styles.rememberLabel}>{t.login.rememberMe}</Text>
-              <Switch
-                value={rememberMe}
-                onValueChange={setRememberMe}
-                trackColor={{ true: Colors.accent }}
-                testID="register-remember-me"
-              />
-            </View>
-            <Text style={styles.rememberHint}>{t.login.rememberMeHint}</Text>
-          </View>
-        )}
+          <Text style={styles.rememberHint}>{t.login.rememberMeHint}</Text>
+        </View>
 
         <PrimaryButton
           label={isRegister ? t.login.register : t.login.login}
@@ -190,13 +181,16 @@ export default function LoginScreen() {
           />
         ) : null}
       </Surface>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg, justifyContent: "center", paddingHorizontal: Spacing.lg },
-  brand: { color: Colors.accent, ...Typography.label, textAlign: "center", marginBottom: Spacing.sm },
+  container: { flex: 1, backgroundColor: Colors.bg, paddingHorizontal: Spacing.lg },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "center", paddingBottom: Spacing.lg },
+  brand: { color: Colors.accent, ...Typography.label, textAlign: "center", marginBottom: Spacing.sm, marginTop: Spacing.xl },
   logo: { fontSize: 34, fontWeight: "800", color: Colors.text, textAlign: "center", letterSpacing: -0.8 },
   subtitle: { color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.lg, marginTop: Spacing.sm },
   languageRow: { marginBottom: Spacing.md, paddingHorizontal: Spacing.xs },
@@ -204,10 +198,11 @@ const styles = StyleSheet.create({
   rememberRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    alignSelf: "flex-start",
+    gap: Spacing.sm,
   },
-  rememberBlock: { marginTop: Spacing.sm },
-  rememberHint: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
+  rememberBlock: { marginTop: Spacing.sm, alignSelf: "stretch" },
+  rememberHint: { color: Colors.textMuted, fontSize: 12, marginTop: 4, textAlign: "left" },
   rememberLabel: { color: Colors.textSecondary, fontSize: 14 },
   submitBtn: { marginTop: Spacing.md },
   switch: { marginTop: Spacing.lg, alignSelf: "center" },

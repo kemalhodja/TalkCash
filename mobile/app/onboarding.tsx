@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MicPermissionCard } from "@/components/MicPermissionCard";
 import { InputField } from "@/components/ui/InputField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ChipPicker } from "@/components/ui/ChipPicker";
@@ -50,6 +51,7 @@ export default function OnboardingScreen() {
   }, []);
 
   const [loadingDemo, setLoadingDemo] = useState(false);
+  const [micReady, setMicReady] = useState(false);
 
   const loadDemoData = async () => {
     setLoadingDemo(true);
@@ -171,26 +173,36 @@ export default function OnboardingScreen() {
         </Text>
         {step === 1 ? (
           <>
-            <View style={styles.voiceExamples}>
-              <Text style={styles.voiceExample}>{t.onboarding.voiceExample1}</Text>
-              <Text style={styles.voiceExample}>{t.onboarding.voiceExample2}</Text>
-              <Text style={styles.voiceHint}>{t.onboarding.voiceHint}</Text>
-            </View>
-            <Text style={styles.tryLabel}>{t.firstRun.onboardingTryTitle}</Text>
-            <Text style={styles.tryBody}>{t.firstRun.onboardingTryBody}</Text>
-            <InputField
-              placeholder={t.firstRun.onboardingTryPlaceholder}
-              value={tryText}
-              onChangeText={setTryText}
-              onSubmitEditing={tryParse}
-            />
-            <PrimaryButton
-              label={t.firstRun.onboardingTrySubmit}
-              onPress={tryParse}
-              loading={tryLoading}
-              variant="secondary"
-              style={styles.tryBtn}
-            />
+            {!micReady ? (
+              <MicPermissionCard
+                onGranted={() => setMicReady(true)}
+                onSkip={() => setMicReady(true)}
+              />
+            ) : (
+              <>
+                <Text style={styles.micGranted}>{t.onboarding.micGranted}</Text>
+                <View style={styles.voiceExamples}>
+                  <Text style={styles.voiceExample}>{t.onboarding.voiceExample1}</Text>
+                  <Text style={styles.voiceExample}>{t.onboarding.voiceExample2}</Text>
+                  <Text style={styles.voiceHint}>{t.onboarding.voiceHint}</Text>
+                </View>
+                <Text style={styles.tryLabel}>{t.firstRun.onboardingTryTitle}</Text>
+                <Text style={styles.tryBody}>{t.firstRun.onboardingTryBody}</Text>
+                <InputField
+                  placeholder={t.firstRun.onboardingTryPlaceholder}
+                  value={tryText}
+                  onChangeText={setTryText}
+                  onSubmitEditing={tryParse}
+                />
+                <PrimaryButton
+                  label={t.firstRun.onboardingTrySubmit}
+                  onPress={tryParse}
+                  loading={tryLoading}
+                  variant="secondary"
+                  style={styles.tryBtn}
+                />
+              </>
+            )}
           </>
         ) : null}
         <View style={styles.dots} accessibilityRole="progressbar" accessibilityLabel={progressLabel}>
@@ -242,6 +254,7 @@ const styles = StyleSheet.create({
   voiceExamples: { marginBottom: Spacing.lg, gap: Spacing.sm },
   voiceExample: { color: Colors.text, fontSize: 15, fontWeight: "600", textAlign: "center" },
   voiceHint: { color: Colors.textMuted, fontSize: 13, lineHeight: 20, textAlign: "center", marginTop: Spacing.sm },
+  micGranted: { color: Colors.accent, fontSize: 14, fontWeight: "600", textAlign: "center", marginBottom: Spacing.md },
   tryLabel: { color: Colors.text, fontWeight: "700", marginBottom: Spacing.xs },
   tryBody: { color: Colors.textSecondary, fontSize: 13, marginBottom: Spacing.sm },
   tryBtn: { marginBottom: Spacing.md },

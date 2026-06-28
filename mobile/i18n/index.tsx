@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/secureStorage";
 import tr from "./tr";
 import en from "./en";
 

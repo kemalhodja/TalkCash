@@ -10,6 +10,7 @@ from app.i18n import resolve_error, t
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.services.billing.service import BillingService, EntitlementError
+from app.services.execute.enrich import enrich_parsed_expense
 from app.services.execute.service import dispatch_confirmed_action
 from app.schemas.common import ConfirmationCard
 from app.services.nlp import nlp_engine
@@ -56,11 +57,15 @@ async def parse_text(
     request: Request,
     whisper_mode: bool = False,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
     parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang, persona=user.assistant_persona or "default")
+    parsed, fx_line = await enrich_parsed_expense(db, user.id, parsed, lang)
     message = nlp_engine.build_confirmation(parsed, lang)
+    if fx_line:
+        message = f"{fx_line}\n{message}"
     return ConfirmationCard(message=message, parsed=parsed)
 
 
@@ -70,6 +75,7 @@ async def parse_voice(
     audio: UploadFile = File(...),
     whisper_mode: bool = False,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "voice", settings.voice_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
@@ -78,7 +84,10 @@ async def parse_voice(
         validate_audio_bytes(audio_bytes, settings.ocr_max_upload_bytes)
         text = await nlp_engine.transcribe_audio(audio_bytes, whisper_mode=whisper_mode, locale=lang)
         parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang, persona=user.assistant_persona or "default")
+        parsed, fx_line = await enrich_parsed_expense(db, user.id, parsed, lang)
         message = nlp_engine.build_confirmation(parsed, lang)
+        if fx_line:
+            message = f"{fx_line}\n{message}"
         return ConfirmationCard(message=message, parsed=parsed)
     except HTTPException:
         raise
@@ -130,10 +139,14 @@ async def process_voice_transaction(
         validate_audio_bytes(audio_bytes, settings.ocr_max_upload_bytes)
         text = await nlp_engine.transcribe_audio(audio_bytes, whisper_mode=whisper_mode, locale=lang)
         parsed = await nlp_engine.parse_text(text, whisper_mode=whisper_mode, locale=lang, persona=user.assistant_persona or "default")
+        parsed, fx_line = await enrich_parsed_expense(db, user.id, parsed, lang)
         if parsed.intent == "manual_edit" or parsed.parse_failed:
+            message = nlp_engine.build_confirmation(parsed, lang)
+            if fx_line:
+                message = f"{fx_line}\n{message}"
             return {
                 "status": "needs_confirmation",
-                "message": nlp_engine.build_confirmation(parsed, lang),
+                "message": message,
                 "is_premium": is_premium,
                 "transcript": text,
                 "parsed": parsed.model_dump(mode="json"),
@@ -190,11 +203,15 @@ async def quick_voice_expense(
         parsed = await nlp_engine.parse_text(
             text, whisper_mode=True, locale=lang, persona=user.assistant_persona or "default",
         )
+        parsed, fx_line = await enrich_parsed_expense(db, user.id, parsed, lang)
         if parsed.intent not in ("add_expense", "manual_edit") or parsed.parse_failed or not parsed.amount:
+            message = nlp_engine.build_confirmation(parsed, lang)
+            if fx_line:
+                message = f"{fx_line}\n{message}"
             return {
                 "status": "needs_confirmation",
                 "transcript": text,
-                "message": nlp_engine.build_confirmation(parsed, lang),
+                "message": message,
             }
         if parsed.intent == "manual_edit":
             parsed = parsed.model_copy(update={"intent": "add_expense"})
@@ -222,11 +239,15 @@ async def parse_slash_command(
     command: str,
     request: Request,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
     parsed = await nlp_engine.parse_text(command, locale=lang, persona=user.assistant_persona or "default")
+    parsed, fx_line = await enrich_parsed_expense(db, user.id, parsed, lang)
     message = nlp_engine.build_confirmation(parsed, lang)
+    if fx_line:
+        message = f"{fx_line}\n{message}"
     return ConfirmationCard(message=message, parsed=parsed)
 
 
@@ -239,11 +260,15 @@ async def parse_sms(
     body: SmsParseRequest,
     request: Request,
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     await check_rate_limit(request, "input", settings.input_rate_limit, identifier=str(user.id), strict=True)
     lang = user_locale(user)
     parsed = await nlp_engine.parse_sms(body.text.strip(), locale=lang, persona=user.assistant_persona or "default")
+    parsed, fx_line = await enrich_parsed_expense(db, user.id, parsed, lang)
     message = nlp_engine.build_confirmation(parsed, lang)
+    if fx_line:
+        message = f"{fx_line}\n{message}"
     return ConfirmationCard(message=message, parsed=parsed)
 
 

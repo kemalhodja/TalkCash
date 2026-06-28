@@ -29,6 +29,7 @@ from app.services.nlp.turkish_parser import (
     extract_wallet_name,
     parse_turkish_amount,
 )
+from app.services.nlp.currency import extract_currency, parse_amount_with_currency
 
 SYSTEM_PROMPT_TR = """Sen TalkCash finans uygulamasının NLP motorusun.
 Kullanıcının Türkçe doğal dil girdisini analiz edip JSON döndür.
@@ -44,13 +45,15 @@ Geçmiş harcamalar için date mutlaka geçmiş tarih olmalı.
 
 Kategori için alt kırılım kullan: "Yemek · Dışarıda Yemek", "Market · Market Alışverişi" gibi.
 
-Yerel ifadeleri sayıya çevir: "200 kağıt"=200, "elli lira"=50, "yüzlük gömdük"=100
+Yerel ifadeleri sayıya çevir: "200 kağıt"=200, "elli lira"=50, "15 dolar"=15 USD, "$20"=20 USD, "€10"=10 EUR
+
+Para birimini currency alanına yaz: $/dolar=USD, €/euro/euro=EUR, ₺/tl/lira=TRY
 
 JSON formatı:
 {
   "intent": "string",
   "amount": number|null,
-  "currency": "TRY",
+  "currency": "TRY|USD|EUR|GBP",
   "category": "string|null",
   "description": "string|null",
   "place": "string|null",
@@ -78,11 +81,13 @@ For past expenses, date must be in the past.
 
 Use subcategories when helpful: "Food · Dining Out", "Groceries · Supermarket".
 
+Detect currency: $/dollar=USD, €/euro=EUR, ₺/tl=TRY. Write ISO code in currency field.
+
 JSON format:
 {
   "intent": "string",
   "amount": number|null,
-  "currency": "TRY",
+  "currency": "TRY|USD|EUR|GBP",
   "category": "string|null",
   "description": "string|null",
   "place": "string|null",
@@ -242,9 +247,14 @@ class NLPEngine:
         target = extract_target_wallet(text) if intent == "transfer" else None
         store = extract_store_name(text)
         is_sub, sub_name = detect_subscription(text)
+        amount, currency = parse_amount_with_currency(text)
+        if amount is None:
+            amount = parse_turkish_amount(text)
+            currency = extract_currency(text)
         return ParsedInput(
             intent=intent,
-            amount=parse_turkish_amount(text),
+            amount=amount,
+            currency=currency,
             category=extract_category(text),
             wallet_name=wallet,
             target_wallet_name=target,
@@ -274,12 +284,6 @@ class NLPEngine:
         elif "transfer" in lower:
             intent = "transfer"
 
-        amount = parse_english_amount(text)
-        if amount is None:
-            amount_match = re.search(r"(\d+(?:\.\d+)?)", text)
-            if amount_match:
-                amount = Decimal(amount_match.group(1))
-
         description = text
         if intent == "mark_paid":
             description = re.sub(r"(?i)\b(paid|mark paid|i paid)\b", "", text).strip() or text
@@ -287,11 +291,14 @@ class NLPEngine:
         if text.startswith("/"):
             text = text[1:].strip()
             parts = text.split(maxsplit=2)
-            if parts and parts[0].replace(".", "").isdigit():
-                amount = Decimal(parts[0])
+            amount = Decimal(parts[0]) if parts and parts[0].replace(".", "").isdigit() else None
+            currency = extract_currency(text, "USD")
+            if amount is None:
+                amount, currency = parse_amount_with_currency(text)
             return ParsedInput(
                 intent="add_expense",
                 amount=amount,
+                currency=currency,
                 category=parts[1] if len(parts) > 1 else None,
                 wallet_name=parts[2] if len(parts) > 2 else "Bank",
                 description=text,
@@ -304,9 +311,18 @@ class NLPEngine:
             wallet = "Bank"
         is_sub, sub_name = detect_subscription(text)
         is_recurring = any(w in lower for w in ["monthly", "every month", "recurring"])
+        amount, currency = parse_amount_with_currency(text)
+        if amount is None:
+            amount = parse_english_amount(text)
+            if amount is None:
+                amount_match = re.search(r"(\d+(?:\.\d+)?)", text)
+                if amount_match:
+                    amount = Decimal(amount_match.group(1))
+            currency = extract_currency(text, "USD")
         return ParsedInput(
             intent=intent,
             amount=amount,
+            currency=currency,
             category=None,
             wallet_name=wallet,
             target_wallet_name=target,

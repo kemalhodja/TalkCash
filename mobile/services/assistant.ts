@@ -1,5 +1,5 @@
 import * as Linking from "expo-linking";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/secureStorage";
 import { googleActionParamsToText, type GoogleActionParams } from "./googleAssistant";
 
 const PENDING_KEY = "talkcash_pending_assistant";

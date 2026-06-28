@@ -1,0 +1,24 @@
+appId: io.talkcash.app
+---
+# Mic pre-permission splash — fresh install (clearState)
+- clearState
+- launchApp
+- assertVisible: "TalkCash"
+- tapOn:
+    text: "Devam|Continue|Next|Başla|Start"
+    optional: true
+- assertVisible:
+    id: "mic-permission-card"
+- assertVisible:
+    text: "mikrofon|microphone|Microphone"
+- assertVisible:
+    id: "mic-permission-ready"
+- tapOn:
+    id: "mic-permission-later"
+    optional: true
+- tapOn:
+    text: "Daha sonra|Not now"
+    optional: true
+- assertVisible:
+    text: "Sesli komut|Voice|50 lira|coffee|«"
+    optional: true

@@ -28,6 +28,9 @@ class Organization(Base):
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(120))
     workspace_type: Mapped[WorkspaceType] = mapped_column(pg_enum(WorkspaceType), default=WorkspaceType.FAMILY)
+    shared_wallet_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("shared_wallets.id", ondelete="SET NULL"), nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")

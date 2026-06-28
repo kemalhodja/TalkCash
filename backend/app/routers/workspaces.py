@@ -9,6 +9,7 @@ from app.i18n import resolve_error
 from app.models.user import User
 from app.schemas.workspace import (
     AcceptInvitationRequest,
+    FamilyBudgetSummary,
     InvitationInboxItem,
     InvitationResponse,
     WorkspaceCreate,
@@ -42,9 +43,23 @@ async def create_workspace(
             workspace_type=org.workspace_type,
             role="owner",
             members_count=1,
+            shared_wallet_id=org.shared_wallet_id,
         )
     except Exception as exc:
         raise HTTPException(status_code=402 if str(exc) == "premium_required" else 400, detail=resolve_error(exc, user_locale(user)))
+
+
+@router.get("/{workspace_id}/budget", response_model=FamilyBudgetSummary)
+async def workspace_budget_summary(
+    workspace_id: UUID,
+    _workspace: None = Depends(require_entitlement("shared_workspace")),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await workspace_service.get_budget_summary(db, user.id, workspace_id)
+    except Exception as exc:
+        raise HTTPException(status_code=403, detail=resolve_error(exc, user_locale(user)))
 
 
 @router.post("/{workspace_id}/invite", response_model=InvitationResponse)

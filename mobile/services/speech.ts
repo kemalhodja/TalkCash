@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/secureStorage";
 import * as Speech from "expo-speech";
 
 const TTS_KEY = "talkcash_tts_budget";

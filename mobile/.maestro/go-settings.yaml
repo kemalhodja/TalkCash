@@ -1,0 +1,11 @@
+appId: io.talkcash.app
+---
+- tapOn:
+    text: "Ayarlar|Settings"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: "settings-workspaces-btn"
+    direction: DOWN
+    timeout: 20000
+    optional: true

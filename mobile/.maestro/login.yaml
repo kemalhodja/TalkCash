@@ -1,0 +1,32 @@
+appId: io.talkcash.app
+---
+# Shared login + skip onboarding/lock
+- launchApp
+- runFlow:
+    when:
+      visible:
+        id: "login-email"
+    commands:
+      - tapOn:
+          id: "login-email"
+      - inputText: "smoke@talkcash.io"
+      - tapOn:
+          id: "login-password"
+      - inputText: "SmokeTest123!"
+      - hideKeyboard
+      - tapOn:
+          id: "login-submit"
+- tapOn:
+    text: "Giriş|Sign In|Giriş Yap"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "Ana Sayfa|Home|İşlemler|Transactions|Ayarlar|Settings"
+    timeout: 15000
+    optional: true
+- tapOn:
+    text: "Atla|Skip|Devam|Continue|Başla|Start"
+    optional: true
+- tapOn:
+    text: "Daha sonra|Not now|Atla|Skip"
+    optional: true

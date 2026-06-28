@@ -442,7 +442,7 @@ export default function SettingsScreen() {
         </SectionBlock>
 
         <SectionBlock title={t.workspaces.title} bare>
-          <PrimaryButton label={t.workspaces.title} onPress={() => router.push("/workspaces")} variant="secondary" style={styles.actionBtn} />
+          <PrimaryButton label={t.workspaces.title} onPress={() => router.push("/workspaces")} variant="secondary" style={styles.actionBtn} testID="settings-workspaces-btn" />
         </SectionBlock>
 
         <SectionBlock title={t.settings.about} bare>

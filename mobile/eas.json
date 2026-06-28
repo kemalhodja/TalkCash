@@ -35,6 +35,14 @@
         "EXPO_PUBLIC_APP_ENV": "staging"
       }
     },
+    "preview-prod": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://talkcash-api-prod.onrender.com/api/v1",
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
+    },
     "preview-tunnel": {
       "extends": "preview",
       "env": {

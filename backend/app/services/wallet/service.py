@@ -159,6 +159,7 @@ class WalletService:
     async def add_income(
         self, db: AsyncSession, user_id: UUID, wallet_id: UUID,
         amount: Decimal, description: str = "", input_method: str = "voice",
+        currency: str = "TRY",
     ) -> Transaction:
         _ensure_positive_amount(amount)
         wallet = await self.get_owned_wallet(db, user_id, wallet_id)
@@ -167,6 +168,7 @@ class WalletService:
             user_id=user_id, wallet_id=wallet_id,
             transaction_type=TransactionType.INCOME, amount=amount,
             description=description, input_method=input_method,
+            currency=currency,
         )
         db.add(tx)
         await db.flush()
@@ -189,6 +191,11 @@ class WalletService:
         is_recurring: bool = False, next_billing_date: date | None = None,
         subscription_name: str | None = None,
         transaction_at: datetime | None = None,
+        currency: str = "TRY",
+        notes: str | None = None,
+        original_amount: Decimal | None = None,
+        original_currency: str | None = None,
+        fx_rate: Decimal | None = None,
     ) -> Transaction:
         _ensure_positive_amount(amount)
         wallet = await self.get_owned_wallet(db, user_id, wallet_id)
@@ -206,6 +213,11 @@ class WalletService:
             is_recurring=is_recurring,
             next_billing_date=next_billing_date,
             subscription_name=subscription_name,
+            currency=currency,
+            notes=notes,
+            original_amount=original_amount,
+            original_currency=original_currency,
+            fx_rate=fx_rate,
         )
         if transaction_at is not None:
             tx.created_at = transaction_at

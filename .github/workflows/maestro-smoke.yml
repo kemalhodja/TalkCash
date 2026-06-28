@@ -34,4 +34,7 @@ jobs:
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
       - name: Run smoke on connected device/emulator
         working-directory: mobile
-        run: maestro test --format junit --output maestro-report.xml .maestro/smoke.yaml
+        run: |
+          maestro test --format junit --output maestro-report-smoke.xml .maestro/smoke.yaml
+          maestro test --format junit --output maestro-report-visionary.xml .maestro/visionary-features-flow.yaml
+          maestro test --format junit --output maestro-report-onboarding.xml .maestro/onboarding-mic-flow.yaml

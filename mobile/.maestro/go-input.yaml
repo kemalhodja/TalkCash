@@ -1,0 +1,20 @@
+appId: io.talkcash.app
+---
+# Navigate to input tab (deep link works without tab bar testIDs)
+- openLink: talkcash://input
+- extendedWaitUntil:
+    visible:
+      id: "input-text"
+    timeout: 10000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "Gelişmiş giriş|Advanced input|Dinleniyor|Listening|veya yazın|or type"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Ekle|Add"
+    optional: true
+- tapOn:
+    point: "50%,92%"
+    optional: true

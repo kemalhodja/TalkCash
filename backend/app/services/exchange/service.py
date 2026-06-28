@@ -46,6 +46,24 @@ class ExchangeService:
         rate = await self.get_rate(db, currency)
         return amount * rate
 
+    async def convert(
+        self,
+        db: AsyncSession,
+        amount: Decimal,
+        from_currency: str,
+        to_currency: str,
+        wallet_type: str | None = None,
+    ) -> Decimal:
+        if from_currency == to_currency:
+            return amount
+        try_amount = await self.convert_to_try(db, amount, from_currency, wallet_type)
+        if to_currency == "TRY":
+            return try_amount.quantize(Decimal("0.01"))
+        to_rate = await self.get_rate(db, to_currency)
+        if to_rate <= 0:
+            return try_amount.quantize(Decimal("0.01"))
+        return (try_amount / to_rate).quantize(Decimal("0.01"))
+
     async def _fetch_gold_try_per_gram(self) -> Decimal:
         try:
             async with httpx.AsyncClient(timeout=10) as client:

@@ -3,11 +3,20 @@ import { Platform } from "react-native";
 
 /** API base URL baked in at build time (EAS) or from .env in dev. */
 export function getApiBaseUrl(): string {
-  return (
+  const direct =
     process.env.EXPO_PUBLIC_API_URL
     || (Constants.expoConfig?.extra?.apiUrl as string | undefined)
-    || "http://localhost:8000/api/v1"
-  );
+    || "http://localhost:8000/api/v1";
+
+  if (Platform.OS === "web" && typeof window !== "undefined" && !usesLocalhostApiFromUrl(direct)) {
+    return `${window.location.origin}/__api/api/v1`;
+  }
+  return direct;
+}
+
+function usesLocalhostApiFromUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.includes("localhost") || lower.includes("127.0.0.1");
 }
 
 export function healthUrlFromApiBase(apiBase: string): string {
@@ -16,6 +25,13 @@ export function healthUrlFromApiBase(apiBase: string): string {
 }
 
 export function getHealthUrl(): string {
+  const direct =
+    process.env.EXPO_PUBLIC_API_URL
+    || (Constants.expoConfig?.extra?.apiUrl as string | undefined)
+    || "http://localhost:8000/api/v1";
+  if (Platform.OS === "web" && typeof window !== "undefined" && !usesLocalhostApiFromUrl(direct)) {
+    return `${window.location.origin}/__api/health`;
+  }
   return healthUrlFromApiBase(getApiBaseUrl());
 }
 
@@ -24,8 +40,11 @@ export function isMobileDevice(): boolean {
 }
 
 export function usesLocalhostApi(): boolean {
-  const url = getApiBaseUrl().toLowerCase();
-  return url.includes("localhost") || url.includes("127.0.0.1");
+  const direct =
+    process.env.EXPO_PUBLIC_API_URL
+    || (Constants.expoConfig?.extra?.apiUrl as string | undefined)
+    || "http://localhost:8000/api/v1";
+  return usesLocalhostApiFromUrl(direct);
 }
 
 export function getAppEnv(): "development" | "staging" | "production" {

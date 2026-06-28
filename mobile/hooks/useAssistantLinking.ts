@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import * as Linking from "expo-linking";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/secureStorage";
 import { router } from "expo-router";
 import { auth } from "@/services/auth";
 import { parseAppDeepLink } from "@/services/deepLink";

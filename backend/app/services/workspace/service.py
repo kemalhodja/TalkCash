@@ -4,10 +4,13 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.workspace import Invitation, Organization, OrganizationMember, WorkspaceRole
-from app.schemas.workspace import WorkspaceCreate, WorkspaceInvite, WorkspaceResponse
+from app.models.social import SharedWallet, SharedWalletEntry
+from app.models.user import User
+from app.models.workspace import Invitation, Organization, OrganizationMember, WorkspaceRole, WorkspaceType
+from app.schemas.workspace import FamilyBudgetSummary, WorkspaceCreate, WorkspaceInvite, WorkspaceResponse
 from app.services.audit.service import AuditService
 from app.services.billing.service import BillingService
+from app.services.social.shared_wallet_service import SharedWalletService
 
 
 def workspace_invite_url(token: str) -> str:
@@ -18,6 +21,7 @@ class WorkspaceService:
     def __init__(self):
         self.audit = AuditService()
         self.billing = BillingService()
+        self.shared_wallets = SharedWalletService()
 
     async def list_workspaces(self, db: AsyncSession, user_id: UUID) -> list[WorkspaceResponse]:
         result = await db.execute(
@@ -33,6 +37,7 @@ class WorkspaceService:
                 workspace_type=org.workspace_type,
                 role=role,
                 members_count=members_count,
+                shared_wallet_id=org.shared_wallet_id,
             )
             for org, role, members_count in result.all()
         ]
@@ -50,6 +55,19 @@ class WorkspaceService:
         db.add(org)
         await db.flush()
         db.add(OrganizationMember(organization_id=org.id, user_id=user_id, role=WorkspaceRole.OWNER))
+
+        if data.workspace_type == WorkspaceType.FAMILY:
+            wallet_name = f"{org.name} · Ortak"
+            shared = SharedWallet(
+                name=wallet_name,
+                owner_id=user_id,
+                organization_id=org.id,
+                member_ids=f'["{user_id}"]',
+            )
+            db.add(shared)
+            await db.flush()
+            org.shared_wallet_id = shared.id
+
         await self.audit.log(
             db,
             actor_user_id=user_id,
@@ -140,6 +158,15 @@ class WorkspaceService:
 
         db.add(OrganizationMember(organization_id=org.id, user_id=user_id, role=invitation.role))
         invitation.status = "accepted"
+        if org.shared_wallet_id:
+            wallet = await db.get(SharedWallet, org.shared_wallet_id)
+            if wallet:
+                import json
+                members = json.loads(wallet.member_ids or "[]")
+                uid = str(user_id)
+                if uid not in members:
+                    members.append(uid)
+                    wallet.member_ids = json.dumps(members)
         await self.audit.log(
             db,
             actor_user_id=user_id,
@@ -175,6 +202,73 @@ class WorkspaceService:
             raise ValueError("invitation.not_found")
         invitation.status = "cancelled"
         await db.commit()
+
+    async def get_budget_summary(self, db: AsyncSession, user_id: UUID, org_id: UUID) -> FamilyBudgetSummary:
+        await self._require_member(db, user_id, org_id)
+        org = await db.get(Organization, org_id)
+        if not org:
+            raise ValueError("workspace.not_found")
+        balance = 0.0
+        currency = "TRY"
+        recent: list[dict] = []
+        monthly_total = 0.0
+        if org.shared_wallet_id:
+            wallet = await db.get(SharedWallet, org.shared_wallet_id)
+            if wallet:
+                balance = float(wallet.balance or 0)
+                currency = wallet.currency or "TRY"
+                from datetime import datetime
+                month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                spent_r = await db.execute(
+                    select(func.coalesce(func.sum(SharedWalletEntry.amount), 0)).where(
+                        SharedWalletEntry.wallet_id == wallet.id,
+                        SharedWalletEntry.entry_type == "expense",
+                        SharedWalletEntry.created_at >= month_start,
+                    )
+                )
+                monthly_total = float(spent_r.scalar() or 0)
+                entries_r = await db.execute(
+                    select(SharedWalletEntry, User.full_name, User.email)
+                    .outerjoin(User, User.id == SharedWalletEntry.user_id)
+                    .where(
+                        SharedWalletEntry.wallet_id == wallet.id,
+                        SharedWalletEntry.entry_type == "expense",
+                    )
+                    .order_by(SharedWalletEntry.created_at.desc())
+                    .limit(8)
+                )
+                for entry, full_name, email in entries_r.all():
+                    recent.append({
+                        "amount": float(entry.amount),
+                        "description": entry.description,
+                        "by": full_name or email or "—",
+                        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+                    })
+        members_r = await db.execute(
+            select(func.count(OrganizationMember.id)).where(OrganizationMember.organization_id == org.id)
+        )
+        return FamilyBudgetSummary(
+            organization_id=org.id,
+            organization_name=org.name,
+            shared_wallet_id=org.shared_wallet_id,
+            balance=balance,
+            currency=currency,
+            members_count=int(members_r.scalar() or 0),
+            recent_expenses=recent,
+            monthly_total=monthly_total,
+        )
+
+    async def _require_member(self, db: AsyncSession, user_id: UUID, org_id: UUID) -> OrganizationMember:
+        result = await db.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.organization_id == org_id,
+                OrganizationMember.user_id == user_id,
+            )
+        )
+        member = result.scalars().first()
+        if not member:
+            raise ValueError("workspace.forbidden")
+        return member
 
     async def _require_admin(self, db: AsyncSession, user_id: UUID, org_id: UUID) -> OrganizationMember:
         result = await db.execute(

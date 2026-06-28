@@ -17,6 +17,9 @@ class SharedWallet(Base):
     balance: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
     currency: Mapped[str] = mapped_column(String(10), default="TRY")
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True,
+    )
     member_ids: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

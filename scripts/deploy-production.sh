@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # TalkCash production deploy helper — run from repo root
+# NOTE: Mobile prod builds use Render (see docs/DEPLOY_TARGET.md).
+# This script deploys to Fly.io legacy app talkcash-api-prod.
 set -euo pipefail
 
 APP="${FLY_APP:-talkcash-api-prod}"

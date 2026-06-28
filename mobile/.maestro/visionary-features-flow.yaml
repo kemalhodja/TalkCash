@@ -1,0 +1,71 @@
+appId: io.talkcash.app
+---
+# Visionary features — FX, receipt OCR, family workspace
+- runFlow: login.yaml
+
+# --- 1. Multi-currency FX ---
+- runFlow: go-input.yaml
+- tapOn:
+    id: "input-show-advanced"
+    optional: true
+- tapOn:
+    text: "Gelişmiş giriş|Advanced input"
+    optional: true
+- tapOn:
+    id: "input-text"
+    optional: true
+- inputText: "Netflix aboneligi 15 dolar bankadan"
+- hideKeyboard
+- tapOn:
+    id: "input-send"
+    optional: true
+- tapOn:
+    text: "Gönder|Send"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "USD|dolar|→|güncel kur|live rate|Onayla|Confirm|Netflix|Kaydı doğrula|Verify"
+    timeout: 15000
+    optional: true
+- assertVisible:
+    id: "share-to-family-toggle"
+    optional: true
+- tapOn:
+    text: "İptal|Cancel"
+    optional: true
+
+# --- 2. Receipt OCR gate ---
+- runFlow: go-input.yaml
+- tapOn:
+    id: "input-show-advanced"
+    optional: true
+- tapOn:
+    text: "Gelişmiş giriş|Advanced input"
+    optional: true
+- tapOn:
+    id: "receipt-scan-btn"
+    optional: true
+- tapOn:
+    text: "Fiş|Receipt"
+    optional: true
+- assertVisible:
+    text: "Kamera|Camera|Premium|Fiş|Receipt|Kapat|Close|Kalan"
+    optional: true
+- tapOn:
+    text: "Kapat|Close"
+    optional: true
+
+# --- 3. Family / shared workspace ---
+- runFlow: go-settings.yaml
+- tapOn:
+    id: "settings-workspaces-btn"
+    optional: true
+- tapOn:
+    text: "Çalışma Alanları|Workspaces"
+    optional: true
+- assertVisible:
+    text: "Çalışma Alanları|Workspaces|Aile|Family|ortak|shared|Yeni"
+    optional: true
+- assertVisible:
+    id: "family-budget-card"
+    optional: true

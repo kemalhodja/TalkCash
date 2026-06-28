@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/services/secureStorage";
 import * as TaskManager from "expo-task-manager";
 import * as Notifications from "expo-notifications";
 import en from "@/i18n/en";

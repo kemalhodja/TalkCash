@@ -34,6 +34,10 @@ class ParsedInput(BaseModel):
     is_recurring: bool = False
     is_subscription: bool = False
     subscription_name: str | None = Field(default=None, max_length=255)
+    original_amount: Decimal | None = Field(default=None, gt=0, le=MAX_MONEY)
+    original_currency: str | None = Field(default=None, max_length=10)
+    fx_rate: Decimal | None = Field(default=None, gt=0)
+    share_to_family: bool = False
     raw_text: str = Field(default="", max_length=2000)
     confidence: float = Field(default=1.0, ge=0, le=1)
     parse_failed: bool = False

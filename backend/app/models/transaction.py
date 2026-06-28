@@ -36,6 +36,9 @@ class Transaction(Base):
     input_method: Mapped[str] = mapped_column(String(50), default="manual")
     receipt_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("receipts.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    original_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    original_currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    fx_rate: Mapped[Decimal | None] = mapped_column(Numeric(15, 6), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="transactions")

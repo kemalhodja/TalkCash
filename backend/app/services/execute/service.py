@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.i18n import I18nError, t
@@ -14,6 +15,8 @@ from app.services.social.service import SocialService
 from app.services.wallet.service import WalletService
 from app.services.nlp.personas import is_luxury_spend, normalize_persona, persona_spend_speech
 from app.services.nlp.turkish_parser import extract_store_name
+from app.services.execute.fx import resolve_amount_for_wallet
+from app.services.social.shared_wallet_service import SharedWalletService
 from app.services.subscription.manager import SubscriptionManager, detect_subscription
 
 wallet_service = WalletService()
@@ -23,6 +26,51 @@ social_service = SocialService()
 product_price_service = ProductPriceService()
 micro_savings_service = MicroSavingsService()
 subscription_manager = SubscriptionManager()
+shared_wallet_service = SharedWalletService()
+
+
+async def _sync_family_shared_wallet(
+    db: AsyncSession,
+    user_id: UUID,
+    parsed: ParsedInput,
+    amount,
+    description: str,
+    locale: str,
+) -> dict | None:
+    if not parsed.share_to_family:
+        return None
+    from app.models.user import User as UserModel
+    from app.models.workspace import Organization, OrganizationMember, WorkspaceType
+
+    user = await db.get(UserModel, user_id)
+    if not user:
+        return None
+    result = await db.execute(
+        select(Organization)
+        .join(OrganizationMember, OrganizationMember.organization_id == Organization.id)
+        .where(
+            OrganizationMember.user_id == user_id,
+            Organization.workspace_type == WorkspaceType.FAMILY,
+            Organization.shared_wallet_id.isnot(None),
+        )
+        .order_by(Organization.created_at.asc())
+    )
+    org = result.scalars().first()
+    if not org or not org.shared_wallet_id:
+        return None
+    await shared_wallet_service.add_expense(
+        db,
+        org.shared_wallet_id,
+        amount,
+        description or parsed.category or parsed.raw_text or "",
+        user.full_name or user.email,
+        user_id,
+    )
+    return {
+        "shared_wallet_id": str(org.shared_wallet_id),
+        "organization_name": org.name,
+        "message": t("workspace.family_expense_synced", locale, name=org.name),
+    }
 
 
 def _resolve_store_name(parsed: ParsedInput, locale: str) -> str:
@@ -126,11 +174,18 @@ async def dispatch_confirmed_action(
         if parsed.date and parsed.date <= datetime.utcnow():
             expense_at = parsed.date
 
+        amount, parsed, fx_meta = await resolve_amount_for_wallet(db, parsed, wallet, locale)
+
         tx = await wallet_service.add_expense(
-            db, user_id, wallet.id, parsed.amount, category,
+            db, user_id, wallet.id, amount, category,
             parsed.description or "", parsed.place or store_name,
             store_name=store_name, receipt_id=receipt_uuid,
             transaction_at=expense_at,
+            currency=parsed.currency,
+            notes=fx_meta.get("fx_conversion") if fx_meta else None,
+            original_amount=parsed.original_amount,
+            original_currency=parsed.original_currency,
+            fx_rate=parsed.fx_rate,
         )
 
         sub_info = None
@@ -143,6 +198,13 @@ async def dispatch_confirmed_action(
         from app.models.user import User as UserModel
         user = await db.get(UserModel, user_id)
         result = await _expense_with_price_alert(db, user_id, parsed, tx, locale, user=user)
+        if fx_meta:
+            result.update(fx_meta)
+        family_sync = await _sync_family_shared_wallet(
+            db, user_id, parsed, amount, parsed.description or category, locale,
+        )
+        if family_sync:
+            result["family_sync"] = family_sync
         if sub_info:
             result["subscription"] = sub_info
             result["subscription_alert"] = {
@@ -159,8 +221,14 @@ async def dispatch_confirmed_action(
         wallet = await wallet_service.find_by_name(db, user_id, parsed.wallet_name or "Banka")
         if not wallet:
             raise ValueError(t("wallet.not_found", locale))
-        tx = await wallet_service.add_income(db, user_id, wallet.id, parsed.amount, parsed.description or "")
-        return {"wallet": wallet.name, "transaction_id": str(tx.id)}
+        amount, parsed, fx_meta = await resolve_amount_for_wallet(db, parsed, wallet, locale)
+        tx = await wallet_service.add_income(
+            db, user_id, wallet.id, amount, parsed.description or "", currency=parsed.currency,
+        )
+        result = {"wallet": wallet.name, "transaction_id": str(tx.id)}
+        if fx_meta:
+            result.update(fx_meta)
+        return result
 
     if intent == "transfer":
         if not parsed.amount:
@@ -169,8 +237,12 @@ async def dispatch_confirmed_action(
         to_w = await wallet_service.find_by_name(db, user_id, parsed.target_wallet_name or "Nakit")
         if not from_w or not to_w:
             raise ValueError(t("wallet.not_found", locale))
-        await wallet_service.transfer(db, user_id, from_w.id, to_w.id, parsed.amount)
-        return {"from": from_w.name, "to": to_w.name, "amount": float(parsed.amount)}
+        amount, parsed, fx_meta = await resolve_amount_for_wallet(db, parsed, from_w, locale)
+        await wallet_service.transfer(db, user_id, from_w.id, to_w.id, amount)
+        result = {"from": from_w.name, "to": to_w.name, "amount": float(amount)}
+        if fx_meta:
+            result.update(fx_meta)
+        return result
 
     if intent == "add_shopping":
         items = parsed.items or ([parsed.description] if parsed.description else [])

@@ -22,6 +22,18 @@ class WorkspaceResponse(BaseModel):
     workspace_type: WorkspaceType
     role: WorkspaceRole
     members_count: int
+    shared_wallet_id: UUID | None = None
+
+
+class FamilyBudgetSummary(BaseModel):
+    organization_id: UUID
+    organization_name: str
+    shared_wallet_id: UUID | None
+    balance: float
+    currency: str
+    members_count: int
+    recent_expenses: list[dict]
+    monthly_total: float
 
 
 class InvitationResponse(BaseModel):

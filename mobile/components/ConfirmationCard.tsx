@@ -4,6 +4,7 @@ import { ChipPicker } from "@/components/ui/ChipPicker";
 import { DialogModal } from "@/components/ui/DialogModal";
 import { InputField } from "@/components/ui/InputField";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import { SettingSwitchRow } from "@/components/ui/SettingSwitchRow";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/constants/expenseCategories";
 import { Colors, Spacing } from "@/constants/theme";
 import { useI18n } from "@/i18n";
@@ -49,6 +50,7 @@ export function ConfirmationCard({
   const [category, setCategory] = useState("Genel");
   const [description, setDescription] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [shareToFamily, setShareToFamily] = useState(false);
   const [fieldError, setFieldError] = useState("");
   const [expanded, setExpanded] = useState(false);
 
@@ -62,6 +64,7 @@ export function ConfirmationCard({
     setCategory(parsed.category || (parsed.intent === "add_income" ? "Maaş" : "Genel"));
     setDescription(parsed.description || parsed.raw_text || "");
     setStoreName(String(parsed.store_name || parsed.place || "Genel"));
+    setShareToFamily(!!parsed.share_to_family);
     setFieldError("");
     setExpanded(false);
   }, [visible, parsed]);
@@ -88,6 +91,7 @@ export function ConfirmationCard({
       description: description.trim() || parsed.description,
       store_name: (storeName.trim() || parsed.store_name || "Genel") as string,
       place: (storeName.trim() || parsed.place || "Genel") as string,
+      share_to_family: shareToFamily,
     };
   };
 
@@ -98,6 +102,13 @@ export function ConfirmationCard({
 
   const instantAmount = parsePositiveAmount(amount) || parsed?.amount;
   const instantCategory = category || parsed?.category || "Genel";
+  const fxOriginal = parsed?.original_currency && parsed?.original_amount
+    && String(parsed.original_currency).toUpperCase() !== String(parsed?.currency || "TRY").toUpperCase();
+  const fxLabel = fxOriginal
+    ? t.input.fxConverted
+        .replace("{original}", formatMoney(Number(parsed!.original_amount), locale, String(parsed!.original_currency)))
+        .replace("{converted}", formatMoney(Number(instantAmount || parsed?.amount || 0), locale, String(parsed?.currency || "TRY")))
+    : null;
 
   return (
     <DialogModal
@@ -124,10 +135,19 @@ export function ConfirmationCard({
     >
       {instant ? (
         <View style={styles.instantBody}>
+          {fxLabel ? <Text style={styles.fxBadge}>{fxLabel}</Text> : null}
           <Text style={styles.instantHeadline}>
-            {formatMoney(Number(instantAmount || 0), locale)}
+            {formatMoney(Number(instantAmount || 0), locale, String(parsed?.currency || "TRY"))}
           </Text>
           <Text style={styles.instantCategory}>{instantCategory}</Text>
+          {(parsed?.intent === "add_expense" || parsed?.intent === "manual_edit") ? (
+            <SettingSwitchRow
+              label={t.input.shareToFamily}
+              value={shareToFamily}
+              onValueChange={setShareToFamily}
+              testID="share-to-family-toggle"
+            />
+          ) : null}
           <Text style={styles.instantQuestion}>{t.input.instantConfirmQuestion}</Text>
           <Pressable onPress={() => setExpanded(true)} accessibilityRole="button">
             <Text style={styles.editLink}>{t.input.instantEdit}</Text>
@@ -137,6 +157,7 @@ export function ConfirmationCard({
       ) : (
         <>
           <Text style={styles.hint}>{message}</Text>
+          {fxLabel ? <Text style={styles.fxBadge}>{fxLabel}</Text> : null}
           {editable ? (
             <View style={styles.fields}>
               <Text style={styles.fieldLabel}>{t.input.confirmAmount}</Text>
@@ -171,6 +192,14 @@ export function ConfirmationCard({
                   />
                 </>
               ) : null}
+              {(parsed?.intent === "add_expense" || parsed?.intent === "manual_edit") ? (
+                <SettingSwitchRow
+                  label={t.input.shareToFamily}
+                  value={shareToFamily}
+                  onValueChange={setShareToFamily}
+                  testID="share-to-family-toggle"
+                />
+              ) : null}
               <Text style={styles.editHint}>{t.input.confirmEditHint}</Text>
               {fieldError ? <Text style={styles.error}>{fieldError}</Text> : null}
             </View>
@@ -189,6 +218,7 @@ const styles = StyleSheet.create({
   fields: { gap: Spacing.xs, marginBottom: Spacing.sm },
   fieldLabel: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", marginTop: Spacing.xs },
   editHint: { color: Colors.accent, fontSize: 12, textAlign: "center", marginTop: Spacing.sm },
+  fxBadge: { color: Colors.accent, fontSize: 13, fontWeight: "600", textAlign: "center", marginBottom: Spacing.xs },
   error: { color: Colors.danger, fontSize: 13, textAlign: "center", marginTop: Spacing.xs },
   actions: { flexDirection: "row", gap: Spacing.sm, width: "100%" },
   btn: { flex: 1 },

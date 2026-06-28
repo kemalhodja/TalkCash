@@ -5,6 +5,7 @@ import { Alert, Share, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 
 import { PaywallCard } from "@/components/PaywallCard";
+import { FamilyBudgetCard } from "@/components/FamilyBudgetCard";
 
 import { ErrorState } from "@/components/ErrorState";
 
@@ -91,6 +92,7 @@ export default function WorkspacesScreen() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
+  const [budgets, setBudgets] = useState<Record<string, any>>({});
 
 
 
@@ -149,8 +151,26 @@ export default function WorkspacesScreen() {
         const workspaces = await api.getWorkspaces();
         setItems(workspaces);
         await loadInvitations(workspaces);
+        const budgetEntries = await Promise.all(
+          workspaces
+            .filter((w: any) => w.workspace_type === "family" && w.shared_wallet_id)
+            .map(async (w: any) => {
+              try {
+                const summary = await api.getWorkspaceBudget(w.id);
+                return [w.id, summary] as const;
+              } catch {
+                return null;
+              }
+            }),
+        );
+        const budgetMap: Record<string, any> = {};
+        for (const entry of budgetEntries) {
+          if (entry) budgetMap[entry[0]] = entry[1];
+        }
+        setBudgets(budgetMap);
       } else {
         setItems([]);
+        setBudgets({});
       }
     } catch (e: any) {
       setError(e.message || t.common.error);
@@ -401,8 +421,20 @@ export default function WorkspacesScreen() {
 
 
           {items.map((item) => (
+            <View key={item.id}>
+              {item.workspace_type === "family" && budgets[item.id] ? (
+                <FamilyBudgetCard
+                  name={budgets[item.id].organization_name || item.name}
+                  balance={budgets[item.id].balance}
+                  currency={budgets[item.id].currency}
+                  monthlyTotal={budgets[item.id].monthly_total}
+                  membersCount={budgets[item.id].members_count ?? item.members_count}
+                  sharedWalletId={budgets[item.id].shared_wallet_id ?? item.shared_wallet_id}
+                  recentExpenses={budgets[item.id].recent_expenses}
+                />
+              ) : null}
 
-            <Surface key={item.id} variant="default" style={styles.card}>
+            <Surface variant="default" style={styles.card}>
 
               <Text style={styles.title}>{item.name}</Text>
 
@@ -527,7 +559,7 @@ export default function WorkspacesScreen() {
               )}
 
             </Surface>
-
+            </View>
           ))}
 
           {!items.length && !inbox.length ? <Text style={styles.empty}>{t.workspaces.empty}</Text> : null}

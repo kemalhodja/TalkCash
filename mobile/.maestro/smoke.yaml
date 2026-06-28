@@ -1,28 +1,13 @@
 appId: io.talkcash.app
 ---
-# TalkCash smoke — requires dev build on device/emulator
-- launchApp
-- assertVisible: "TalkCash"
-- runFlow:
-    when:
-      visible:
-        id: "login-email"
-    commands:
-      - tapOn:
-          id: "login-email"
-      - inputText: "smoke@talkcash.io"
-      - tapOn:
-          id: "login-password"
-      - inputText: "SmokeTest123!"
-      - hideKeyboard
-      - tapOn:
-          id: "login-submit"
-          optional: true
+# TalkCash smoke — requires dev/preview build on device/emulator
+- runFlow: login.yaml
+- runFlow: go-input.yaml
 - tapOn:
-    text: "Giriş|Sign In|Giriş Yap"
+    id: "input-show-advanced"
     optional: true
 - tapOn:
-    text: "Giriş|Input"
+    text: "Gelişmiş giriş|Advanced input"
     optional: true
 - tapOn:
     id: "quick-expense-btn"
@@ -30,21 +15,13 @@ appId: io.talkcash.app
 - tapOn:
     text: "İptal|Cancel"
     optional: true
-- tapOn:
-    text: "Ayarlar|Settings|Daha|More"
-    optional: true
+- runFlow: go-settings.yaml
 - tapOn:
     id: "settings-load-demo"
     optional: true
 - assertVisible:
-    text: "Örnek veri|Sample data|Senkron|Sync"
-    optional: true
-- tapOn:
-    text: "Ayarlar|Settings"
+    text: "Örnek veri|Sample data|Senkron|Sync|Asistan|Assistant"
     optional: true
 - assertVisible:
-    text: "Asistan Kişiliği|Assistant Persona|Agresif Anne|Angry Mom"
-    optional: true
-- assertVisible:
-    text: "Fısıltı Modu|Quick Whisper|Whisper"
+    text: "Asistan Kişiliği|Assistant Persona|Fısıltı|Whisper"
     optional: true
